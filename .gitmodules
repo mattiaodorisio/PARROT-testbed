@@ -1,0 +1,3 @@
+[submodule "indices/ALEX"]
+	path = indices/ALEX
+	url = https://github.com/microsoft/ALEX.git
