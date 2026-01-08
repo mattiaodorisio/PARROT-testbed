@@ -13,3 +13,9 @@ add_compile_options(-march=native)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/indices)
 
 add_executable(deLi_testbed src/main.cpp)
+
+add_subdirectory(indices/DILI)
+target_link_libraries(deLi_testbed PRIVATE dili_func)
+target_link_libraries(deLi_testbed PRIVATE butree_func)
+target_link_libraries(deLi_testbed PRIVATE global_func)
+target_link_libraries(deLi_testbed PRIVATE utils_func)

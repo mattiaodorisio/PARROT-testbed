@@ -7,6 +7,7 @@
 
 #include "../indices/benchmark_alex.h"
 #include "../indices/benchmark_lipp.h"
+// #include "../indices/benchmark_dili.h"
 
 #include <iomanip>
 
@@ -14,8 +15,8 @@
 #include "utils.h"
 
 // Modify these if running your own workload
-#define KEY_TYPE double
-#define PAYLOAD_TYPE double
+#define bench_KEY_TYPE double   
+#define bench_PAYLOAD_TYPE double
 
 // Templated benchmark functions
 template<typename IndexType, typename KeyType, typename PayloadType>
@@ -225,7 +226,7 @@ int main(int argc, char* argv[]) {
   bool print_batch_stats = get_boolean_flag(flags, "print_batch_stats");
 
   // Read keys from file
-  auto keys = new KEY_TYPE[total_num_keys];
+  auto keys = new bench_KEY_TYPE[total_num_keys];
   if (keys_file_type == "binary") {
     load_binary_data(keys, total_num_keys, keys_file_path);
   } else if (keys_file_type == "text") {
@@ -237,21 +238,25 @@ int main(int argc, char* argv[]) {
   }
 
   // Combine bulk loaded keys with randomly generated payloads
-  auto values = new std::pair<KEY_TYPE, PAYLOAD_TYPE>[init_num_keys];
+  auto values = new std::pair<bench_KEY_TYPE, bench_PAYLOAD_TYPE>[init_num_keys];
   std::mt19937_64 gen_payload(std::random_device{}());
   for (int i = 0; i < init_num_keys; i++) {
     values[i].first = keys[i];
-    values[i].second = static_cast<PAYLOAD_TYPE>(gen_payload());
+    values[i].second = static_cast<bench_PAYLOAD_TYPE>(gen_payload());
   }
 
   // Run benchmark
-  run_benchmark<BenchmarkALEX<KEY_TYPE, PAYLOAD_TYPE>, KEY_TYPE, PAYLOAD_TYPE>(
+  run_benchmark<BenchmarkALEX<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
       keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
       lookup_distribution, time_limit, print_batch_stats, gen_payload);
 
-  run_benchmark<BenchmarkLIPP<KEY_TYPE, PAYLOAD_TYPE>, KEY_TYPE, PAYLOAD_TYPE>(
+  run_benchmark<BenchmarkLIPP<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
       keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
       lookup_distribution, time_limit, print_batch_stats, gen_payload);
+
+//   run_benchmark<BenchmarkDILI<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+//       keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
+//       lookup_distribution, time_limit, print_batch_stats, gen_payload);
 
   delete[] keys;
   delete[] values;

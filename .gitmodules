@@ -4,3 +4,6 @@
 [submodule "indices/lipp"]
 	path = indices/lipp
 	url = https://github.com/Jiacheng-WU/lipp.git
+[submodule "indices/DILI"]
+	path = indices/DILI
+	url = https://github.com/pfl-cs/DILI.git
