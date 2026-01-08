@@ -6,6 +6,7 @@
  */
 
 #include "../indices/benchmark_alex.h"
+#include "../indices/benchmark_lipp.h"
 
 #include <iomanip>
 
@@ -15,12 +16,6 @@
 // Modify these if running your own workload
 #define KEY_TYPE double
 #define PAYLOAD_TYPE double
-
-// Index creation helper functions
-template<typename KeyType, typename PayloadType>
-BenchmarkALEX<KeyType, PayloadType> create_alex_index() {
-    return BenchmarkALEX<KeyType, PayloadType>();
-}
 
 // Templated benchmark functions
 template<typename IndexType, typename KeyType, typename PayloadType>
@@ -34,9 +29,9 @@ template<typename IndexType, typename KeyType, typename PayloadType>
 double lookup_benchmark(IndexType& index, KeyType* lookup_keys, int num_lookups, PayloadType& sum) {
     auto start_time = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < num_lookups; i++) {
-        PayloadType* payload = index.lower_bound(lookup_keys[i]);
+        PayloadType payload = index.lower_bound(lookup_keys[i]);
         if (payload) {
-            sum += *payload;
+            sum += payload;
         }
     }
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -54,11 +49,14 @@ double insert_benchmark(IndexType& index, KeyType* keys, int start_idx, int num_
 }
 
 template<typename IndexType, typename KeyType, typename PayloadType>
-void run_benchmark(IndexType& index, KeyType* keys, std::pair<KeyType, PayloadType>* values,
+void run_benchmark(KeyType* keys, std::pair<KeyType, PayloadType>* values,
                    int init_num_keys, int total_num_keys, int batch_size, double insert_frac,
                    const std::string& lookup_distribution, double time_limit, bool print_batch_stats,
                    std::mt19937_64& gen_payload) {
-    
+
+    // Create the index and bulk load initial keys
+    IndexType index;
+
     // Bulk load
     bulk_load_benchmark<IndexType, KeyType, PayloadType>(index, values, init_num_keys);
 
@@ -246,10 +244,13 @@ int main(int argc, char* argv[]) {
     values[i].second = static_cast<PAYLOAD_TYPE>(gen_payload());
   }
 
-  // Create ALEX and run benchmark
-  BenchmarkALEX<KEY_TYPE, PAYLOAD_TYPE> index = create_alex_index<KEY_TYPE, PAYLOAD_TYPE>();
+  // Run benchmark
   run_benchmark<BenchmarkALEX<KEY_TYPE, PAYLOAD_TYPE>, KEY_TYPE, PAYLOAD_TYPE>(
-      index, keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
+      keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
+      lookup_distribution, time_limit, print_batch_stats, gen_payload);
+
+  run_benchmark<BenchmarkLIPP<KEY_TYPE, PAYLOAD_TYPE>, KEY_TYPE, PAYLOAD_TYPE>(
+      keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
       lookup_distribution, time_limit, print_batch_stats, gen_payload);
 
   delete[] keys;
