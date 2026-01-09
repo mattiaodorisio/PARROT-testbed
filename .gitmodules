@@ -7,3 +7,6 @@
 [submodule "indices/DILI"]
 	path = indices/DILI
 	url = https://github.com/pfl-cs/DILI.git
+[submodule "indices/DeLI"]
+	path = indices/DeLI
+	url = git@github.com:mattiaodorisio/DeLI.git

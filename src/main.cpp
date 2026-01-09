@@ -8,6 +8,7 @@
 #include "../indices/benchmark_alex.h"
 #include "../indices/benchmark_lipp.h"
 // #include "../indices/benchmark_dili.h"
+#include "../indices/benchmark_deli.h"
 
 #include <iomanip>
 
@@ -257,6 +258,10 @@ int main(int argc, char* argv[]) {
 //   run_benchmark<BenchmarkDILI<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
 //       keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
 //       lookup_distribution, time_limit, print_batch_stats, gen_payload);
+
+  run_benchmark<BenchmarkLIPP<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+      keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
+      lookup_distribution, time_limit, print_batch_stats, gen_payload);
 
   delete[] keys;
   delete[] values;
