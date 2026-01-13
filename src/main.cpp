@@ -259,7 +259,7 @@ int main(int argc, char* argv[]) {
 //       keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
 //       lookup_distribution, time_limit, print_batch_stats, gen_payload);
 
-  run_benchmark<BenchmarkLIPP<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+  run_benchmark<BenchmarkDeLI<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
       keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
       lookup_distribution, time_limit, print_batch_stats, gen_payload);
 

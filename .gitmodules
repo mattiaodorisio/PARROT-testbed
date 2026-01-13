@@ -1,6 +1,3 @@
-[submodule "indices/ALEX"]
-	path = indices/ALEX
-	url = https://github.com/microsoft/ALEX.git
 [submodule "indices/lipp"]
 	path = indices/lipp
 	url = https://github.com/Jiacheng-WU/lipp.git
