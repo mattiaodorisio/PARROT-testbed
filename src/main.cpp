@@ -9,6 +9,7 @@
 #include "../indices/benchmark_lipp.h"
 // #include "../indices/benchmark_dili.h"
 #include "../indices/benchmark_deli.h"
+#include "../indices/benchmark_pgm.h"
 
 #include <iomanip>
 
@@ -229,9 +230,11 @@ int main(int argc, char* argv[]) {
   // Read keys from file
   auto keys = new bench_KEY_TYPE[total_num_keys];
   if (keys_file_type == "binary") {
-    load_binary_data(keys, total_num_keys, keys_file_path);
+    if (!load_binary_data(keys, total_num_keys, keys_file_path))
+        throw std::runtime_error("Failed to load binary data from " + keys_file_path);
   } else if (keys_file_type == "text") {
-    load_text_data(keys, total_num_keys, keys_file_path);
+    if (!load_text_data(keys, total_num_keys, keys_file_path))
+        throw std::runtime_error("Failed to load text data from " + keys_file_path);
   } else {
     std::cerr << "--keys_file_type must be either 'binary' or 'text'"
               << std::endl;
@@ -260,6 +263,10 @@ int main(int argc, char* argv[]) {
 //       lookup_distribution, time_limit, print_batch_stats, gen_payload);
 
   run_benchmark<BenchmarkDeLI<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+      keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
+      lookup_distribution, time_limit, print_batch_stats, gen_payload);
+
+  run_benchmark<BenchmarkPGM<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
       keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
       lookup_distribution, time_limit, print_batch_stats, gen_payload);
 

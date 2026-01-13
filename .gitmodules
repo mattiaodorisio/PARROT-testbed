@@ -7,3 +7,6 @@
 [submodule "indices/DeLI"]
 	path = indices/DeLI
 	url = git@github.com:mattiaodorisio/DeLI.git
+[submodule "indices/PGM-index"]
+	path = indices/PGM-index
+	url = https://github.com/gvinciguerra/PGM-index.git
