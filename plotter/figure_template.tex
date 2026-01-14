@@ -1,0 +1,23 @@
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    title={{{TITLE}}},
+    xlabel={{{X_LABEL}}},
+    ylabel={{{Y_LABEL}}},
+    width=12cm,
+    height=8cm,
+    grid=major,
+    legend pos=outer north east,
+    mark=*,
+    mark size=2pt,
+    line width=1pt
+]
+
+{{PLOT_DATA}}
+
+\end{axis}
+\end{tikzpicture}
+\caption{{{CAPTION}}}
+\label{fig:{{LABEL}}}
+\end{figure}
