@@ -58,7 +58,7 @@ template<typename IndexType, typename KeyType, typename PayloadType>
 void run_benchmark(const std::string& index_name, std::ofstream& out_file, KeyType* keys, std::pair<KeyType, PayloadType>* values,
                    int init_num_keys, int total_num_keys, int batch_size, double insert_frac,
                    const std::string& lookup_distribution, double time_limit, bool print_batch_stats,
-                   std::mt19937_64& gen_payload) {
+                   std::mt19937_64& gen_payload, int max_batches = 10) {
 
     // Create the index and bulk load initial keys
     IndexType index;
@@ -68,12 +68,22 @@ void run_benchmark(const std::string& index_name, std::ofstream& out_file, KeyTy
 
     // Run workload
     int i = init_num_keys;
-    long long cumulative_inserts = 0;
-    long long cumulative_lookups = 0;
     int num_inserts_per_batch = static_cast<int>(batch_size * insert_frac);
     int num_lookups_per_batch = batch_size - num_inserts_per_batch;
-    double cumulative_insert_time = 0;
-    double cumulative_lookup_time = 0;
+
+    // Determine workload type for logging
+    std::string workload_type;
+    std::string workload_name;
+    if (insert_frac == 0.0) {
+        workload_type = "lookup_only";
+        workload_name = "Lookup-only workload";
+    } else if (insert_frac == 1.0) {
+        workload_type = "insert_only";
+        workload_name = "Insert-only workload";
+    } else {
+        workload_type = "mixed";
+        workload_name = "Mixed workload";
+    }
 
     auto workload_start_time = std::chrono::high_resolution_clock::now();
     int batch_no = 0;
@@ -86,7 +96,7 @@ void run_benchmark(const std::string& index_name, std::ofstream& out_file, KeyTy
 
         // Do lookups
         double batch_lookup_time = 0.0;
-        if (i > 0) {
+        if (i > 0 && num_lookups_per_batch > 0) {
             KeyType* lookup_keys = nullptr;
             if (lookup_distribution == "uniform") {
                 lookup_keys = get_search_keys(keys, i, num_lookups_per_batch);
@@ -97,43 +107,45 @@ void run_benchmark(const std::string& index_name, std::ofstream& out_file, KeyTy
                 return;
             }
             batch_lookup_time = lookup_benchmark<IndexType, KeyType, PayloadType>(index, lookup_keys, num_lookups_per_batch, sum);
-            cumulative_lookup_time += batch_lookup_time;
-            cumulative_lookups += num_lookups_per_batch;
             delete[] lookup_keys;
         }
 
         // Do inserts
         int num_actual_inserts = std::min(num_inserts_per_batch, total_num_keys - i);
-        double batch_insert_time = insert_benchmark<IndexType, KeyType, PayloadType>(index, keys, i, num_actual_inserts, gen_payload);
-        i += num_actual_inserts;
-        cumulative_insert_time += batch_insert_time;
-        cumulative_inserts += num_actual_inserts;
-
-        if (print_batch_stats) {
-            int num_batch_operations = num_lookups_per_batch + num_actual_inserts;
-            double batch_time = batch_lookup_time + batch_insert_time;
-            long long cumulative_operations = cumulative_lookups + cumulative_inserts;
-            double cumulative_time = cumulative_lookup_time + cumulative_insert_time;
-            std::cout << "Batch " << batch_no
-                      << ", cumulative ops: " << cumulative_operations
-                      << "\n\tbatch throughput:\t"
-                      << num_lookups_per_batch / batch_lookup_time * 1e9
-                      << " lookups/sec,\t"
-                      << num_actual_inserts / batch_insert_time * 1e9
-                      << " inserts/sec,\t" << num_batch_operations / batch_time * 1e9
-                      << " ops/sec"
-                      << "\n\tcumulative throughput:\t"
-                      << cumulative_lookups / cumulative_lookup_time * 1e9
-                      << " lookups/sec,\t"
-                      << cumulative_inserts / cumulative_insert_time * 1e9
-                      << " inserts/sec,\t"
-                      << cumulative_operations / cumulative_time * 1e9 << " ops/sec"
-                      << std::endl;
+        double batch_insert_time = 0.0;
+        if (num_actual_inserts > 0) {
+            batch_insert_time = insert_benchmark<IndexType, KeyType, PayloadType>(index, keys, i, num_actual_inserts, gen_payload);
+            i += num_actual_inserts;
         }
 
+        // Calculate batch statistics
+        int num_batch_operations = num_lookups_per_batch + num_actual_inserts;
+        double batch_time = batch_lookup_time + batch_insert_time;
+        double batch_overall_throughput = (batch_time > 0) ? (num_batch_operations / batch_time * 1e9) : 0.0;
+
+        if (print_batch_stats) {
+          std::cout << std::scientific << std::setprecision(3);
+          std::cout << index_name << " " << workload_name << ": " << num_batch_operations << " operations completed\n";
+          std::cout << "Total time: " << batch_time / 1e9 << " seconds\n";
+          std::cout << "Throughput: " << batch_overall_throughput << " ops/sec\n";
+        }
+
+        // Log results
+        out_file << "RESULT "
+                << "index_name=" << index_name << " "
+                << "batch_no=" << batch_no << " "
+                << "workload_type=" << workload_type << " "
+                << "init_num_keys=" << init_num_keys << " "
+                << "total_num_keys=" << total_num_keys << " "
+                << "batch_operations=" << num_batch_operations << " "
+                << "lookup_distribution=" << lookup_distribution << " "
+                << std::fixed << std::setprecision(2) << "throughput=" << batch_overall_throughput << " "
+                << std::fixed << std::setprecision(6) << "total_time=" << batch_time / 1e9 << std::endl;
+
+
         // Check for workload end conditions
-        if (num_actual_inserts < num_inserts_per_batch) {
-            // End if we have inserted all keys in a workload with inserts
+        if (batch_no >= max_batches) {
+            // End workload after specified number of batches
             break;
         }
         double workload_elapsed_time =
@@ -143,87 +155,6 @@ void run_benchmark(const std::string& index_name, std::ofstream& out_file, KeyTy
         if (workload_elapsed_time > time_limit * 1e9 * 60) {
             break;
         }
-    }
-
-    // Print final stats
-    long long cumulative_operations = cumulative_lookups + cumulative_inserts;
-    double cumulative_time = cumulative_lookup_time + cumulative_insert_time;
-    
-    double lookup_throughput = cumulative_lookups / cumulative_lookup_time * 1e9;
-    double insert_throughput = cumulative_inserts / cumulative_insert_time * 1e9;
-    double overall_throughput = cumulative_operations / cumulative_time * 1e9;
-    
-    std::cout << "Cumulative stats: " << batch_no << " batches, "
-              << cumulative_operations << " ops (" << cumulative_lookups
-              << " lookups, " << cumulative_inserts << " inserts)"
-              << "\n\tcumulative throughput:\t"
-              << lookup_throughput << " lookups/sec,\t"
-              << insert_throughput << " inserts/sec,\t"
-              << overall_throughput << " ops/sec"
-              << std::endl;
-    
-    // Write to output file
-    double safe_lookup_throughput = (cumulative_lookup_time > 0) ? (cumulative_lookups / cumulative_lookup_time * 1e9) : 0.0;
-    double safe_insert_throughput = (cumulative_insert_time > 0) ? (cumulative_inserts / cumulative_insert_time * 1e9) : 0.0;
-    double safe_overall_throughput = (cumulative_time > 0) ? (cumulative_operations / cumulative_time * 1e9) : 0.0;
-    
-    out_file << "RESULT "
-             << "index_name=" << index_name << " "
-             << "init_num_keys=" << init_num_keys << " "
-             << "total_num_keys=" << total_num_keys << " "
-             << "batch_size=" << batch_size << " "
-             << "insert_frac=" << insert_frac << " "
-             << "lookup_distribution=" << lookup_distribution << " "
-             << "time_limit=" << time_limit << " "
-             << "batch_no=" << batch_no << " "
-             << "cumulative_operations=" << cumulative_operations << " "
-             << "cumulative_lookups=" << cumulative_lookups << " "
-             << "cumulative_inserts=" << cumulative_inserts << " "
-             << std::fixed << std::setprecision(2) << "safe_lookup_throughput=" << safe_lookup_throughput << " "
-             << std::fixed << std::setprecision(2) << "safe_insert_throughput=" << safe_insert_throughput << " "
-             << std::fixed << std::setprecision(2) << "safe_overall_throughput=" << safe_overall_throughput << " "
-             << std::fixed << std::setprecision(6) << "cumulative_time=" << cumulative_time / 1e9 << std::endl;
-}
-
-// Specialized benchmark functions for individual operations
-template<typename IndexType, typename KeyType, typename PayloadType>
-void run_lookup_only_benchmark(IndexType& index, KeyType* keys, int num_keys, 
-                               const std::string& lookup_distribution, int num_lookups, bool print_stats = true) {
-    PayloadType sum = 0;
-    KeyType* lookup_keys = nullptr;
-    
-    if (lookup_distribution == "uniform") {
-        lookup_keys = get_search_keys(keys, num_keys, num_lookups);
-    } else if (lookup_distribution == "zipf") {
-        lookup_keys = get_search_keys_zipf(keys, num_keys, num_lookups);
-    } else {
-        std::cerr << "Invalid lookup distribution: " << lookup_distribution << std::endl;
-        return;
-    }
-    
-    double lookup_time = lookup_benchmark<IndexType, KeyType, PayloadType>(index, lookup_keys, num_lookups, sum);
-    
-    if (print_stats) {
-        std::cout << std::scientific << std::setprecision(3);
-        std::cout << "Lookup benchmark: " << num_lookups << " lookups completed\n";
-        std::cout << "Total time: " << lookup_time / 1e9 << " seconds\n";
-        std::cout << "Throughput: " << num_lookups / lookup_time * 1e9 << " lookups/sec\n";
-        std::cout << "Sum (to prevent optimization): " << sum << std::endl;
-    }
-    
-    delete[] lookup_keys;
-}
-
-template<typename IndexType, typename KeyType, typename PayloadType>
-void run_insert_only_benchmark(IndexType& index, KeyType* keys, int start_idx, int num_inserts, 
-                               std::mt19937_64& gen_payload, bool print_stats = true) {
-    double insert_time = insert_benchmark<IndexType, KeyType, PayloadType>(index, keys, start_idx, num_inserts, gen_payload);
-    
-    if (print_stats) {
-        std::cout << std::scientific << std::setprecision(3);
-        std::cout << "Insert benchmark: " << num_inserts << " inserts completed\n";
-        std::cout << "Total time: " << insert_time / 1e9 << " seconds\n";
-        std::cout << "Throughput: " << num_inserts / insert_time * 1e9 << " inserts/sec" << std::endl;
     }
 }
 
@@ -236,12 +167,12 @@ void run_insert_only_benchmark(IndexType& index, KeyType* keys, int start_idx, i
  * --batch_size             number of operations (lookup or insert) per batch
  *
  * Optional flags:
- * --insert_frac            fraction of operations that are inserts (instead of
- * lookups)
+ * --insert_frac            fraction of operations that are inserts (for mixed workload)
  * --lookup_distribution    lookup keys distribution (options: uniform or zipf)
- * --time_limit             time limit, in minutes
- * --print_batch_stats      whether to output stats for each batch
+ * --time_limit             time limit, in minutes (for mixed workload)
+ * --print_batch_stats      whether to output stats for each batch (for mixed workload)
  * --bench_output           custom filename for benchmark output (default: auto-generated with timestamp)
+ * --num_operations         number of operations for lookup-only and insert-only workloads (default: batch_size)
  */
 int main(int argc, char* argv[]) {
   auto flags = parse_flags(argc, argv);
@@ -256,6 +187,7 @@ int main(int argc, char* argv[]) {
   auto time_limit = stod(get_with_default(flags, "time_limit", "0.5"));
   bool print_batch_stats = get_boolean_flag(flags, "print_batch_stats");
   std::string bench_output = get_with_default(flags, "bench_output", "");
+  auto num_operations = stoi(get_with_default(flags, "num_operations", std::to_string(batch_size)));
 
   // Read keys from file
   auto keys = new bench_KEY_TYPE[total_num_keys];
@@ -298,27 +230,99 @@ int main(int argc, char* argv[]) {
   }
   
   std::cout << "Benchmark results will be written to: " << out_filename << std::endl;
+  
+  // Calculate number of operations for single-operation workloads
+  int max_inserts = total_num_keys - init_num_keys;
+  int actual_num_operations = std::min(num_operations, max_inserts);
+  
+  std::cout << "\n=== Running benchmarks for all workload types ===" << std::endl;
+  std::cout << "Initial keys: " << init_num_keys << std::endl;
+  std::cout << "Operations per single workload: " << actual_num_operations << std::endl;
+  std::cout << "Mixed workload batch size: " << batch_size << " (insert fraction: " << insert_frac << ")" << std::endl;
 
-  // Run benchmark
-  run_benchmark<BenchmarkALEX<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
-      "ALEX", out_file, keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
-      lookup_distribution, time_limit, print_batch_stats, gen_payload);
-
-  run_benchmark<BenchmarkLIPP<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
-      "LIPP", out_file, keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
-      lookup_distribution, time_limit, print_batch_stats, gen_payload);
-
-//   run_benchmark<BenchmarkDILI<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
-//       "DILI", out_file, keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
-//       lookup_distribution, time_limit, print_batch_stats, gen_payload);
-
-  run_benchmark<BenchmarkDeLI<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
-      "DeLI", out_file, keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
-      lookup_distribution, time_limit, print_batch_stats, gen_payload);
-
-  run_benchmark<BenchmarkPGM<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
-      "PGM", out_file, keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
-      lookup_distribution, time_limit, print_batch_stats, gen_payload);
+  // Define index types and names
+  std::vector<std::string> index_names = {"ALEX", "LIPP", "DeLI", "PGM"};
+  
+  for (const auto& index_name : index_names) {
+    std::cout << "\n--- Running workloads for " << index_name << " ---" << std::endl;
+    
+    if (index_name == "ALEX") {
+      // Lookup-only workload
+      std::cout << "\n1. Lookup-only workload" << std::endl;
+      run_benchmark<BenchmarkALEX<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+          index_name, out_file, keys, values, init_num_keys, total_num_keys, actual_num_operations, 0.0,
+          lookup_distribution, time_limit, print_batch_stats, gen_payload, 3);
+      
+      // Insert-only workload
+      std::cout << "\n2. Insert-only workload" << std::endl;
+      run_benchmark<BenchmarkALEX<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+          index_name, out_file, keys, values, init_num_keys, total_num_keys, actual_num_operations, 1.0,
+          lookup_distribution, time_limit, print_batch_stats, gen_payload, 3);
+      
+      // Mixed workload
+      std::cout << "\n3. Mixed workload (insert_frac=" << insert_frac << ")" << std::endl;
+      run_benchmark<BenchmarkALEX<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+          index_name, out_file, keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
+          lookup_distribution, time_limit, print_batch_stats, gen_payload, 10);
+    }
+    else if (index_name == "LIPP") {
+      // Lookup-only workload
+      std::cout << "\n1. Lookup-only workload" << std::endl;
+      run_benchmark<BenchmarkLIPP<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+          index_name, out_file, keys, values, init_num_keys, total_num_keys, actual_num_operations, 0.0,
+          lookup_distribution, time_limit, print_batch_stats, gen_payload, 3);
+      
+      // Insert-only workload
+      std::cout << "\n2. Insert-only workload" << std::endl;
+      run_benchmark<BenchmarkLIPP<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+          index_name, out_file, keys, values, init_num_keys, total_num_keys, actual_num_operations, 1.0,
+          lookup_distribution, time_limit, print_batch_stats, gen_payload, 3);
+      
+      // Mixed workload
+      std::cout << "\n3. Mixed workload (insert_frac=" << insert_frac << ")" << std::endl;
+      run_benchmark<BenchmarkLIPP<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+          index_name, out_file, keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
+          lookup_distribution, time_limit, print_batch_stats, gen_payload, 10);
+    }
+    else if (index_name == "DeLI") {
+      // Lookup-only workload
+      std::cout << "\n1. Lookup-only workload" << std::endl;
+      run_benchmark<BenchmarkDeLI<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+          index_name, out_file, keys, values, init_num_keys, total_num_keys, actual_num_operations, 0.0,
+          lookup_distribution, time_limit, print_batch_stats, gen_payload, 3);
+      
+      // Insert-only workload
+      std::cout << "\n2. Insert-only workload" << std::endl;
+      run_benchmark<BenchmarkDeLI<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+          index_name, out_file, keys, values, init_num_keys, total_num_keys, actual_num_operations, 1.0,
+          lookup_distribution, time_limit, print_batch_stats, gen_payload, 3);
+      
+      // Mixed workload
+      std::cout << "\n3. Mixed workload (insert_frac=" << insert_frac << ")" << std::endl;
+      run_benchmark<BenchmarkDeLI<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+          index_name, out_file, keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
+          lookup_distribution, time_limit, print_batch_stats, gen_payload, 10);
+    }
+    else if (index_name == "PGM") {
+      // Lookup-only workload
+      std::cout << "\n1. Lookup-only workload" << std::endl;
+      run_benchmark<BenchmarkPGM<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+          index_name, out_file, keys, values, init_num_keys, total_num_keys, actual_num_operations, 0.0,
+          lookup_distribution, time_limit, print_batch_stats, gen_payload, 3);
+      
+      // Insert-only workload
+      std::cout << "\n2. Insert-only workload" << std::endl;
+      run_benchmark<BenchmarkPGM<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+          index_name, out_file, keys, values, init_num_keys, total_num_keys, actual_num_operations, 1.0,
+          lookup_distribution, time_limit, print_batch_stats, gen_payload, 3);
+      
+      // Mixed workload
+      std::cout << "\n3. Mixed workload (insert_frac=" << insert_frac << ")" << std::endl;
+      run_benchmark<BenchmarkPGM<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
+          index_name, out_file, keys, values, init_num_keys, total_num_keys, batch_size, insert_frac,
+          lookup_distribution, time_limit, print_batch_stats, gen_payload, 10);
+    }
+  }
 
   // Close out file
   out_file.close();
