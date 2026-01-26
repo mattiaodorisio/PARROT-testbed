@@ -21,11 +21,6 @@ static std::vector<T> load_binary_data(const std::string& filename, size_t lengt
   // Read values.
   in.read(reinterpret_cast<char*>(data.data()), size * sizeof(T));
   in.close();
-
-  std::cout << "Loaded " << size << " keys from " << filename << std::endl;
-  for (size_t i = 0; i < 10; ++i) {
-    std::cout << "  " << data[i] << std::endl;
-  }
   return data;
 }
 
@@ -60,14 +55,15 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_search_keys
   return data_sample;
 }
 
-template <class T>
-std::vector<T> get_search_keys_zipf(const std::vector<T>& data, int num_searches) {
+template <class RandomIt>
+std::vector<typename std::iterator_traits<RandomIt>::value_type> get_search_keys_zipf(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
+  using T = typename std::iterator_traits<RandomIt>::value_type;
   std::vector<T> data_sample;
   data_sample.reserve(num_searches);
-  ScrambledZipfianGenerator zipf_gen(data.size());
+  ScrambledZipfianGenerator zipf_gen(std::distance(data_begin, data_end));
   for (int i = 0; i < num_searches; i++) {
     int pos = zipf_gen.nextValue();
-    data_sample.push_back(data[pos]);
+    data_sample.push_back(data_begin[pos]);
   }
   return data_sample;
 }

@@ -21,13 +21,8 @@
 #include "utils.h"
 
 // TODO:
-// - data type
 // - check workloads
 // - distinguere existing e non-existing
-
-// Modify these if running your own workload
-#define bench_KEY_TYPE uint32_t
-#define bench_PAYLOAD_TYPE uint32_t
 
 static constexpr size_t NUM_BATCHES = 1;
 
@@ -119,12 +114,11 @@ void run_benchmark(const std::string& index_name, std::ofstream& out_file, std::
         double batch_lookup_time = 0.0;
         if (i > 0 && num_lookups_per_batch > 0) {
             // Create a subset vector of keys from 0 to i
-            std::vector<std::pair<KeyType, PayloadType>> key_value_subset(key_value_pairs.begin(), key_value_pairs.begin() + i);
             std::vector<std::pair<KeyType, PayloadType>> lookup_pairs;
             if (lookup_distribution == "uniform") {
                 lookup_pairs = get_search_keys(key_value_pairs.begin(), key_value_pairs.begin() + i, num_lookups_per_batch);
             } else if (lookup_distribution == "zipf") {
-                lookup_pairs = get_search_keys_zipf(key_value_subset, num_lookups_per_batch);
+                lookup_pairs = get_search_keys_zipf(key_value_pairs.begin(), key_value_pairs.begin() + i, num_lookups_per_batch);
             } else {
                 std::cerr << "--lookup_distribution must be either 'uniform' or 'zipf'" << std::endl;
                 exit(EXIT_FAILURE);
@@ -182,6 +176,96 @@ void run_benchmark(const std::string& index_name, std::ofstream& out_file, std::
     }
 }
 
+template <typename KeyType, typename PayloadType>
+void execute(const std::string& keys_file_path,
+             const std::string& keys_file_type,
+             int batch_size,
+             double insert_frac,
+             const std::string& lookup_distribution,
+             double time_limit,
+             bool print_batch_stats,
+             std::ofstream& out_file) {
+
+  // Read keys from file
+  std::vector<KeyType> keys;
+  if (keys_file_type == "binary") {
+    keys = load_binary_data<KeyType>(keys_file_path);
+  } else if (keys_file_type == "text") {
+    // keys.resize(total_num_keys);
+    // if (!load_text_data(keys.data(), total_num_keys, keys_file_path))
+    //     throw std::runtime_error("Failed to load text data from " + keys_file_path);
+  } else {
+    std::cerr << "--keys_file_type must be either 'binary' or 'text'" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  std::mt19937_64 gen_payload(std::random_device{}());
+  
+  // Generate exponentially increasing init_num_keys values
+  constexpr size_t base_size = 1 << 7;  // Starting size
+  constexpr size_t max_size = 1 << 20;  // Maximum size
+  
+  std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
+  std::cout << "Mixed workload batch size: " << batch_size << " (insert fraction: " << insert_frac << ")" << std::endl;
+
+  // Define index types and names
+  std::vector<std::string> index_names = {"ALEX", "LIPP", "DeLI", "PGM-Static"};
+
+  // Create values array for current init size
+  // Two vectors to be used depending on the index... TODO: improve this
+  std::vector<std::pair<KeyType, PayloadType>> key_values(keys.size());
+  std::vector<std::pair<KeyType, PayloadType>> key_keys(keys.size());
+  for (int i = 0; i < key_values.size(); i++) {
+    key_values[i].first = keys[i];
+    key_values[i].second = static_cast<PayloadType>(gen_payload());
+
+    key_keys[i].first = key_keys[i].second = keys[i];
+  }
+  
+  for (size_t current_init_key_size = base_size; current_init_key_size <= max_size; current_init_key_size *= 2) {
+    std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
+
+    std::array<double, 3> insert_fractions = {0.0, 1.0, insert_frac};
+
+    for (const auto& index_name : index_names) {
+      std::cout << "\n--- Running workloads for " << index_name << " (init_keys=" << current_init_key_size << ") ---" << std::endl;
+      
+      if (index_name == "ALEX") {
+        for (const auto& insert_frac : insert_fractions) {
+          std::cout << "\nRunning workload with insert_frac=" << insert_frac << std::endl;
+          run_benchmark<BenchmarkALEX<KeyType, PayloadType>, KeyType, PayloadType>(
+              index_name, out_file, key_values, current_init_key_size, batch_size, insert_frac,
+              lookup_distribution, time_limit, print_batch_stats, gen_payload, NUM_BATCHES);
+        }
+      }
+      else if (index_name == "LIPP") {
+        for (const auto& insert_frac : insert_fractions) {
+          std::cout << "\nRunning workload with insert_frac=" << insert_frac << std::endl;
+          run_benchmark<BenchmarkLIPP<KeyType, PayloadType>, KeyType, PayloadType>(
+              index_name, out_file, key_values, current_init_key_size, batch_size, insert_frac,
+              lookup_distribution, time_limit, print_batch_stats, gen_payload, NUM_BATCHES);
+        }
+      }
+      else if (index_name == "DeLI") {
+        for (const auto& insert_frac : insert_fractions) {
+          std::cout << "\nRunning workload with insert_frac=" << insert_frac << std::endl;
+          run_benchmark<BenchmarkDeLI<KeyType, PayloadType>, KeyType, PayloadType>(
+              index_name, out_file, key_keys, current_init_key_size, batch_size, insert_frac,
+              lookup_distribution, time_limit, print_batch_stats, gen_payload, NUM_BATCHES);
+        }
+      }
+      else if (index_name == "PGM-Static") {
+        for (const auto& insert_frac : insert_fractions) {
+          std::cout << "\nRunning workload with insert_frac=" << insert_frac << std::endl;
+          run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType>, KeyType, PayloadType>(
+              index_name, out_file, key_keys, current_init_key_size, batch_size, insert_frac,
+              lookup_distribution, time_limit, print_batch_stats, gen_payload, NUM_BATCHES);
+        }
+      }
+    }
+  }
+}
+
 /*
  * Required flags:
  * --keys_file              path to the file that contains keys
@@ -195,7 +279,6 @@ void run_benchmark(const std::string& index_name, std::ofstream& out_file, std::
  * --time_limit             time limit, in minutes (for mixed workload)
  * --print_batch_stats      whether to output stats for each batch (for mixed workload)
  * --bench_output           custom filename for benchmark output (default: auto-generated with timestamp)
- * --num_operations         number of operations for lookup-only and insert-only workloads (default: batch_size)
  */
 int main(int argc, char* argv[]) {
   auto flags = parse_flags(argc, argv);
@@ -203,28 +286,18 @@ int main(int argc, char* argv[]) {
   std::string keys_file_type = get_required(flags, "keys_file_type");
   auto batch_size = stoi(get_required(flags, "batch_size"));
   auto insert_frac = stod(get_with_default(flags, "insert_frac", "0.5"));
-  std::string lookup_distribution =
-      get_with_default(flags, "lookup_distribution", "zipf");
+  std::string lookup_distribution = get_with_default(flags, "lookup_distribution", "zipf");
   auto time_limit = stod(get_with_default(flags, "time_limit", "0.5"));
   bool print_batch_stats = get_boolean_flag(flags, "print_batch_stats");
   std::string bench_output = get_with_default(flags, "bench_output", "");
-  auto num_operations = stoi(get_with_default(flags, "num_operations", std::to_string(batch_size)));
 
-  // Read keys from file
-  std::vector<bench_KEY_TYPE> keys;
-  if (keys_file_type == "binary") {
-    keys = load_binary_data<bench_KEY_TYPE>(keys_file_path);
-  } else if (keys_file_type == "text") {
-    // keys.resize(total_num_keys);
-    // if (!load_text_data(keys.data(), total_num_keys, keys_file_path))
-    //     throw std::runtime_error("Failed to load text data from " + keys_file_path);
-  } else {
-    std::cerr << "--keys_file_type must be either 'binary' or 'text'"
-              << std::endl;
-    return 1;
+  // Check if input file does exist
+  {
+    std::ifstream infile(keys_file_path);
+    if (!infile.good()) {
+      throw std::runtime_error("The specified keys_file does not exist: " + keys_file_path);
+    }
   }
-
-  std::mt19937_64 gen_payload(std::random_device{}());
 
   // Create benchmark output file with timestamp or use custom name
   std::string out_filename;
@@ -240,79 +313,23 @@ int main(int argc, char* argv[]) {
   
   std::ofstream out_file(out_filename);
   if (!out_file.is_open()) {
-    std::cerr << "Failed to create the benchmark output file: " << out_filename << std::endl;
-    return 1;
+    throw std::runtime_error("Failed to create the benchmark output file: " + out_filename);
   }
-  
+
   std::cout << "Benchmark results will be written to: " << out_filename << std::endl;
-  
-  // Generate exponentially increasing init_num_keys values
-  constexpr size_t base_size = 1 << 7;  // Starting size
-  constexpr size_t max_size = 1 << 20;  // Maximum size
-  
-  std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
-  std::cout << "Mixed workload batch size: " << batch_size << " (insert fraction: " << insert_frac << ")" << std::endl;
 
-  // Define index types and names
-  std::vector<std::string> index_names = {"ALEX", "LIPP", "DeLI", "PGM-Static"};
-  index_names = {"PGM-Static"};
-
-  // Create values array for current init size
-  // Two vectors to be used depending on the index... TODO: improve this
-  std::vector<std::pair<bench_KEY_TYPE, bench_PAYLOAD_TYPE>> key_values(keys.size());
-  std::vector<std::pair<bench_KEY_TYPE, bench_PAYLOAD_TYPE>> key_keys(keys.size());
-  for (int i = 0; i < key_values.size(); i++) {
-    key_values[i].first = keys[i];
-    key_values[i].second = static_cast<bench_PAYLOAD_TYPE>(gen_payload());
-
-    key_keys[i].first = key_keys[i].second = keys[i];
+  // Call execute with appropriate key type based on filename suffix
+  if (keys_file_path.ends_with("_uint32")) {
+    execute<uint32_t, uint32_t>(keys_file_path, keys_file_type, batch_size, insert_frac,
+                                          lookup_distribution, time_limit, print_batch_stats, out_file);
+  } else if (keys_file_path.ends_with("_uint64")) {
+    execute<uint64_t, uint64_t>(keys_file_path, keys_file_type, batch_size, insert_frac,
+                                          lookup_distribution, time_limit, print_batch_stats, out_file);
+  } else {
+    throw std::runtime_error("Unsupported key type in filename. Expected suffixes: _uint32 or _uint64");
   }
 
-  
-  for (size_t current_init_key_size = base_size; current_init_key_size <= max_size; current_init_key_size *= 2) {
-    std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
-
-    std::array<double, 3> insert_fractions = {0.0, 1.0, insert_frac};
-
-    for (const auto& index_name : index_names) {
-      std::cout << "\n--- Running workloads for " << index_name << " (init_keys=" << current_init_key_size << ") ---" << std::endl;
-      
-      if (index_name == "ALEX") {
-        for (const auto& insert_frac : insert_fractions) {
-          std::cout << "\nRunning workload with insert_frac=" << insert_frac << std::endl;
-          run_benchmark<BenchmarkALEX<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
-              index_name, out_file, key_values, current_init_key_size, batch_size, insert_frac,
-              lookup_distribution, time_limit, print_batch_stats, gen_payload, NUM_BATCHES);
-        }
-      }
-      else if (index_name == "LIPP") {
-        for (const auto& insert_frac : insert_fractions) {
-          std::cout << "\nRunning workload with insert_frac=" << insert_frac << std::endl;
-          run_benchmark<BenchmarkLIPP<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
-              index_name, out_file, key_values, current_init_key_size, batch_size, insert_frac,
-              lookup_distribution, time_limit, print_batch_stats, gen_payload, NUM_BATCHES);
-        }
-      }
-      else if (index_name == "DeLI") {
-        for (const auto& insert_frac : insert_fractions) {
-          std::cout << "\nRunning workload with insert_frac=" << insert_frac << std::endl;
-          run_benchmark<BenchmarkDeLI<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
-              index_name, out_file, key_keys, current_init_key_size, batch_size, insert_frac,
-              lookup_distribution, time_limit, print_batch_stats, gen_payload, NUM_BATCHES);
-        }
-      }
-      else if (index_name == "PGM-Static") {
-        for (const auto& insert_frac : insert_fractions) {
-          std::cout << "\nRunning workload with insert_frac=" << insert_frac << std::endl;
-          run_benchmark<BenchmarkStaticPGM<bench_KEY_TYPE, bench_PAYLOAD_TYPE>, bench_KEY_TYPE, bench_PAYLOAD_TYPE>(
-              index_name, out_file, key_keys, current_init_key_size, batch_size, insert_frac,
-              lookup_distribution, time_limit, print_batch_stats, gen_payload, NUM_BATCHES);
-        }
-      }
-    }
-  }
-
-  // Close out file
-  out_file.close();
   std::cout << "\nBenchmark results saved to: " << out_filename << std::endl;
+  
+  return 0;
 }
