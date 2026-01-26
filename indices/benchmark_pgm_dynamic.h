@@ -1,14 +1,14 @@
 #pragma once
 
-#include "PGM-index/include/pgm/pgm_index.hpp"
+#include "PGM-index/include/pgm/pgm_index_dynamic.hpp"
 
 // Wrapper object
 
 template <typename KEY_TYPE, typename PAYLOAD_TYPE>
-class BenchmarkPGM {
+class BenchmarkDynamicPGM {
   public:
-    BenchmarkPGM() : index() {}
-  
+    BenchmarkDynamicPGM() : index() {}
+
     void bulk_load(std::pair<KEY_TYPE, PAYLOAD_TYPE>* values, size_t num_keys) {
       std::sort(values, values + num_keys,
                 [](auto const& a, auto const& b) { return a.first < b.first; });
@@ -17,7 +17,8 @@ class BenchmarkPGM {
 
       // Retain a copy of the data
       data.assign(keys.begin(), keys.end());
-      index = pgm::PGMIndex<KEY_TYPE, 32>(data.begin(), data.end());
+      throw std::runtime_error("Dynamic PGM bulk load not implemented");
+      // index = pgm::PGMIndex<KEY_TYPE, PAYLOAD_TYPE>(data.begin(), data.end());
     }
 
     PAYLOAD_TYPE lower_bound(const KEY_TYPE& key) {
@@ -39,8 +40,16 @@ class BenchmarkPGM {
     void erase(const KEY_TYPE& key) {
       // index.erase(key);
     }
+
+    static bool is_dynamic() {
+      return true;
+    }
+
+    static std::string name() {
+      return "Dynamic-PGM";
+    }
   
   private:
     std::vector<KEY_TYPE> data;
-    pgm::PGMIndex<KEY_TYPE, 32> index;
+    pgm::DynamicPGMIndex<KEY_TYPE, PAYLOAD_TYPE> index;
 };

@@ -1,17 +1,32 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#pragma once
 #include "zipf.h"
 
-template <class T>
-bool load_binary_data(T data[], int length, const std::string& file_path) {
-  std::ifstream is(file_path.c_str(), std::ios::binary | std::ios::in);
-  if (!is.is_open()) {
-    return false;
+// Loads values from binary file into vector.
+template <typename T>
+static std::vector<T> load_binary_data(const std::string& filename, size_t length = std::numeric_limits<size_t>::max()) {
+  std::vector<T> data;
+  std::ifstream in(filename, std::ios::binary);
+  if (!in.is_open()) {
+    std::cerr << "unable to open " << filename << std::endl;
+    exit(EXIT_FAILURE);
   }
-  is.read(reinterpret_cast<char*>(data), std::streamsize(length * sizeof(T)));
-  is.close();
-  return true;
+  // Read size.
+  uint64_t size;
+  in.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+  size = std::min(size, length);
+  data.resize(size);
+  // Read values.
+  in.read(reinterpret_cast<char*>(data.data()), size * sizeof(T));
+  in.close();
+
+  std::cout << "Loaded " << size << " keys from " << filename << std::endl;
+  for (size_t i = 0; i < 10; ++i) {
+    std::cout << "  " << data[i] << std::endl;
+  }
+  return data;
 }
 
 template <class T>
@@ -31,25 +46,28 @@ bool load_text_data(T array[], int length, const std::string& file_path) {
   return true;
 }
 
-template <class T>
-T* get_search_keys(T array[], int num_keys, int num_searches) {
+template <class RandomIt>
+std::vector<typename std::iterator_traits<RandomIt>::value_type> get_search_keys(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
+  using T = typename std::iterator_traits<RandomIt>::value_type;
   std::mt19937_64 gen(std::random_device{}());
-  std::uniform_int_distribution<int> dis(0, num_keys - 1);
-  auto* keys = new T[num_searches];
+  std::uniform_int_distribution<int> dis(0, std::distance(data_begin, data_end) - 1);
+  std::vector<T> data_sample;
+  data_sample.reserve(num_searches);
   for (int i = 0; i < num_searches; i++) {
     int pos = dis(gen);
-    keys[i] = array[pos];
+    data_sample.push_back(data_begin[pos]);
   }
-  return keys;
+  return data_sample;
 }
 
 template <class T>
-T* get_search_keys_zipf(T array[], int num_keys, int num_searches) {
-  auto* keys = new T[num_searches];
-  ScrambledZipfianGenerator zipf_gen(num_keys);
+std::vector<T> get_search_keys_zipf(const std::vector<T>& data, int num_searches) {
+  std::vector<T> data_sample;
+  data_sample.reserve(num_searches);
+  ScrambledZipfianGenerator zipf_gen(data.size());
   for (int i = 0; i < num_searches; i++) {
     int pos = zipf_gen.nextValue();
-    keys[i] = array[pos];
+    data_sample.push_back(data[pos]);
   }
-  return keys;
+  return data_sample;
 }

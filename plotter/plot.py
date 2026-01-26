@@ -15,8 +15,143 @@ A first draft of the code in this file has been generated with the help of an AI
 import re
 import os
 import sys
-from typing import Dict, List
+from typing import Dict, List, Tuple, Optional
 import argparse
+import statistics
+
+
+def parse_filter(filter_str: str) -> Optional[Tuple[str, str]]:
+    """
+    Parse a filter string like 'workload_type=lookup_only' into (key, value).
+    
+    Args:
+        filter_str (str): Filter string
+        
+    Returns:
+        Tuple[str, str] or None: (key, value) pair or None if no filter
+    """
+    if not filter_str or filter_str.strip() == '':
+        return None
+    
+    if '=' in filter_str:
+        key, value = filter_str.split('=', 1)
+        return (key.strip(), value.strip())
+    return None
+
+
+def parse_aggregation(col_str: str) -> Tuple[str, str]:
+    """
+    Parse a column string that might contain aggregation like 'MEDIAN(total_time)'.
+    
+    Args:
+        col_str (str): Column string, possibly with aggregation
+        
+    Returns:
+        Tuple[str, str]: (aggregation_function, column_name)
+    """
+    col_str = col_str.strip()
+    
+    # Check for aggregation functions
+    aggregation_pattern = r'^(MEDIAN|AVG|AVERAGE|MIN|MAX|SUM)\(([^)]+)\)$'
+    match = re.match(aggregation_pattern, col_str, re.IGNORECASE)
+    
+    if match:
+        func_name = match.group(1).upper()
+        column_name = match.group(2).strip()
+        return (func_name, column_name)
+    else:
+        return ('NONE', col_str)
+
+
+def apply_filter(data: List[Dict], filter_condition: Optional[Tuple[str, str]]) -> List[Dict]:
+    """
+    Apply a filter condition to the data.
+    
+    Args:
+        data (List[Dict]): Input data
+        filter_condition (Tuple[str, str] or None): (key, value) filter condition
+        
+    Returns:
+        List[Dict]: Filtered data
+    """
+    if filter_condition is None:
+        return data
+    
+    key, value = filter_condition
+    filtered_data = []
+    
+    for row in data:
+        if key in row:
+            row_value = str(row[key])
+            if row_value == value:
+                filtered_data.append(row)
+    
+    return filtered_data
+
+
+def group_and_aggregate(data: List[Dict], groupby_col: str, agg_func: str, agg_col: str, x_col: str) -> List[Dict]:
+    """
+    Group data by a column and apply aggregation.
+    
+    Args:
+        data (List[Dict]): Input data
+        groupby_col (str): Column to group by
+        agg_func (str): Aggregation function (MEDIAN, AVG, etc.)
+        agg_col (str): Column to aggregate
+        x_col (str): X-axis column name
+        
+    Returns:
+        List[Dict]: Grouped and aggregated data
+    """
+    # Group data by groupby_col and x_col
+    groups = {}
+    for row in data:
+        if groupby_col in row and agg_col in row and x_col in row:
+            group_key = (row[groupby_col], row[x_col])
+            if group_key not in groups:
+                groups[group_key] = []
+            groups[group_key].append(row)
+    
+    # Aggregate each group
+    result_data = []
+    for (group_value, x_value), group_rows in groups.items():
+        # Filter out invalid values
+        valid_values = [row[agg_col] for row in group_rows if agg_col in row and row[agg_col] is not None]
+        
+        if not valid_values:
+            continue
+        
+        # Apply aggregation function
+        if agg_func == 'MEDIAN':
+            agg_result = statistics.median(valid_values)
+        elif agg_func in ['AVG', 'AVERAGE']:
+            agg_result = statistics.mean(valid_values)
+        elif agg_func == 'MIN':
+            agg_result = min(valid_values)
+        elif agg_func == 'MAX':
+            agg_result = max(valid_values)
+        elif agg_func == 'SUM':
+            agg_result = sum(valid_values)
+        else:  # NONE - just take the first value
+            agg_result = valid_values[0]
+        
+        # Create result row
+        result_row = {
+            groupby_col: group_value,
+            x_col: x_value,
+            f'{agg_func.lower()}_{agg_col}': agg_result,
+            'group_size': len(valid_values)
+        }
+        
+        # Add other fields from first row for reference
+        if group_rows:
+            for key, value in group_rows[0].items():
+                if key not in result_row:
+                    result_row[key] = value
+        
+        result_data.append(result_row)
+    
+    return result_data
 
 
 def parse_benchmark_log(log_file_path: str) -> List[Dict]:
@@ -83,63 +218,82 @@ def parse_benchmark_log(log_file_path: str) -> List[Dict]:
     
     return data_rows
 
-def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str) -> str:
+def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col: str = None) -> str:
     """
     Generate pgfplot data section for a given x and y column combination.
     
     Args:
-        data (List[Dict]): Benchmark data
+        data (List[Dict]): Benchmark data (already filtered and aggregated)
         x_col (str): Column name for x-axis
-        y_col (str): Column name for y-axis
+        y_col (str): Column name for y-axis  
+        groupby_col (str): Column used for grouping (for legend)
         
     Returns:
         str: Formatted data for pgfplot
     """
     data_lines = []
     
-    # Group by index_name to create separate plots for each index
-    indices = {}
-    for row in data:
-        index_name = row.get('index_name', 'Unknown')
-        if index_name not in indices:
-            indices[index_name] = []
-        indices[index_name].append(row)
-    
-    # Sort each index data by x_col
-    for index_name, index_data in indices.items():
-        # Filter out rows that don't have the required columns
-        valid_data = [row for row in index_data if x_col in row and y_col in row]
-        if not valid_data:
-            continue
+    # Group by the groupby column (usually index_name) to create separate plot lines
+    if groupby_col:
+        groups = {}
+        for row in data:
+            if groupby_col in row:
+                group_value = row[groupby_col]
+                if group_value not in groups:
+                    groups[group_value] = []
+                groups[group_value].append(row)
+        
+        # Sort each group data by x_col and create plot lines
+        for group_value, group_data in sorted(groups.items()):
+            # Filter out rows that don't have the required columns
+            valid_data = [row for row in group_data if x_col in row and y_col in row]
+            if not valid_data:
+                continue
+                
+            # Sort by x column
+            valid_data.sort(key=lambda row: row[x_col])
             
-        # Sort by x column
-        valid_data.sort(key=lambda row: row[x_col])
-        
-        data_lines.append(f"% Data for {index_name}")
-        data_lines.append(f"\\addplot coordinates {{")
-        
-        for row in valid_data:
-            x_val = row[x_col]
-            y_val = row[y_col]
-            data_lines.append(f"    ({x_val}, {y_val})")
-        
-        data_lines.append("};")
-        data_lines.append(f"\\addlegendentry{{{index_name}}}")
-        data_lines.append("")
+            data_lines.append(f"% Data for {group_value}")
+            data_lines.append(f"\\addplot coordinates {{")
+            
+            for row in valid_data:
+                x_val = row[x_col]
+                y_val = row[y_col]
+                data_lines.append(f"    ({x_val}, {y_val})")
+            
+            data_lines.append("};")
+            data_lines.append(f"\\addlegendentry{{{group_value}}}")
+            data_lines.append("")
+    
+    else:
+        # No grouping, plot all data as a single series
+        valid_data = [row for row in data if x_col in row and y_col in row]
+        if valid_data:
+            valid_data.sort(key=lambda row: row[x_col])
+            
+            data_lines.append(f"\\addplot coordinates {{")
+            for row in valid_data:
+                x_val = row[x_col]
+                y_val = row[y_col]
+                data_lines.append(f"    ({x_val}, {y_val})")
+            data_lines.append("};")
     
     return "\n".join(data_lines)
 
 
 def create_figure_from_template(data: List[Dict], x_col: str, y_col: str, 
+                              filter_condition: Optional[Tuple[str, str]], groupby_col: str,
                               title: str, caption: str, label: str,
                               figure_template_path: str = None) -> str:
     """
-    Create a single figure using a template.
+    Create a single figure using a template with filtering and grouping.
     
     Args:
-        data (List[Dict]): Benchmark data
+        data (List[Dict]): Raw benchmark data
         x_col (str): Column name for x-axis
-        y_col (str): Column name for y-axis
+        y_col (str): Column name for y-axis (may include aggregation)
+        filter_condition (Tuple[str, str] or None): Filter condition
+        groupby_col (str): Column to group by
         title (str): Plot title
         caption (str): Figure caption
         label (str): Figure label
@@ -156,14 +310,45 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
     with open(figure_template_path, 'r') as f:
         template_content = f.read()
     
+    # Parse aggregation from y_col
+    agg_func, actual_y_col = parse_aggregation(y_col)
+    
+    # Apply filter
+    filtered_data = apply_filter(data, filter_condition)
+    
+    if not filtered_data:
+        return f"% No data available for filter {filter_condition}"
+    
+    # Group and aggregate data
+    processed_data = group_and_aggregate(filtered_data, groupby_col, agg_func, actual_y_col, x_col)
+    
+    if not processed_data:
+        return f"% No aggregated data available for {title}"
+    
+    # Determine the actual y column name after aggregation
+    actual_y_col_name = f'{agg_func.lower()}_{actual_y_col}' if agg_func != 'NONE' else actual_y_col
+    
     # Generate plot data
-    plot_data = generate_pgfplot_data(data, x_col, y_col)
+    plot_data = generate_pgfplot_data(processed_data, x_col, actual_y_col_name, groupby_col)
+    
+    # Prepare better labels
+    x_label = x_col.replace('_', ' ').title()
+    if agg_func != 'NONE':
+        y_label = f"{agg_func.title()} {actual_y_col.replace('_', ' ').title()}"
+    else:
+        y_label = actual_y_col.replace('_', ' ').title()
+    
+    # Special handling for certain column names
+    if 'total_time' in actual_y_col:
+        y_label += ' (seconds)'
+    elif 'throughput' in actual_y_col:
+        y_label += ' (ops/sec)'
     
     # Apply replacements
     replacements = {
         '{{PLOT_DATA}}': plot_data,
-        '{{X_LABEL}}': x_col.replace('_', ' ').title(),
-        '{{Y_LABEL}}': y_col.replace('_', ' ').title(),
+        '{{X_LABEL}}': x_label,
+        '{{Y_LABEL}}': y_label,
         '{{TITLE}}': title,
         '{{CAPTION}}': caption,
         '{{LABEL}}': label
@@ -202,39 +387,61 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
     except Exception as e:
         raise Exception(f"Error reading multiplot template file {multiplot_template_path}: {e}")
     
-    # Parse PLOT placeholders from template (looking for %% {{PLOT:...}} format)
-    plot_pattern = r'%% \{\{PLOT:([^,]+),([^,]+),([^,]+),([^,]+),([^}]+)\}\}'
-    plot_matches = re.findall(plot_pattern, template_content)
+    # Parse PLOT placeholders from template (looking for new 7-parameter format)
+    plot_pattern = r'^%% \{\{PLOT:([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^}]+)\}\}$'
+    plot_matches = re.findall(plot_pattern, template_content, re.MULTILINE)
     
     # Validate that there's at least one plot defined
     if not plot_matches:
         raise ValueError(f"No plots defined in template file {multiplot_template_path}. "
-                        f"Template must contain at least one %% {{{{PLOT:...}}}} directive.")
+                        f"Template must contain at least one %% {{{{PLOT:...}}}} directive with 7 parameters.")
     
     result_content = template_content
     
     # Process each plot placeholder
     for match in plot_matches:
-        x_col, y_col, title, caption, label = match
+        x_col, y_col, filter_str, groupby_col, title, caption, label = match
+        
+        # Parse filter condition
+        filter_condition = parse_filter(filter_str)
+        
+        # Parse aggregation from y_col
+        agg_func, actual_y_col = parse_aggregation(y_col)
         
         # Check if the required columns exist in the data
-        has_data = any(x_col in row and y_col in row for row in data)
+        has_required_cols = any(
+            x_col in row and actual_y_col in row and groupby_col in row 
+            for row in data
+        )
         
-        if has_data:
+        # Check if filter can be applied
+        filter_applicable = True
+        if filter_condition:
+            filter_key, filter_value = filter_condition
+            filter_applicable = any(filter_key in row for row in data)
+        
+        if has_required_cols and filter_applicable:
             # Generate the figure
             figure = create_figure_from_template(
-                data, x_col, y_col, title, caption, label, figure_template_path
+                data, x_col, y_col, filter_condition, groupby_col,
+                title, caption, label, figure_template_path
             )
             
             # Replace the placeholder with the actual figure
-            placeholder = f"%% {{{{PLOT:{x_col},{y_col},{title},{caption},{label}}}}}"
+            placeholder = f"%% {{{{PLOT:{x_col},{y_col},{filter_str},{groupby_col},{title},{caption},{label}}}}}"
             result_content = result_content.replace(placeholder, figure)
         else:
             # Remove the placeholder if no data available
-            placeholder = f"%% {{{{PLOT:{x_col},{y_col},{title},{caption},{label}}}}}"
+            placeholder = f"%% {{{{PLOT:{x_col},{y_col},{filter_str},{groupby_col},{title},{caption},{label}}}}}"
+            missing_info = []
+            if not has_required_cols:
+                missing_info.append(f"missing columns {x_col}/{actual_y_col}/{groupby_col}")
+            if not filter_applicable:
+                missing_info.append(f"filter not applicable: {filter_str}")
+            
             result_content = result_content.replace(placeholder, 
-                f"% Skipped plot {title} - missing columns {x_col} or {y_col}")
-            print(f"Warning: Skipping plot {title} - missing columns {x_col} or {y_col}")
+                f"% Skipped plot {title} - {', '.join(missing_info)}")
+            print(f"Warning: Skipping plot {title} - {', '.join(missing_info)}")
     
     return result_content
 

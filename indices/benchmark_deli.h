@@ -10,11 +10,13 @@ class BenchmarkDeLI {
     BenchmarkDeLI() {}
   
     void bulk_load(std::pair<KEY_TYPE, PAYLOAD_TYPE>* values, size_t num_keys) {
-      std::vector<KEY_TYPE> keys(num_keys);
-      for (size_t i = 0; i < num_keys; ++i) {
-        keys[i] = values[i].first;
-      }
-      std::sort(keys.begin(), keys.end());
+      std::sort(values, values + num_keys, [](auto const& a, auto const& b) { return a.first < b.first; });
+
+      // Unlike dynamic indexes (ALEX, LIPP, Dynamic-PGM) DeLI does not have payloads
+      auto keys = std::ranges::subrange(values, values + num_keys) | std::ranges::views::transform([](auto const& p) { return p.first; });
+
+      // Retain a copy of the data
+      data.assign(values, values + num_keys);
       index.bulk_load(keys.begin(), keys.end());
     }
   
@@ -30,7 +32,16 @@ class BenchmarkDeLI {
     void erase(const KEY_TYPE& key) {
       index.remove(key);
     }
+
+    static bool is_dynamic() {
+      return true;
+    }
+
+    static std::string name() {
+      return "DeLI";
+    }
   
   private:
-    DeLI::DeLI<KEY_TYPE, 54> index;
+    std::vector<std::pair<KEY_TYPE, PAYLOAD_TYPE>> data;
+    DeLI::DeLI<KEY_TYPE, (sizeof(KEY_TYPE) == 4 ? 22 : 54)> index;
 };

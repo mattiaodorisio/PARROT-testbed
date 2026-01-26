@@ -26,6 +26,14 @@ class BenchmarkLIPP {
     void erase(const KEY_TYPE& key) {
       index.erase(key);
     }
+
+    static bool is_dynamic() {
+      return true;
+    }
+
+    static std::string name() {
+      return "LIPP";
+    }
   
   private:
      LIPP<KEY_TYPE, PAYLOAD_TYPE> index;
