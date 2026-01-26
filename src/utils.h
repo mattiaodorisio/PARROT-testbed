@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #pragma once
+#include <unordered_set>
 #include "zipf.h"
 
 // Loads values from binary file into vector.
@@ -42,7 +43,7 @@ bool load_text_data(T array[], int length, const std::string& file_path) {
 }
 
 template <class RandomIt>
-std::vector<typename std::iterator_traits<RandomIt>::value_type> get_search_keys(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
+std::vector<typename std::iterator_traits<RandomIt>::value_type> get_existing_keys(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
   using T = typename std::iterator_traits<RandomIt>::value_type;
   std::mt19937_64 gen(std::random_device{}());
   std::uniform_int_distribution<int> dis(0, std::distance(data_begin, data_end) - 1);
@@ -56,7 +57,39 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_search_keys
 }
 
 template <class RandomIt>
-std::vector<typename std::iterator_traits<RandomIt>::value_type> get_search_keys_zipf(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
+std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existing_keys(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
+  using T = typename std::iterator_traits<RandomIt>::value_type;
+  auto [min_it, max_it] = std::minmax_element(data_begin, data_end);
+  T min_ = *min_it, max_ = *max_it;
+  std::mt19937_64 gen(std::random_device{}());
+  std::uniform_int_distribution<T> dis(min_, max_);
+  std::unordered_set<T> existing_keys(data_begin, data_end);
+  std::vector<T> data_sample;
+  data_sample.reserve(num_searches);
+  int attempts = 0;
+  int increases = 0;
+  while (data_sample.size() < num_searches) {
+    T key = dis(gen);
+    if (existing_keys.find(key) == existing_keys.end()) {
+      data_sample.push_back(key);
+      existing_keys.insert(key);
+    }
+    if (++attempts > num_searches * 2) {
+      if (++increases > 10) {
+        throw std::runtime_error("Unable to find enough non-existing keys.");
+      }
+      T half_domain = (max_ - min_) / 2;
+      min_ = std::numeric_limits<T>::min() + half_domain < min_ ? min_ - half_domain : std::numeric_limits<T>::min();
+      max_ = std::numeric_limits<T>::max() - half_domain > max_ ? max_ + half_domain : std::numeric_limits<T>::max();
+      dis = std::uniform_int_distribution<T>(min_, max_);
+      attempts = 0;
+    }
+  }
+  return data_sample;
+}
+
+template <class RandomIt>
+std::vector<typename std::iterator_traits<RandomIt>::value_type> get_existing_keys_zipf(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
   using T = typename std::iterator_traits<RandomIt>::value_type;
   std::vector<T> data_sample;
   data_sample.reserve(num_searches);

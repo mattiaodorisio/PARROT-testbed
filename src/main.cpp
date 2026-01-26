@@ -21,34 +21,76 @@
 #include "utils.h"
 
 // TODO:
-// - check workloads
-// - distinguere existing e non-existing
+// - Implement missing workloads
+// - Fix batches
 
 static constexpr size_t NUM_BATCHES = 1;
+std::mt19937_64 rand_gen(std::random_device{}());
 
-// Templated benchmark functions
-template<typename IndexType, typename KeyType, typename PayloadType>
-void bulk_load_benchmark(IndexType& index, std::vector<std::pair<KeyType, PayloadType>>& values, size_t num_keys) {
-    std::sort(values.begin(), values.begin() + num_keys,
-              [](auto const& a, auto const& b) { return a.first < b.first; });
-    index.bulk_load(values.data(), num_keys);
+enum Workload : int{
+  LOOKUP_EXISTING,
+  INSERT_IN_DISTRIBUTION,
+  NUM_WORKLOADS,  // TODO: the ones below are currently disabled
+
+  LOOKUP_IN_DISTRIBUTION,
+  MIXED,
+  SHIFTING,
+};
+
+std::string workload_name(Workload workload) {
+  switch (workload) {
+    case LOOKUP_EXISTING: return "LOOKUP_EXISTING";
+    case LOOKUP_IN_DISTRIBUTION: return "LOOKUP_IN_DISTRIBUTION";
+    case INSERT_IN_DISTRIBUTION: return "INSERT_IN_DISTRIBUTION";
+    case MIXED: return "MIXED";
+    case SHIFTING: return "SHIFTING";
+    default: return "UNKNOWN_WORKLOAD";
+  }
 }
 
-template<typename IndexType, typename KeyType, typename PayloadType>
-double lookup_benchmark(IndexType& index, const std::vector<std::pair<KeyType, PayloadType>>& lookup_pairs, PayloadType& sum) {
+template<Workload W, typename IndexType, typename KeyType, typename PayloadType>
+double run_workload(IndexType& index, std::vector<std::pair<KeyType, PayloadType>>& key_values, size_t num_ops_per_batch) {
+
+  // WORKLOAD: LOOKUP OF EXISTING KEYS
+  if constexpr (W == LOOKUP_EXISTING) {
+    std::vector<std::pair<KeyType, PayloadType>> lookup_pairs = get_existing_keys(key_values.begin(), key_values.end(), num_ops_per_batch);
+
     auto start_time = std::chrono::high_resolution_clock::now();
-    for (const auto& [key, expected] : lookup_pairs) {
+      for (const auto& [key, expected] : lookup_pairs) {
         PayloadType payload = index.lower_bound(key);
         if (expected != payload) {
             std::cerr << "Index: " << index.name() << " lookup error: key=" << key << ", expected=" << expected << ", got=" << payload << std::endl;
             return -1;
         }
-        if (payload) {
-            sum += payload;
-        }
     }
     auto end_time = std::chrono::high_resolution_clock::now();
     return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+  
+  } else if constexpr (W == INSERT_IN_DISTRIBUTION) {
+    auto keys = key_values | std::views::transform([](auto const& p) { return p.first; });
+    std::vector<KeyType> insert_keys = get_non_existing_keys(keys.begin(), keys.end(), num_ops_per_batch);
+    std::vector<std::pair<KeyType, PayloadType>> insert_pairs;
+    for (const auto& key : insert_keys) {
+      insert_pairs.emplace_back(key, rand_gen());
+    }
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+    for (const auto& [key, value] : insert_pairs) {
+      index.insert(key, value);
+    }
+    auto end_time = std::chrono::high_resolution_clock::now();
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+  
+  } else {
+    throw std::runtime_error("Workload not implemented");
+  }  
+}
+
+// Templated benchmark functions
+template<typename IndexType, typename KeyType, typename PayloadType>
+void bulk_load_benchmark(IndexType& index, std::vector<std::pair<KeyType, PayloadType>>& values) {
+    std::sort(values.begin(), values.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
+    index.bulk_load(values.data(), values.size());
 }
 
 template<typename IndexType, typename KeyType, typename PayloadType>
@@ -62,44 +104,18 @@ double insert_benchmark(IndexType& index, const std::vector<std::pair<KeyType, P
 }
 
 template<typename IndexType, typename KeyType, typename PayloadType>
-void run_benchmark(const std::string& index_name, std::ofstream& out_file, std::vector<std::pair<KeyType, PayloadType>>& key_value_pairs,
-                   int init_num_keys, int batch_size, double insert_frac,
-                   const std::string& lookup_distribution, double time_limit, bool print_batch_stats,
-                   std::mt19937_64& gen_payload, int max_batches = 10) {
+void run_benchmark(const std::string& index_name, std::ofstream& out_file, std::vector<std::pair<KeyType, PayloadType>> key_values,
+                   int batch_size, const std::string& lookup_distribution, Workload workload, double time_limit,
+                   bool print_batch_stats, int max_batches = 10) {
 
     // Create the index and bulk load initial keys
     IndexType index;
 
     // Bulk load
-    bulk_load_benchmark<IndexType, KeyType, PayloadType>(index, key_value_pairs, init_num_keys);
+    bulk_load_benchmark<IndexType, KeyType, PayloadType>(index, key_values);
 
     // Run workload
-    int i = init_num_keys;
-    const int num_inserts_per_batch = static_cast<int>(batch_size * insert_frac);
-    const int num_lookups_per_batch = batch_size - num_inserts_per_batch;
-
-    // check if there are enough keys for the specified workload
-    if (num_inserts_per_batch * max_batches + init_num_keys > key_value_pairs.size()) {
-        std::cerr << "Not enough keys for the specified workload: "
-                  << "init_num_keys=" << init_num_keys << ", "
-                  << "num_inserts_per_batch=" << num_inserts_per_batch << ", "
-                  << "max_batches=" << max_batches << std::endl;
-        return;
-    }
-
-    // Determine workload type for logging
-    std::string workload_type;
-    std::string workload_name;
-    if (insert_frac == 0.0) {
-        workload_type = "lookup_only";
-        workload_name = "Lookup-only workload";
-    } else if (insert_frac == 1.0) {
-        workload_type = "insert_only";
-        workload_name = "Insert-only workload";
-    } else {
-        workload_type = "mixed";
-        workload_name = "Mixed workload";
-    }
+    size_t i = key_values.size();
 
     auto workload_start_time = std::chrono::high_resolution_clock::now();
     int batch_no = 0;
@@ -110,41 +126,21 @@ void run_benchmark(const std::string& index_name, std::ofstream& out_file, std::
     while (true) {
         batch_no++;
 
-        // Do lookups
-        double batch_lookup_time = 0.0;
-        if (i > 0 && num_lookups_per_batch > 0) {
-            // Create a subset vector of keys from 0 to i
-            std::vector<std::pair<KeyType, PayloadType>> lookup_pairs;
-            if (lookup_distribution == "uniform") {
-                lookup_pairs = get_search_keys(key_value_pairs.begin(), key_value_pairs.begin() + i, num_lookups_per_batch);
-            } else if (lookup_distribution == "zipf") {
-                lookup_pairs = get_search_keys_zipf(key_value_pairs.begin(), key_value_pairs.begin() + i, num_lookups_per_batch);
-            } else {
-                std::cerr << "--lookup_distribution must be either 'uniform' or 'zipf'" << std::endl;
-                exit(EXIT_FAILURE);
-            }
-            batch_lookup_time = lookup_benchmark<IndexType, KeyType, PayloadType>(index, lookup_pairs, sum);
-            if (batch_lookup_time < 0) {
-                std::cerr << "Lookup benchmark failed" << std::endl;
-                return;
-            }
+        double batch_time;
+        switch (workload) {
+          case LOOKUP_EXISTING: batch_time = run_workload<LOOKUP_EXISTING>(index, key_values, batch_size); break;
+          case INSERT_IN_DISTRIBUTION: batch_time = run_workload<INSERT_IN_DISTRIBUTION>(index, key_values, batch_size); break;
+          default: throw std::runtime_error("Workload not implemented");
         }
 
-        // Do inserts
-        double batch_insert_time = 0.0;
-        if (num_inserts_per_batch > 0 && index.is_dynamic()) {
-            batch_insert_time = insert_benchmark<IndexType, KeyType, PayloadType>(index, key_value_pairs, i, num_inserts_per_batch);
-            i += num_inserts_per_batch;
-        }
+        i += batch_size; // TODO: check this
 
         // Calculate batch statistics
-        int num_batch_operations = num_lookups_per_batch + num_inserts_per_batch;
-        double batch_time = batch_lookup_time + batch_insert_time;
-        double batch_overall_throughput = (batch_time > 0) ? (num_batch_operations / batch_time * 1e9) : 0.0;
+        double batch_overall_throughput = (batch_time > 0) ? (batch_size / batch_time * 1e9) : 0.0;
 
         if (print_batch_stats) {
           std::cout << std::scientific << std::setprecision(3);
-          std::cout << index_name << " " << workload_name << ": " << num_batch_operations << " operations completed\n";
+          std::cout << index_name << " " << workload_name << ": " << batch_size << " operations completed\n";
           std::cout << "Total time: " << batch_time / 1e9 << " seconds\n";
           std::cout << "Throughput: " << batch_overall_throughput << " ops/sec\n";
         }
@@ -153,9 +149,9 @@ void run_benchmark(const std::string& index_name, std::ofstream& out_file, std::
         out_file << "RESULT "
                 << "index_name=" << index_name << " "
                 << "batch_no=" << batch_no << " "
-                << "workload_type=" << workload_type << " "
-                << "init_num_keys=" << init_num_keys << " "
-                << "batch_operations=" << num_batch_operations << " "
+                << "workload_type=" << workload_name(workload) << " "
+                << "init_num_keys=" << key_values.size() << " "
+                << "batch_operations=" << batch_size << " "
                 << "lookup_distribution=" << lookup_distribution << " "
                 << std::fixed << std::setprecision(2) << "throughput=" << batch_overall_throughput << " "
                 << std::fixed << std::setprecision(6) << "total_time=" << batch_time / 1e9 << std::endl;
@@ -180,7 +176,6 @@ template <typename KeyType, typename PayloadType>
 void execute(const std::string& keys_file_path,
              const std::string& keys_file_type,
              int batch_size,
-             double insert_frac,
              const std::string& lookup_distribution,
              double time_limit,
              bool print_batch_stats,
@@ -199,67 +194,58 @@ void execute(const std::string& keys_file_path,
     exit(EXIT_FAILURE);
   }
 
-  std::mt19937_64 gen_payload(std::random_device{}());
-  
-  // Generate exponentially increasing init_num_keys values
-  constexpr size_t base_size = 1 << 7;  // Starting size
+  // Generate exponentially increasing init_num_keys sizes
+  constexpr size_t min_size = 1 << 7;   // Starting size
   constexpr size_t max_size = 1 << 20;  // Maximum size
   
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
-  std::cout << "Mixed workload batch size: " << batch_size << " (insert fraction: " << insert_frac << ")" << std::endl;
 
   // Define index types and names
   std::vector<std::string> index_names = {"ALEX", "LIPP", "DeLI", "PGM-Static"};
-
-  // Create values array for current init size
-  // Two vectors to be used depending on the index... TODO: improve this
-  std::vector<std::pair<KeyType, PayloadType>> key_values(keys.size());
-  std::vector<std::pair<KeyType, PayloadType>> key_keys(keys.size());
-  for (int i = 0; i < key_values.size(); i++) {
-    key_values[i].first = keys[i];
-    key_values[i].second = static_cast<PayloadType>(gen_payload());
-
-    key_keys[i].first = key_keys[i].second = keys[i];
-  }
   
-  for (size_t current_init_key_size = base_size; current_init_key_size <= max_size; current_init_key_size *= 2) {
+  for (size_t current_init_key_size = min_size; current_init_key_size <= max_size; current_init_key_size *= 2) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
 
-    std::array<double, 3> insert_fractions = {0.0, 1.0, insert_frac};
+    // Create values array for current init size
+    // Two vectors to be used depending on the index... TODO: improve this
+    std::vector<std::pair<KeyType, PayloadType>> key_values(current_init_key_size);
+    std::vector<std::pair<KeyType, PayloadType>> key_keys(current_init_key_size);
+    for (size_t i = 0; i < key_values.size(); ++i) {
+      key_values[i].first = keys[i];
+      key_values[i].second = static_cast<PayloadType>(rand_gen());
+
+      key_keys[i].first = key_keys[i].second = keys[i];
+    }
 
     for (const auto& index_name : index_names) {
       std::cout << "\n--- Running workloads for " << index_name << " (init_keys=" << current_init_key_size << ") ---" << std::endl;
       
       if (index_name == "ALEX") {
-        for (const auto& insert_frac : insert_fractions) {
-          std::cout << "\nRunning workload with insert_frac=" << insert_frac << std::endl;
+        for (Workload workload = static_cast<Workload>(0); workload < NUM_WORKLOADS; workload = static_cast<Workload>(workload + 1)) {
           run_benchmark<BenchmarkALEX<KeyType, PayloadType>, KeyType, PayloadType>(
-              index_name, out_file, key_values, current_init_key_size, batch_size, insert_frac,
-              lookup_distribution, time_limit, print_batch_stats, gen_payload, NUM_BATCHES);
+              index_name, out_file, key_values, batch_size,
+              lookup_distribution, workload, time_limit, print_batch_stats, NUM_BATCHES);
         }
       }
       else if (index_name == "LIPP") {
-        for (const auto& insert_frac : insert_fractions) {
-          std::cout << "\nRunning workload with insert_frac=" << insert_frac << std::endl;
+        for (Workload workload = static_cast<Workload>(0); workload < NUM_WORKLOADS; workload = static_cast<Workload>(workload + 1)) {
           run_benchmark<BenchmarkLIPP<KeyType, PayloadType>, KeyType, PayloadType>(
-              index_name, out_file, key_values, current_init_key_size, batch_size, insert_frac,
-              lookup_distribution, time_limit, print_batch_stats, gen_payload, NUM_BATCHES);
+              index_name, out_file, key_values, batch_size,
+              lookup_distribution, workload, time_limit, print_batch_stats, NUM_BATCHES);
         }
       }
       else if (index_name == "DeLI") {
-        for (const auto& insert_frac : insert_fractions) {
-          std::cout << "\nRunning workload with insert_frac=" << insert_frac << std::endl;
+        for (Workload workload = static_cast<Workload>(0); workload < NUM_WORKLOADS; workload = static_cast<Workload>(workload + 1)) {
           run_benchmark<BenchmarkDeLI<KeyType, PayloadType>, KeyType, PayloadType>(
-              index_name, out_file, key_keys, current_init_key_size, batch_size, insert_frac,
-              lookup_distribution, time_limit, print_batch_stats, gen_payload, NUM_BATCHES);
+              index_name, out_file, key_keys, batch_size,
+              lookup_distribution, workload, time_limit, print_batch_stats, NUM_BATCHES);
         }
       }
       else if (index_name == "PGM-Static") {
-        for (const auto& insert_frac : insert_fractions) {
-          std::cout << "\nRunning workload with insert_frac=" << insert_frac << std::endl;
+        for (Workload workload : {LOOKUP_EXISTING}) {
           run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType>, KeyType, PayloadType>(
-              index_name, out_file, key_keys, current_init_key_size, batch_size, insert_frac,
-              lookup_distribution, time_limit, print_batch_stats, gen_payload, NUM_BATCHES);
+              index_name, out_file, key_keys, batch_size,
+              lookup_distribution, workload, time_limit, print_batch_stats, NUM_BATCHES);
         }
       }
     }
@@ -270,14 +256,12 @@ void execute(const std::string& keys_file_path,
  * Required flags:
  * --keys_file              path to the file that contains keys
  * --keys_file_type         file type of keys_file (options: binary or text)
- * --init_num_keys          number of keys to bulk load with
  * --batch_size             number of operations (lookup or insert) per batch
  *
  * Optional flags:
- * --insert_frac            fraction of operations that are inserts (for mixed workload)
  * --lookup_distribution    lookup keys distribution (options: uniform or zipf)
- * --time_limit             time limit, in minutes (for mixed workload)
- * --print_batch_stats      whether to output stats for each batch (for mixed workload)
+ * --time_limit             time limit, in minutes
+ * --print_batch_stats      whether to output stats for each batch
  * --bench_output           custom filename for benchmark output (default: auto-generated with timestamp)
  */
 int main(int argc, char* argv[]) {
@@ -285,8 +269,7 @@ int main(int argc, char* argv[]) {
   std::string keys_file_path = get_required(flags, "keys_file");
   std::string keys_file_type = get_required(flags, "keys_file_type");
   auto batch_size = stoi(get_required(flags, "batch_size"));
-  auto insert_frac = stod(get_with_default(flags, "insert_frac", "0.5"));
-  std::string lookup_distribution = get_with_default(flags, "lookup_distribution", "zipf");
+  std::string lookup_distribution = get_with_default(flags, "lookup_distribution", "uniform");
   auto time_limit = stod(get_with_default(flags, "time_limit", "0.5"));
   bool print_batch_stats = get_boolean_flag(flags, "print_batch_stats");
   std::string bench_output = get_with_default(flags, "bench_output", "");
@@ -320,10 +303,10 @@ int main(int argc, char* argv[]) {
 
   // Call execute with appropriate key type based on filename suffix
   if (keys_file_path.ends_with("_uint32")) {
-    execute<uint32_t, uint32_t>(keys_file_path, keys_file_type, batch_size, insert_frac,
+    execute<uint32_t, uint32_t>(keys_file_path, keys_file_type, batch_size,
                                           lookup_distribution, time_limit, print_batch_stats, out_file);
   } else if (keys_file_path.ends_with("_uint64")) {
-    execute<uint64_t, uint64_t>(keys_file_path, keys_file_type, batch_size, insert_frac,
+    execute<uint64_t, uint64_t>(keys_file_path, keys_file_type, batch_size,
                                           lookup_distribution, time_limit, print_batch_stats, out_file);
   } else {
     throw std::runtime_error("Unsupported key type in filename. Expected suffixes: _uint32 or _uint64");
