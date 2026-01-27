@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lipp/src/core/lipp.h"
+#include "../src/workload.h"
 
 // Wrapper object for LIPP
 
@@ -33,6 +34,10 @@ class BenchmarkLIPP {
 
     static std::string name() {
       return "LIPP";
+    }
+
+    static std::vector<Workload> supported_workloads() {
+      return {LOOKUP_EXISTING, INSERT_IN_DISTRIBUTION};
     }
   
   private:

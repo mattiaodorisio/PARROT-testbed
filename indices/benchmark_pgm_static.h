@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PGM-index/include/pgm/pgm_index.hpp"
+#include "../src/workload.h"
 
 // Wrapper object
 
@@ -44,6 +45,10 @@ class BenchmarkStaticPGM {
 
     static std::string name() {
       return "Static-PGM";
+    }
+
+    static std::vector<Workload> supported_workloads() {
+      return {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION};
     }
   
   private:

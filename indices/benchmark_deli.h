@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DeLI/include/DeLI/deli.h"
+#include "../src/workload.h"
 
 // Wrapper object
 
@@ -41,6 +42,10 @@ class BenchmarkDeLI {
       return "DeLI";
     }
   
+    static std::vector<Workload> supported_workloads() {
+      return {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION};
+    }
+
   private:
     std::vector<std::pair<KEY_TYPE, PAYLOAD_TYPE>> data;
     DeLI::DeLI<KEY_TYPE, (sizeof(KEY_TYPE) == 4 ? 22 : 54)> index;

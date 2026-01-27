@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DILI/src/dili/DILI.h"
+#include "../src/workload.h"
 
 // Wrapper object
 
@@ -38,6 +39,10 @@ class BenchmarkDILI {
 
     void erase(const KeyType& key) {
       index.delete_key(key);
+    }
+
+    static std::vector<Workload> supported_workloads() {
+      return {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION};
     }
   
   private:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ALEX/alex.h"
+#include "../src/workload.h"
 
 // Wrapper object
 
@@ -16,7 +17,7 @@ class BenchmarkALEX {
     }
   
     PAYLOAD_TYPE lower_bound(const KEY_TYPE& key) {
-      return *index.get_payload(key);
+      return index.lower_bound(key) == index.end() ? PAYLOAD_TYPE{} : index.lower_bound(key).payload();
     }
   
     void insert(const KEY_TYPE& key, const PAYLOAD_TYPE& payload) {
@@ -33,6 +34,10 @@ class BenchmarkALEX {
 
     static std::string name() {
       return "ALEX";
+    }
+
+    static std::vector<Workload> supported_workloads() {
+      return {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION};
     }
   
   private:

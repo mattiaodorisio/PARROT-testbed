@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PGM-index/include/pgm/pgm_index_dynamic.hpp"
+#include "../src/workload.h"
 
 // Wrapper object
 
@@ -17,20 +18,14 @@ class BenchmarkDynamicPGM {
 
       // Retain a copy of the data
       data.assign(keys.begin(), keys.end());
-      throw std::runtime_error("Dynamic PGM bulk load not implemented");
-      // index = pgm::PGMIndex<KEY_TYPE, PAYLOAD_TYPE>(data.begin(), data.end());
+      // Re-initialize the index (PGMDynamic does not support copy/move, nor provide a bulk_load function)
+      index.~DynamicPGMIndex();
+      new (&index) decltype(index)(values, values + num_keys);
     }
 
     PAYLOAD_TYPE lower_bound(const KEY_TYPE& key) {
-      auto approx_pos = index.search(key);
-      // Last mile search
-      auto it = std::lower_bound(data.begin() + approx_pos.lo, data.begin() + approx_pos.hi, key);
-      if (it != data.begin() + approx_pos.hi && *it == key) {
-        size_t index = std::distance(data.begin(), it);
-        return static_cast<PAYLOAD_TYPE>(index); // Return index as payload
-      } else {
-        return PAYLOAD_TYPE{};
-      }
+      auto lower_bound_it = index.lower_bound(key);
+      return lower_bound_it != index.end() ? lower_bound_it->second : PAYLOAD_TYPE{};
     }
 
     void insert(const KEY_TYPE& key, const PAYLOAD_TYPE& payload) {
@@ -47,6 +42,10 @@ class BenchmarkDynamicPGM {
 
     static std::string name() {
       return "Dynamic-PGM";
+    }
+
+    static std::vector<Workload> supported_workloads() {
+      return {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION};
     }
   
   private:
