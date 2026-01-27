@@ -29,11 +29,11 @@ class BenchmarkDynamicPGM {
     }
 
     void insert(const KEY_TYPE& key, const PAYLOAD_TYPE& payload) {
-      // index.insert(key, payload);
+      index.insert_or_assign(key, payload);
     }
 
     void erase(const KEY_TYPE& key) {
-      // index.erase(key);
+      index.erase(key);
     }
 
     static bool is_dynamic() {

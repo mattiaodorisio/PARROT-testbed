@@ -206,7 +206,7 @@ void execute(const std::string& keys_file_path,
 
   // Generate exponentially increasing init_num_keys sizes
   constexpr size_t min_size = 1 << 7;   // Starting size
-  constexpr size_t max_size = 1 << 20;  // Maximum size
+  constexpr size_t max_size = 1 << 27;  // Maximum size
   
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
