@@ -8,7 +8,7 @@
 #include "../indices/benchmark_alex.h"
 #include "../indices/benchmark_lipp.h"
 // #include "../indices/benchmark_dili.h"
-#include "../indices/benchmark_deli.h"
+// #include "../indices/benchmark_deli.h"
 #include "../indices/benchmark_pgm_static.h"
 #include "../indices/benchmark_pgm_dynamic.h"
 
@@ -16,6 +16,8 @@
 #include <fstream>
 #include <chrono>
 #include <ctime>
+#include <vector>
+#include <ranges>
 
 #include "flags.h"
 #include "utils.h"
@@ -211,7 +213,7 @@ void execute(const std::string& keys_file_path,
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
   // Define index types and names
-  std::vector<std::string> index_names = {"ALEX", "LIPP", "DeLI", "PGM-Static", "PGM-Dynamic"};
+  std::vector<std::string> index_names = {"ALEX", "LIPP", "PGM-Static", "PGM-Dynamic"};
   
   for (size_t current_init_key_size = min_size; current_init_key_size <= max_size; current_init_key_size *= 2) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
@@ -247,12 +249,12 @@ void execute(const std::string& keys_file_path,
         }
       }
       else if (index_name == "DeLI") {
-        auto supported_workloads = BenchmarkDeLI<KeyType, PayloadType>::supported_workloads();
-        for (Workload workload : supported_workloads) {
-          run_benchmark<BenchmarkDeLI<KeyType, PayloadType>, KeyType, PayloadType>(
-              index_name, out_file, key_keys, batch_size,
-              lookup_distribution, workload, time_limit, print_batch_stats, NUM_BATCHES);
-        }
+        // auto supported_workloads = BenchmarkDeLI<KeyType, PayloadType>::supported_workloads();
+        // for (Workload workload : supported_workloads) {
+        //   run_benchmark<BenchmarkDeLI<KeyType, PayloadType>, KeyType, PayloadType>(
+        //       index_name, out_file, key_keys, batch_size,
+        //       lookup_distribution, workload, time_limit, print_batch_stats, NUM_BATCHES);
+        // }
       }
       else if (index_name == "PGM-Static") {
         auto supported_workloads = BenchmarkStaticPGM<KeyType, PayloadType>::supported_workloads();
