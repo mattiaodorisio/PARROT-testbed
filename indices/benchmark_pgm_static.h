@@ -44,10 +44,6 @@ class BenchmarkStaticPGM {
       throw std::runtime_error("Erase not supported on static PGM index");
     }
 
-    static bool is_dynamic() {
-      return false;
-    }
-
     static std::string name() {
       return "Static-PGM";
     }

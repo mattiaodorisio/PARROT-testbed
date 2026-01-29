@@ -45,22 +45,6 @@ class Benchmark {
         first_run_(true) {
   }
 
-  // Workload-specific run methods
-  template <class Index>
-  double Run_lookup_existing(Index& index, size_t batch_size) {
-    return RunWorkload<LOOKUP_EXISTING>(index, batch_size);
-  }
-
-  template <class Index>
-  double Run_lookup_in_distribution(Index& index, size_t batch_size) {
-    return RunWorkload<LOOKUP_IN_DISTRIBUTION>(index, batch_size);
-  }
-
-  template <class Index>
-  double Run_insert_in_distribution(Index& index, size_t batch_size) {
-    return RunWorkload<INSERT_IN_DISTRIBUTION>(index, batch_size);
-  }
-
   template <class Index>
   void BulkLoad(Index& index) {
     // Sort the data before bulk loading
@@ -89,7 +73,6 @@ class Benchmark {
             << std::fixed << std::setprecision(6) << "total_time=" << batch_time / 1e9 << std::endl;
   }
 
- private:
   template <Workload W, class Index>
   double RunWorkload(Index& index, size_t batch_size) {
     if constexpr (W == LOOKUP_EXISTING) {
@@ -102,6 +85,7 @@ class Benchmark {
     return 0.0;
   }
 
+  private:
   template <class Index>
   double DoLookupExisting(Index& index, size_t batch_size) {
     // Get existing keys from the dataset
@@ -185,28 +169,23 @@ void run_benchmark(const bench_config& config, std::vector<std::pair<KeyType, Pa
     benchmark.BulkLoad(index);
 
     // Run workload
-    auto workload_start_time = std::chrono::high_resolution_clock::now();
-    int batch_no = 0;
-    std::cout << std::scientific;
-    std::cout << std::setprecision(3);
-    
-    while (true) {
-        batch_no++;
+    auto batch_start_time = std::chrono::high_resolution_clock::now();
 
-        double batch_time;
-        switch (workload) {
-          case LOOKUP_EXISTING: 
-            batch_time = benchmark.Run_lookup_existing(index, config.batch_size); 
-            break;
-          case LOOKUP_IN_DISTRIBUTION: 
-            batch_time = benchmark.Run_lookup_in_distribution(index, config.batch_size); 
-            break;
-          case INSERT_IN_DISTRIBUTION: 
-            batch_time = benchmark.Run_insert_in_distribution(index, config.batch_size); 
-            break;
-          default: 
-            throw std::runtime_error("Workload not implemented");
-        }
+    for (int batch_no = 0; batch_no < config.max_batches; ++batch_no) {
+      double batch_time;
+      switch (workload) {
+        case LOOKUP_EXISTING: 
+          batch_time = benchmark.template RunWorkload<LOOKUP_EXISTING, IndexWrapper>(index, config.batch_size); 
+          break;
+        case LOOKUP_IN_DISTRIBUTION: 
+          batch_time = benchmark.template RunWorkload<LOOKUP_IN_DISTRIBUTION, IndexWrapper>(index, config.batch_size); 
+          break;
+        case INSERT_IN_DISTRIBUTION: 
+          batch_time = benchmark.template RunWorkload<INSERT_IN_DISTRIBUTION, IndexWrapper>(index, config.batch_size); 
+          break;
+        default: 
+          throw std::runtime_error("Workload not implemented");
+      }
 
         if (config.print_batch_stats) {
           std::cout << std::scientific << std::setprecision(3);
@@ -220,13 +199,10 @@ void run_benchmark(const bench_config& config, std::vector<std::pair<KeyType, Pa
         benchmark.PrintResult(index, workload_name(workload), batch_no, key_values.size(), 
                              config.batch_size, config.lookup_distribution, batch_time, config.out_file);
 
-        // Check for workload end conditions
-        if (batch_no >= config.max_batches) {
-            break;
-        }
+        // Check time limit
         double workload_elapsed_time =
             std::chrono::duration_cast<std::chrono::nanoseconds>(
-                std::chrono::high_resolution_clock::now() - workload_start_time)
+                std::chrono::high_resolution_clock::now() - batch_start_time)
                 .count();
         if (workload_elapsed_time > config.time_limit * 1e9 * 60) {
             break;

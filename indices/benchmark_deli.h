@@ -35,10 +35,6 @@ class BenchmarkDeLI {
       index.remove(key);
     }
 
-    static bool is_dynamic() {
-      return true;
-    }
-
     static std::string name() {
       return "DeLI";
     }

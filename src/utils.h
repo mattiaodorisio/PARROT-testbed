@@ -87,7 +87,7 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existin
       existing_keys.insert(key);
     }
     if (++attempts > num_searches * 2) {
-      if (++increases > 10) {
+      if (++increases > 100) {
         throw std::runtime_error("Unable to find enough non-existing keys.");
       }
       T half_domain = (max_ - min_) / 2;

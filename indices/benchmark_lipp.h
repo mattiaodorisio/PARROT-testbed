@@ -29,10 +29,6 @@ class BenchmarkLIPP {
       index.erase(key);
     }
 
-    static bool is_dynamic() {
-      return true;
-    }
-
     static std::string name() {
       return "LIPP";
     }

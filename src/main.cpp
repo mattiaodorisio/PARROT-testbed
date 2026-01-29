@@ -31,7 +31,6 @@ static constexpr size_t NUM_BATCHES = 1;
 
 template <typename KeyType, typename PayloadType>
 void execute(const std::string& keys_file_path,
-             const std::string& keys_file_type,
              int batch_size,
              const std::string& lookup_distribution,
              double time_limit,
@@ -39,17 +38,7 @@ void execute(const std::string& keys_file_path,
              std::ofstream& out_file) {
 
   // Read keys from file
-  std::vector<KeyType> keys;
-  if (keys_file_type == "binary") {
-    keys = load_binary_data<KeyType>(keys_file_path);
-  } else if (keys_file_type == "text") {
-    // keys.resize(total_num_keys);
-    // if (!load_text_data(keys.data(), total_num_keys, keys_file_path))
-    //     throw std::runtime_error("Failed to load text data from " + keys_file_path);
-  } else {
-    std::cerr << "--keys_file_type must be either 'binary' or 'text'" << std::endl;
-    exit(EXIT_FAILURE);
-  }
+  std::vector<KeyType> keys = load_binary_data<KeyType>(keys_file_path);
 
   // Generate exponentially increasing init_num_keys sizes
   constexpr size_t min_size = 1 << 7;   // Starting size
@@ -85,7 +74,7 @@ void execute(const std::string& keys_file_path,
     }
 
     for (const auto& index_name : index_names) {
-      std::cout << "\n--- Running workloads for " << index_name << " (init_keys=" << current_init_key_size << ") ---" << std::endl;
+      std::cout << "--- Running workloads for " << index_name << " (init_keys=" << current_init_key_size << ") ---" << std::endl;
       
       if (index_name == "ALEX") {
         deli_testbed::benchmark_alex<KeyType, PayloadType>(config, key_values);
@@ -112,7 +101,6 @@ void execute(const std::string& keys_file_path,
 /*
  * Required flags:
  * --keys_file              path to the file that contains keys
- * --keys_file_type         file type of keys_file (options: binary or text)
  * --batch_size             number of operations (lookup or insert) per batch
  *
  * Optional flags:
@@ -124,7 +112,6 @@ void execute(const std::string& keys_file_path,
 int main(int argc, char* argv[]) {
   auto flags = parse_flags(argc, argv);
   std::string keys_file_path = get_required(flags, "keys_file");
-  std::string keys_file_type = get_required(flags, "keys_file_type");
   auto batch_size = stoi(get_required(flags, "batch_size"));
   std::string lookup_distribution = get_with_default(flags, "lookup_distribution", "uniform");
   auto time_limit = stod(get_with_default(flags, "time_limit", "0.5"));
@@ -160,11 +147,9 @@ int main(int argc, char* argv[]) {
 
   // Call execute with appropriate key type based on filename suffix
   if (keys_file_path.ends_with("_uint32")) {
-    execute<uint32_t, uint32_t>(keys_file_path, keys_file_type, batch_size,
-                                          lookup_distribution, time_limit, print_batch_stats, out_file);
+    execute<uint32_t, uint32_t>(keys_file_path, batch_size, lookup_distribution, time_limit, print_batch_stats, out_file);
   } else if (keys_file_path.ends_with("_uint64")) {
-    execute<uint64_t, uint64_t>(keys_file_path, keys_file_type, batch_size,
-                                          lookup_distribution, time_limit, print_batch_stats, out_file);
+    execute<uint64_t, uint64_t>(keys_file_path, batch_size, lookup_distribution, time_limit, print_batch_stats, out_file);
   } else {
     throw std::runtime_error("Unsupported key type in filename. Expected suffixes: _uint32 or _uint64");
   }

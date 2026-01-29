@@ -37,10 +37,6 @@ class BenchmarkDynamicPGM {
       index.erase(key);
     }
 
-    static bool is_dynamic() {
-      return true;
-    }
-
     static std::string name() {
       return "Dynamic-PGM";
     }
