@@ -6,9 +6,11 @@
 
 #include "PGM-index/include/pgm/pgm_index.hpp"
 #include "../src/workload.h"
+#include "../src/benchmark.h"
 
 // Wrapper object
 
+namespace deli_testbed {
 template <typename KEY_TYPE, typename PAYLOAD_TYPE>
 class BenchmarkStaticPGM {
   public:
@@ -51,11 +53,23 @@ class BenchmarkStaticPGM {
       return "Static-PGM";
     }
 
-    static std::vector<Workload> supported_workloads() {
-      return {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION};
-    }
-  
   private:
     std::vector<KEY_TYPE> keys;
     pgm::PGMIndex<KEY_TYPE> index;
 };
+
+template <typename KeyType, typename PayloadType>
+void benchmark_pgm_static(std::ofstream& out_file, 
+                          std::vector<std::pair<KeyType, PayloadType>> key_values,
+                          int batch_size, const std::string& lookup_distribution,
+                          double time_limit, bool print_batch_stats, 
+                          int max_batches = 10) {
+  
+  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
+  for (const auto& wl : supported_workloads) {
+    deli_testbed::run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType>, KeyType, PayloadType>(
+        out_file, key_values, batch_size, lookup_distribution, 
+        wl, time_limit, print_batch_stats, max_batches);
+  }
+}
+}  // namespace deli_testbed

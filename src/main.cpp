@@ -11,6 +11,7 @@
 // #include "../indices/benchmark_deli.h"
 #include "../indices/benchmark_pgm_static.h"
 #include "../indices/benchmark_pgm_dynamic.h"
+#include "benchmark.h"
 
 #include <iomanip>
 #include <fstream>
@@ -28,161 +29,6 @@
 // - Fix batches
 
 static constexpr size_t NUM_BATCHES = 1;
-std::mt19937_64 rand_gen(std::random_device{}());
-
-template<Workload W, typename IndexType, typename KeyType, typename PayloadType>
-double run_workload(IndexType& index, std::vector<std::pair<KeyType, PayloadType>>& key_values, size_t num_ops_per_batch) {
-
-  // WORKLOAD: LOOKUP OF EXISTING KEYS
-  if constexpr (W == LOOKUP_EXISTING) {
-    std::vector<std::pair<KeyType, PayloadType>> lookup_pairs = get_existing_keys(key_values.begin(), key_values.end(), num_ops_per_batch);
-
-    auto start_time = std::chrono::high_resolution_clock::now();
-      for (const auto& [key, expected] : lookup_pairs) {
-        PayloadType payload = index.lower_bound(key);
-        if (expected != payload) {
-            std::cerr << "Index: " << index.name() << " lookup (existing) error: key=" << key << ", expected=" << expected << ", got=" << payload << std::endl;
-            return -1;
-        }
-    }
-    auto end_time = std::chrono::high_resolution_clock::now();
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-  
-  } else if constexpr (W == INSERT_IN_DISTRIBUTION) {
-    auto keys = key_values | std::views::transform([](auto const& p) { return p.first; });
-    std::vector<KeyType> insert_keys = get_non_existing_keys(keys.begin(), keys.end(), num_ops_per_batch);
-    std::vector<std::pair<KeyType, PayloadType>> insert_pairs;
-    for (const auto& key : insert_keys) {
-      insert_pairs.emplace_back(key, rand_gen());
-    }
-
-    auto start_time = std::chrono::high_resolution_clock::now();
-    for (const auto& [key, value] : insert_pairs) {
-      index.insert(key, value);
-    }
-    auto end_time = std::chrono::high_resolution_clock::now();
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-  
-  } else if constexpr (W == LOOKUP_IN_DISTRIBUTION) {
-    auto keys = key_values | std::views::transform([](auto const& p) { return p.first; });
-    std::vector<KeyType> non_existing_keys = get_non_existing_keys(keys.begin(), keys.end(), num_ops_per_batch);
-    std::vector<std::pair<KeyType, PayloadType>> lookup_pairs(non_existing_keys.size());
-
-    for (size_t i = 0; i < non_existing_keys.size(); i++) {
-      auto expected_payload_it = std::lower_bound(
-          key_values.begin(), key_values.end(), non_existing_keys[i],
-          [](auto const& a, auto const& b) { return a.first < b; });
-      PayloadType expected_payload = (expected_payload_it != key_values.end()) ? expected_payload_it->second : PayloadType{};
-      lookup_pairs[i] = {non_existing_keys[i], expected_payload};
-    }
-    
-    auto start_time = std::chrono::high_resolution_clock::now();
-      for (const auto& [key, expected] : lookup_pairs) {
-        PayloadType payload = index.lower_bound(key);
-        if (expected != payload) {
-            std::cerr << "Index: " << index.name() << " lookup (non-existing) error: key=" << key << ", expected=" << expected << ", got=" << payload << std::endl;
-            throw std::runtime_error("Lookup error");
-            return -1;
-        }
-    }
-    auto end_time = std::chrono::high_resolution_clock::now();
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-  
-  } else if constexpr (W == MIXED) {
-    throw std::runtime_error("Workload not implemented");
-  } else if constexpr (W == SHIFTING) {
-    throw std::runtime_error("Workload not implemented");
-  } else {
-    throw std::runtime_error("Workload not implemented");
-  }  
-}
-
-// Templated benchmark functions
-template<typename IndexType, typename KeyType, typename PayloadType>
-void bulk_load_benchmark(IndexType& index, std::vector<std::pair<KeyType, PayloadType>>& values) {
-    std::sort(values.begin(), values.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
-    index.bulk_load(values.data(), values.size());
-}
-
-template<typename IndexType, typename KeyType, typename PayloadType>
-double insert_benchmark(IndexType& index, const std::vector<std::pair<KeyType, PayloadType>>& key_value_pairs, int start_idx, int num_inserts) {
-    auto start_time = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < num_inserts; i++) {
-        index.insert(key_value_pairs[start_idx + i].first, key_value_pairs[start_idx + i].second);
-    }
-    auto end_time = std::chrono::high_resolution_clock::now();
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-}
-
-template<typename IndexType, typename KeyType, typename PayloadType>
-void run_benchmark(const std::string& index_name, std::ofstream& out_file, std::vector<std::pair<KeyType, PayloadType>> key_values,
-                   int batch_size, const std::string& lookup_distribution, Workload workload, double time_limit,
-                   bool print_batch_stats, int max_batches = 10) {
-
-    // Create the index and bulk load initial keys
-    IndexType index;
-
-    // Bulk load
-    bulk_load_benchmark<IndexType, KeyType, PayloadType>(index, key_values);
-
-    // Run workload
-    size_t i = key_values.size();
-
-    auto workload_start_time = std::chrono::high_resolution_clock::now();
-    int batch_no = 0;
-    PayloadType sum = 0;
-    std::cout << std::scientific;
-    std::cout << std::setprecision(3);
-    
-    while (true) {
-        batch_no++;
-
-        double batch_time;
-        switch (workload) {
-          case LOOKUP_EXISTING: batch_time = run_workload<LOOKUP_EXISTING>(index, key_values, batch_size); break;
-          case LOOKUP_IN_DISTRIBUTION: batch_time = run_workload<LOOKUP_IN_DISTRIBUTION>(index, key_values, batch_size); break;
-          case INSERT_IN_DISTRIBUTION: batch_time = run_workload<INSERT_IN_DISTRIBUTION>(index, key_values, batch_size); break;
-          default: throw std::runtime_error("Workload not implemented");
-        }
-
-        i += batch_size; // TODO: check this
-
-        // Calculate batch statistics
-        double batch_overall_throughput = (batch_time > 0) ? (batch_size / batch_time * 1e9) : 0.0;
-
-        if (print_batch_stats) {
-          std::cout << std::scientific << std::setprecision(3);
-          std::cout << index_name << " " << workload_name << ": " << batch_size << " operations completed\n";
-          std::cout << "Total time: " << batch_time / 1e9 << " seconds\n";
-          std::cout << "Throughput: " << batch_overall_throughput << " ops/sec\n";
-        }
-
-        // Log results
-        out_file << "RESULT "
-                << "index_name=" << index_name << " "
-                << "batch_no=" << batch_no << " "
-                << "workload_type=" << workload_name(workload) << " "
-                << "init_num_keys=" << key_values.size() << " "
-                << "batch_operations=" << batch_size << " "
-                << "lookup_distribution=" << lookup_distribution << " "
-                << std::fixed << std::setprecision(2) << "throughput=" << batch_overall_throughput << " "
-                << std::fixed << std::setprecision(6) << "total_time=" << batch_time / 1e9 << std::endl;
-
-
-        // Check for workload end conditions
-        if (batch_no >= max_batches) {
-            // End workload after specified number of batches
-            break;
-        }
-        double workload_elapsed_time =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(
-                std::chrono::high_resolution_clock::now() - workload_start_time)
-                .count();
-        if (workload_elapsed_time > time_limit * 1e9 * 60) {
-            break;
-        }
-    }
-}
 
 template <typename KeyType, typename PayloadType>
 void execute(const std::string& keys_file_path,
@@ -208,7 +54,7 @@ void execute(const std::string& keys_file_path,
 
   // Generate exponentially increasing init_num_keys sizes
   constexpr size_t min_size = 1 << 7;   // Starting size
-  constexpr size_t max_size = 1 << 27;  // Maximum size
+  constexpr size_t max_size = 1 << 20;  // Maximum size
   
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
@@ -233,44 +79,32 @@ void execute(const std::string& keys_file_path,
       std::cout << "\n--- Running workloads for " << index_name << " (init_keys=" << current_init_key_size << ") ---" << std::endl;
       
       if (index_name == "ALEX") {
-        auto supported_workloads = BenchmarkALEX<KeyType, PayloadType>::supported_workloads();
-        for (Workload workload : supported_workloads) {
-          run_benchmark<BenchmarkALEX<KeyType, PayloadType>, KeyType, PayloadType>(
-              index_name, out_file, key_values, batch_size,
-              lookup_distribution, workload, time_limit, print_batch_stats, NUM_BATCHES);
-        }
+        deli_testbed::benchmark_alex<KeyType, PayloadType>(
+            out_file, key_values, batch_size,
+            lookup_distribution, time_limit, print_batch_stats, NUM_BATCHES);
       }
       else if (index_name == "LIPP") {
-        auto supported_workloads = BenchmarkLIPP<KeyType, PayloadType>::supported_workloads();
-        for (Workload workload : supported_workloads) {
-          run_benchmark<BenchmarkLIPP<KeyType, PayloadType>, KeyType, PayloadType>(
-              index_name, out_file, key_values, batch_size,
-              lookup_distribution, workload, time_limit, print_batch_stats, NUM_BATCHES);
-        }
+        deli_testbed::benchmark_lipp<KeyType, PayloadType>(
+            out_file, key_values, batch_size,
+            lookup_distribution, time_limit, print_batch_stats, NUM_BATCHES);
       }
       else if (index_name == "DeLI") {
         // auto supported_workloads = BenchmarkDeLI<KeyType, PayloadType>::supported_workloads();
         // for (Workload workload : supported_workloads) {
         //   run_benchmark<BenchmarkDeLI<KeyType, PayloadType>, KeyType, PayloadType>(
-        //       index_name, out_file, key_keys, batch_size,
-        //       lookup_distribution, workload, time_limit, print_batch_stats, NUM_BATCHES);
+        //       out_file, key_keys, batch_size,
+        //       lookup_distribution, time_limit, print_batch_stats, NUM_BATCHES);
         // }
       }
       else if (index_name == "PGM-Static") {
-        auto supported_workloads = BenchmarkStaticPGM<KeyType, PayloadType>::supported_workloads();
-        for (Workload workload : supported_workloads) {
-          run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType>, KeyType, PayloadType>(
-              index_name, out_file, key_keys, batch_size,
-              lookup_distribution, workload, time_limit, print_batch_stats, NUM_BATCHES);
-        }
+        deli_testbed::benchmark_pgm_static<KeyType, PayloadType>(
+            out_file, key_keys, batch_size,
+            lookup_distribution, time_limit, print_batch_stats, NUM_BATCHES);
       }
       else if (index_name == "PGM-Dynamic") {
-        auto supported_workloads = BenchmarkDynamicPGM<KeyType, PayloadType>::supported_workloads();
-        for (Workload workload : supported_workloads) {
-          run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType>, KeyType, PayloadType>(
-              index_name, out_file, key_keys, batch_size,
-              lookup_distribution, workload, time_limit, print_batch_stats, NUM_BATCHES);
-        }
+        deli_testbed::benchmark_pgm_dynamic<KeyType, PayloadType>(
+            out_file, key_keys, batch_size,
+            lookup_distribution, time_limit, print_batch_stats, NUM_BATCHES);
       }
       else {
         throw std::runtime_error("Unsupported index: " + index_name);

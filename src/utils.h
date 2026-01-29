@@ -3,7 +3,10 @@
 
 #pragma once
 #include <unordered_set>
+#include <random>
 #include "zipf.h"
+
+std::mt19937_64 rand_gen(std::random_device{}());
 
 // Loads values from binary file into vector.
 template <typename T>
