@@ -5,7 +5,6 @@
 #include <algorithm>
 
 #include "PGM-index/include/pgm/pgm_index.hpp"
-#include "../src/workload.h"
 #include "../src/benchmark.h"
 
 // Wrapper object

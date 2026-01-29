@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ALEX/alex.h"
-#include "../src/workload.h"
 #include "../src/benchmark.h"
 
 // Wrapper object

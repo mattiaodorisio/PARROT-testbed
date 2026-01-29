@@ -1,7 +1,6 @@
 #pragma once
 
 #include "PGM-index/include/pgm/pgm_index_dynamic.hpp"
-#include "../src/workload.h"
 #include "../src/benchmark.h"
 
 // Wrapper object

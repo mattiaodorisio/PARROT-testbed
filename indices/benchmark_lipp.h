@@ -1,7 +1,6 @@
 #pragma once
 
 #include "lipp/src/core/lipp.h"
-#include "../src/workload.h"
 #include "../src/benchmark.h"
 
 // Wrapper object for LIPP

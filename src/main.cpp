@@ -11,7 +11,6 @@
 #include "../indices/benchmark_deli.h"
 #include "../indices/benchmark_pgm_static.h"
 #include "../indices/benchmark_pgm_dynamic.h"
-#include "benchmark.h"
 
 #include <iomanip>
 #include <fstream>
@@ -22,7 +21,7 @@
 
 #include "flags.h"
 #include "utils.h"
-#include "workload.h"
+#include "benchmark.h"
 
 // TODO:
 // - Implement missing workloads

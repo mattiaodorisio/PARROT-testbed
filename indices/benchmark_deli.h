@@ -1,7 +1,6 @@
 #pragma once
 
 #include "DeLI/include/DeLI/deli.h"
-#include "../src/workload.h"
 #include "../src/benchmark.h"
 
 // Wrapper object

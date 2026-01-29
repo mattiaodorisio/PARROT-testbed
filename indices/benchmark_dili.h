@@ -1,7 +1,6 @@
 #pragma once
 
 #include "DILI/src/dili/DILI.h"
-#include "../src/workload.h"
 
 // Wrapper object
 
