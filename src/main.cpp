@@ -8,7 +8,7 @@
 #include "../indices/benchmark_alex.h"
 #include "../indices/benchmark_lipp.h"
 // #include "../indices/benchmark_dili.h"
-// #include "../indices/benchmark_deli.h"
+#include "../indices/benchmark_deli.h"
 #include "../indices/benchmark_pgm_static.h"
 #include "../indices/benchmark_pgm_dynamic.h"
 #include "benchmark.h"
@@ -59,7 +59,17 @@ void execute(const std::string& keys_file_path,
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
   // Define index types and names
-  std::vector<std::string> index_names = {"ALEX", "LIPP", "PGM-Static", "PGM-Dynamic"};
+  std::vector<std::string> index_names = {"ALEX", "LIPP", "DeLI", "PGM-Static", "PGM-Dynamic"};
+
+  // Prepare benchmark config object
+  bench_config config {
+      out_file,
+      batch_size,
+      lookup_distribution,
+      time_limit,
+      print_batch_stats,
+      NUM_BATCHES
+  };
   
   for (size_t current_init_key_size = min_size; current_init_key_size <= max_size; current_init_key_size *= 2) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
@@ -79,32 +89,19 @@ void execute(const std::string& keys_file_path,
       std::cout << "\n--- Running workloads for " << index_name << " (init_keys=" << current_init_key_size << ") ---" << std::endl;
       
       if (index_name == "ALEX") {
-        deli_testbed::benchmark_alex<KeyType, PayloadType>(
-            out_file, key_values, batch_size,
-            lookup_distribution, time_limit, print_batch_stats, NUM_BATCHES);
+        deli_testbed::benchmark_alex<KeyType, PayloadType>(config, key_values);
       }
       else if (index_name == "LIPP") {
-        deli_testbed::benchmark_lipp<KeyType, PayloadType>(
-            out_file, key_values, batch_size,
-            lookup_distribution, time_limit, print_batch_stats, NUM_BATCHES);
+        deli_testbed::benchmark_lipp<KeyType, PayloadType>(config, key_values);
       }
       else if (index_name == "DeLI") {
-        // auto supported_workloads = BenchmarkDeLI<KeyType, PayloadType>::supported_workloads();
-        // for (Workload workload : supported_workloads) {
-        //   run_benchmark<BenchmarkDeLI<KeyType, PayloadType>, KeyType, PayloadType>(
-        //       out_file, key_keys, batch_size,
-        //       lookup_distribution, time_limit, print_batch_stats, NUM_BATCHES);
-        // }
+        deli_testbed::benchmark_deli<KeyType, PayloadType>(config, key_values);
       }
       else if (index_name == "PGM-Static") {
-        deli_testbed::benchmark_pgm_static<KeyType, PayloadType>(
-            out_file, key_keys, batch_size,
-            lookup_distribution, time_limit, print_batch_stats, NUM_BATCHES);
+        deli_testbed::benchmark_pgm_static<KeyType, PayloadType>(config, key_values);
       }
       else if (index_name == "PGM-Dynamic") {
-        deli_testbed::benchmark_pgm_dynamic<KeyType, PayloadType>(
-            out_file, key_keys, batch_size,
-            lookup_distribution, time_limit, print_batch_stats, NUM_BATCHES);
+        deli_testbed::benchmark_pgm_dynamic<KeyType, PayloadType>(config, key_values);
       }
       else {
         throw std::runtime_error("Unsupported index: " + index_name);

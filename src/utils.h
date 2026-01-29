@@ -8,6 +8,15 @@
 
 std::mt19937_64 rand_gen(std::random_device{}());
 
+struct bench_config {
+  std::ofstream& out_file;
+  int batch_size;
+  const std::string& lookup_distribution;
+  double time_limit;
+  bool print_batch_stats;
+  int max_batches;
+};
+
 // Loads values from binary file into vector.
 template <typename T>
 static std::vector<T> load_binary_data(const std::string& filename, size_t length = std::numeric_limits<size_t>::max()) {

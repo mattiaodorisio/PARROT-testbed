@@ -43,18 +43,13 @@ class BenchmarkLIPP {
 };
 
 template <typename KeyType, typename PayloadType>
-void benchmark_lipp(std::ofstream& out_file, 
-                    std::vector<std::pair<KeyType, PayloadType>> key_values,
-                    int batch_size, const std::string& lookup_distribution, 
-                    double time_limit, bool print_batch_stats, 
-                    int max_batches = 10) {
+void benchmark_lipp(const bench_config& config,
+                    std::vector<std::pair<KeyType, PayloadType>> key_values) {
 
   constexpr Workload supported_workloads[] = {LOOKUP_EXISTING, INSERT_IN_DISTRIBUTION};
 
   for (const auto& wl : supported_workloads) {
-    run_benchmark<BenchmarkLIPP<KeyType, PayloadType>, KeyType, PayloadType>(
-        out_file, key_values, batch_size, lookup_distribution, 
-        wl, time_limit, print_batch_stats, max_batches);
+    run_benchmark<BenchmarkLIPP<KeyType, PayloadType>, KeyType, PayloadType>(config, key_values, wl);
   }
 }
 }  // namespace deli_testbed

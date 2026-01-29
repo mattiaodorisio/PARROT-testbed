@@ -2,9 +2,11 @@
 
 #include "DeLI/include/DeLI/deli.h"
 #include "../src/workload.h"
+#include "../src/benchmark.h"
 
 // Wrapper object
 
+namespace deli_testbed {
 template <typename KEY_TYPE, typename PAYLOAD_TYPE>
 class BenchmarkDeLI {
   public:
@@ -41,12 +43,19 @@ class BenchmarkDeLI {
     static std::string name() {
       return "DeLI";
     }
-  
-    static std::vector<Workload> supported_workloads() {
-      return {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION};
-    }
 
   private:
     std::vector<std::pair<KEY_TYPE, PAYLOAD_TYPE>> data;
-    DeLI::DeLI<KEY_TYPE, (sizeof(KEY_TYPE) == 4 ? 22 : 54)> index;
+    DeLI::DeLI<true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KEY_TYPE, 10> index;
 };
+
+template <typename KeyType, typename PayloadType>
+void benchmark_deli(const bench_config& config,
+                    std::vector<std::pair<KeyType, PayloadType>> key_values) {
+  
+  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION };
+  for (const auto& wl : supported_workloads) {
+    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType>, KeyType, PayloadType>(config, key_values, wl);
+  }
+}
+}  // namespace deli_testbed

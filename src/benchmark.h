@@ -156,9 +156,7 @@ class Benchmark {
 
 
 template<class IndexWrapper, typename KeyType, typename PayloadType>
-void run_benchmark(std::ofstream& out_file, std::vector<std::pair<KeyType, PayloadType>> key_values,
-                   int batch_size, const std::string& lookup_distribution, Workload workload, double time_limit,
-                   bool print_batch_stats, int max_batches = 10) {
+void run_benchmark(const bench_config& config, std::vector<std::pair<KeyType, PayloadType>> key_values, Workload workload) {
 
     // Create the benchmark instance
     deli_testbed::Benchmark<KeyType, PayloadType> benchmark(key_values);
@@ -179,39 +177,39 @@ void run_benchmark(std::ofstream& out_file, std::vector<std::pair<KeyType, Paylo
         double batch_time;
         switch (workload) {
           case LOOKUP_EXISTING: 
-            batch_time = benchmark.Run_lookup_existing(index, batch_size); 
+            batch_time = benchmark.Run_lookup_existing(index, config.batch_size); 
             break;
           case LOOKUP_IN_DISTRIBUTION: 
-            batch_time = benchmark.Run_lookup_in_distribution(index, batch_size); 
+            batch_time = benchmark.Run_lookup_in_distribution(index, config.batch_size); 
             break;
           case INSERT_IN_DISTRIBUTION: 
-            batch_time = benchmark.Run_insert_in_distribution(index, batch_size); 
+            batch_time = benchmark.Run_insert_in_distribution(index, config.batch_size); 
             break;
           default: 
             throw std::runtime_error("Workload not implemented");
         }
 
-        if (print_batch_stats) {
+        if (config.print_batch_stats) {
           std::cout << std::scientific << std::setprecision(3);
-          std::cout << index.name() << " " << workload_name(workload) << ": " << batch_size << " operations completed\n";
+          std::cout << index.name() << " " << workload_name(workload) << ": " << config.batch_size << " operations completed\n";
           std::cout << "Total time: " << batch_time / 1e9 << " seconds\n";
-          double batch_overall_throughput = (batch_time > 0) ? (batch_size / batch_time * 1e9) : 0.0;
+          double batch_overall_throughput = (batch_time > 0) ? (config.batch_size / batch_time * 1e9) : 0.0;
           std::cout << "Throughput: " << batch_overall_throughput << " ops/sec\n";
         }
 
         // Use the benchmark's print method for consistent formatting
         benchmark.PrintResult(index, workload_name(workload), batch_no, key_values.size(), 
-                             batch_size, lookup_distribution, batch_time, out_file);
+                             config.batch_size, config.lookup_distribution, batch_time, config.out_file);
 
         // Check for workload end conditions
-        if (batch_no >= max_batches) {
+        if (batch_no >= config.max_batches) {
             break;
         }
         double workload_elapsed_time =
             std::chrono::duration_cast<std::chrono::nanoseconds>(
                 std::chrono::high_resolution_clock::now() - workload_start_time)
                 .count();
-        if (workload_elapsed_time > time_limit * 1e9 * 60) {
+        if (workload_elapsed_time > config.time_limit * 1e9 * 60) {
             break;
         }
     }
