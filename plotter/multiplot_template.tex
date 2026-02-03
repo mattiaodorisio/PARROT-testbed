@@ -16,14 +16,17 @@
 % Add the plots here
 % %% {{PLOT:x_col,y_col,filter,groupby,Title,Caption,Label}}
 
-%% {{PLOT:init_num_keys,MEDIAN(total_time),workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,In-distribution Workload,index_name}}
+\subsection{DeLI}
+The following figures shows the performance of DeLI index under different configurations.
+%% {{PLOT:init_num_keys,MEDIAN(total_time),workload_type=LOOKUP_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),workload_type=LOOKUP_EXISTING;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),workload_type=INSERT_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+
+\subsection{Comparisons among indices}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,In-distribution Lookup Workload,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),workload_type=LOOKUP_EXISTING,index_name,Time,Existing Lookup Workload,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,In-distribution Insert Workload,index_name}}
 
 \section{Analysis}
-
-This benchmark compares the performance of different indexing data structures under various workloads. 
-The results show the relative performance characteristics of each implementation across multiple metrics:
-overall throughput, lookup performance, and insert performance.
 
 \end{document}

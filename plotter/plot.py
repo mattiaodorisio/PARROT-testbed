@@ -20,23 +20,29 @@ import argparse
 import statistics
 
 
-def parse_filter(filter_str: str) -> Optional[Tuple[str, str]]:
+def parse_filter(filter_str: str) -> Optional[List[Tuple[str, str]]]:
     """
-    Parse a filter string like 'workload_type=lookup_only' into (key, value).
+    Parse a filter string with multiple conditions separated by semicolons.
+    Example: 'workload_type=lookup_only;batch_size=1000' into [(key1, value1), (key2, value2)].
     
     Args:
-        filter_str (str): Filter string
+        filter_str (str): Filter string with conditions separated by semicolons
         
     Returns:
-        Tuple[str, str] or None: (key, value) pair or None if no filter
+        List[Tuple[str, str]] or None: List of (key, value) pairs or None if no filter
     """
     if not filter_str or filter_str.strip() == '':
         return None
     
-    if '=' in filter_str:
-        key, value = filter_str.split('=', 1)
-        return (key.strip(), value.strip())
-    return None
+    conditions = []
+    # Split by semicolon to get individual conditions
+    for condition in filter_str.split(';'):
+        condition = condition.strip()
+        if '=' in condition:
+            key, value = condition.split('=', 1)
+            conditions.append((key.strip(), value.strip()))
+    
+    return conditions if conditions else None
 
 
 def parse_aggregation(col_str: str) -> Tuple[str, str]:
@@ -63,28 +69,32 @@ def parse_aggregation(col_str: str) -> Tuple[str, str]:
         return ('NONE', col_str)
 
 
-def apply_filter(data: List[Dict], filter_condition: Optional[Tuple[str, str]]) -> List[Dict]:
+def apply_filter(data: List[Dict], filter_conditions: Optional[List[Tuple[str, str]]]) -> List[Dict]:
     """
-    Apply a filter condition to the data.
+    Apply multiple filter conditions to the data. All conditions must be satisfied (AND logic).
     
     Args:
         data (List[Dict]): Input data
-        filter_condition (Tuple[str, str] or None): (key, value) filter condition
+        filter_conditions (List[Tuple[str, str]] or None): List of (key, value) filter conditions
         
     Returns:
         List[Dict]: Filtered data
     """
-    if filter_condition is None:
+    if filter_conditions is None:
         return data
     
-    key, value = filter_condition
     filtered_data = []
     
     for row in data:
-        if key in row:
-            row_value = str(row[key])
-            if row_value == value:
-                filtered_data.append(row)
+        # Check if all filter conditions are satisfied
+        all_conditions_met = True
+        for key, value in filter_conditions:
+            if key not in row or str(row[key]) != value:
+                all_conditions_met = False
+                break
+        
+        if all_conditions_met:
+            filtered_data.append(row)
     
     return filtered_data
 
@@ -282,7 +292,7 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
 
 
 def create_figure_from_template(data: List[Dict], x_col: str, y_col: str, 
-                              filter_condition: Optional[Tuple[str, str]], groupby_col: str,
+                              filter_conditions: Optional[List[Tuple[str, str]]], groupby_col: str,
                               title: str, caption: str, label: str,
                               figure_template_path: str = None) -> str:
     """
@@ -292,7 +302,7 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
         data (List[Dict]): Raw benchmark data
         x_col (str): Column name for x-axis
         y_col (str): Column name for y-axis (may include aggregation)
-        filter_condition (Tuple[str, str] or None): Filter condition
+        filter_conditions (List[Tuple[str, str]] or None): List of filter conditions
         groupby_col (str): Column to group by
         title (str): Plot title
         caption (str): Figure caption
@@ -314,10 +324,10 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
     agg_func, actual_y_col = parse_aggregation(y_col)
     
     # Apply filter
-    filtered_data = apply_filter(data, filter_condition)
+    filtered_data = apply_filter(data, filter_conditions)
     
     if not filtered_data:
-        return f"% No data available for filter {filter_condition}"
+        return f"% No data available for filter {filter_conditions}"
     
     # Group and aggregate data
     processed_data = group_and_aggregate(filtered_data, groupby_col, agg_func, actual_y_col, x_col)
@@ -403,7 +413,7 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
         x_col, y_col, filter_str, groupby_col, title, caption, label = match
         
         # Parse filter condition
-        filter_condition = parse_filter(filter_str)
+        filter_conditions = parse_filter(filter_str)
         
         # Parse aggregation from y_col
         agg_func, actual_y_col = parse_aggregation(y_col)
@@ -416,14 +426,17 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
         
         # Check if filter can be applied
         filter_applicable = True
-        if filter_condition:
-            filter_key, filter_value = filter_condition
-            filter_applicable = any(filter_key in row for row in data)
+        if filter_conditions:
+            # Check if all filter keys exist in at least one row
+            for filter_key, filter_value in filter_conditions:
+                if not any(filter_key in row for row in data):
+                    filter_applicable = False
+                    break
         
         if has_required_cols and filter_applicable:
             # Generate the figure
             figure = create_figure_from_template(
-                data, x_col, y_col, filter_condition, groupby_col,
+                data, x_col, y_col, filter_conditions, groupby_col,
                 title, caption, label, figure_template_path
             )
             

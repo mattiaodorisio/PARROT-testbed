@@ -33,6 +33,10 @@ class BenchmarkLIPP {
       return "LIPP";
     }
 
+    static std::string variant() {
+      return "none";
+    }
+    
   private:
       LIPP<KEY_TYPE, PAYLOAD_TYPE> index;
 };

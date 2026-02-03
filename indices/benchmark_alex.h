@@ -33,6 +33,10 @@ class BenchmarkALEX {
       return "ALEX";
     }
 
+    static std::string variant() {
+      return "none";
+    }
+
   private:
     alex::Alex<KEY_TYPE, PAYLOAD_TYPE> index;
 };

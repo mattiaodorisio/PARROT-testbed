@@ -10,7 +10,7 @@
 // Wrapper object
 
 namespace deli_testbed {
-template <typename KEY_TYPE, typename PAYLOAD_TYPE>
+template <typename KEY_TYPE, typename PAYLOAD_TYPE, size_t epsilon>
 class BenchmarkStaticPGM {
   public:
     BenchmarkStaticPGM() : index() {}
@@ -48,9 +48,13 @@ class BenchmarkStaticPGM {
       return "Static-PGM";
     }
 
+    static std::string variant() {
+      return std::to_string(epsilon);
+    }
+
   private:
     std::vector<KEY_TYPE> keys;
-    pgm::PGMIndex<KEY_TYPE> index;
+    pgm::PGMIndex<KEY_TYPE, epsilon> index;
 };
 
 template <typename KeyType, typename PayloadType>
@@ -59,7 +63,7 @@ void benchmark_pgm_static(const bench_config& config,
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType>, KeyType, PayloadType>(config, key_values, wl);
+    deli_testbed::run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType, 64>, KeyType, PayloadType>(config, key_values, wl);
   }
 }
 }  // namespace deli_testbed

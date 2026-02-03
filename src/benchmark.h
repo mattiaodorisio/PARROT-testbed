@@ -64,6 +64,7 @@ class Benchmark {
     // Log results in the same format as main.cpp
     out_file << "RESULT "
             << "index_name=" << Index::name() << " "
+            << "index_variant=" << Index::variant() << " "
             << "batch_no=" << batch_no << " "
             << "workload_type=" << workload_name << " "
             << "init_num_keys=" << init_num_keys << " "

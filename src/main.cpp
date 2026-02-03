@@ -18,6 +18,7 @@
 #include <ctime>
 #include <vector>
 #include <ranges>
+#include <filesystem>
 
 #include "flags.h"
 #include "utils.h"
@@ -41,8 +42,8 @@ void execute(const std::string& keys_file_path,
   std::vector<KeyType> keys = load_binary_data<KeyType>(keys_file_path);
 
   // Generate exponentially increasing init_num_keys sizes
-  constexpr size_t min_size = 1 << 7;   // Starting size
-  constexpr size_t max_size = 1 << 20;  // Maximum size
+  constexpr size_t min_size = 1 << 15;   // Starting size
+  constexpr size_t max_size = 1 << 18;  // Maximum size
   
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
@@ -102,12 +103,12 @@ void execute(const std::string& keys_file_path,
  * Required flags:
  * --keys_file              path to the file that contains keys
  * --batch_size             number of operations (lookup or insert) per batch
+ * --output_folder          folder path for benchmark output (default: results/)
  *
  * Optional flags:
  * --lookup_distribution    lookup keys distribution (options: uniform or zipf)
  * --time_limit             time limit, in minutes
  * --print_batch_stats      whether to output stats for each batch
- * --bench_output           custom filename for benchmark output (default: auto-generated with timestamp)
  */
 int main(int argc, char* argv[]) {
   auto flags = parse_flags(argc, argv);
@@ -116,7 +117,7 @@ int main(int argc, char* argv[]) {
   std::string lookup_distribution = get_with_default(flags, "lookup_distribution", "uniform");
   auto time_limit = stod(get_with_default(flags, "time_limit", "0.5"));
   bool print_batch_stats = get_boolean_flag(flags, "print_batch_stats");
-  std::string bench_output = get_with_default(flags, "bench_output", "");
+  std::string output_folder = get_required(flags, "output_folder");
 
   // Check if input file does exist
   {
@@ -126,21 +127,34 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  // Create benchmark output file with timestamp or use custom name
-  std::string out_filename;
-  if (bench_output.empty()) {
-    auto now = std::chrono::system_clock::now();
-    auto time_t = std::chrono::system_clock::to_time_t(now);
-    std::stringstream ss;
-    ss << "benchmark_results_" << std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S") << ".txt";
-    out_filename = ss.str();
-  } else {
-    out_filename = bench_output;
+  // Extract dataset name from input file path
+  std::filesystem::path input_path(keys_file_path);
+  std::string dataset_name = input_path.stem().string();  // filename without extension
+  
+  // Create output folder if it doesn't exist
+  std::filesystem::path output_dir(output_folder);
+  if (!std::filesystem::exists(output_dir)) {
+    std::filesystem::create_directories(output_dir);
+  }
+  
+  // Create output filename with dataset name and timestamp
+  auto now = std::chrono::system_clock::now();
+  auto time_t = std::chrono::system_clock::to_time_t(now);
+  std::stringstream ss;
+  ss << "benchmark_" << dataset_name << "_" << std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S") << ".txt";
+  
+  std::filesystem::path out_filename = output_dir / ss.str();
+  
+  // Check if output file already exists
+  if (std::filesystem::exists(out_filename)) {
+    std::cerr << "Error: Output file already exists: " << out_filename << std::endl;
+    std::cerr << "Benchmark terminated to avoid overwriting existing results." << std::endl;
+    return 1;
   }
   
   std::ofstream out_file(out_filename);
   if (!out_file.is_open()) {
-    throw std::runtime_error("Failed to create the benchmark output file: " + out_filename);
+    throw std::runtime_error("Failed to create the benchmark output file: " + out_filename.string());
   }
 
   std::cout << "Benchmark results will be written to: " << out_filename << std::endl;

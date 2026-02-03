@@ -6,7 +6,7 @@
 // Wrapper object
 
 namespace deli_testbed {
-template <typename KEY_TYPE, typename PAYLOAD_TYPE>
+template <typename KEY_TYPE, typename PAYLOAD_TYPE, size_t epsilon>
 class BenchmarkDynamicPGM {
   public:
     BenchmarkDynamicPGM() : index() {}
@@ -41,9 +41,13 @@ class BenchmarkDynamicPGM {
       return "Dynamic-PGM";
     }
 
+    static std::string variant() {
+      return std::to_string(epsilon);
+    }
+
   private:
     std::vector<KEY_TYPE> data;
-    pgm::DynamicPGMIndex<KEY_TYPE, PAYLOAD_TYPE> index;
+    pgm::DynamicPGMIndex<KEY_TYPE, PAYLOAD_TYPE, pgm::PGMIndex<KEY_TYPE, epsilon>> index;
 };
 
 template <typename KeyType, typename PayloadType>
@@ -52,7 +56,7 @@ void benchmark_pgm_dynamic(const bench_config& config,
 
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType>, KeyType, PayloadType>(config, key_values, wl);
+    deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 16>, KeyType, PayloadType>(config, key_values, wl);
   }
 }
 }  // namespace deli_testbed

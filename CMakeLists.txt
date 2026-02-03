@@ -9,7 +9,8 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-add_compile_options(-march=native)
+# Add some compile options
+add_compile_options(-g -fno-omit-frame-pointer -O3 -march=native)
 
 # Add include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/indices)
