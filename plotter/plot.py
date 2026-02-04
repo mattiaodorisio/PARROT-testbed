@@ -293,6 +293,66 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
     return "\n".join(data_lines)
 
 
+def substitute_caption_parameters(caption: str, filter_conditions: Optional[List[Tuple[str, str]]], 
+                                 data: List[Dict], x_col: str, y_col: str, groupby_col: str) -> str:
+    """
+    Substitute parameters in caption string with actual values from filter conditions and data.
+    
+    Args:
+        caption (str): Caption string with potential parameters like {dataset_name}
+        filter_conditions (List[Tuple[str, str]] or None): Filter conditions
+        data (List[Dict]): Benchmark data
+        x_col (str): X-axis column name
+        y_col (str): Y-axis column name  
+        groupby_col (str): Group by column name
+        
+    Returns:
+        str: Caption with parameters substituted
+    """
+    if not caption:
+        return caption
+    
+    # Create a dictionary of available parameters
+    parameters = {}
+    
+    # Add filter condition values as parameters
+    if filter_conditions:
+        for key, value in filter_conditions:
+            parameters[key] = value
+    
+    # Add column names as parameters
+    parameters['x_col'] = x_col
+    parameters['y_col'] = y_col
+    parameters['groupby_col'] = groupby_col
+    
+    # Add some derived parameters
+    if 'dataset_name' in parameters:
+        # Clean up dataset name for display (replace underscores with spaces)
+        parameters['dataset_display_name'] = parameters['dataset_name'].replace('_', ' ').title()
+    
+    # Add workload type display name
+    if 'workload_type' in parameters:
+        workload_display_map = {
+            'LOOKUP_IN_DISTRIBUTION': 'In-Distribution Lookup',
+            'LOOKUP_EXISTING': 'Existing Lookup', 
+            'INSERT_IN_DISTRIBUTION': 'In-Distribution Insert'
+        }
+        parameters['workload_display_name'] = workload_display_map.get(
+            parameters['workload_type'], parameters['workload_type']
+        )
+    
+    # Substitute parameters in caption
+    try:
+        substituted_caption = caption.format(**parameters)
+        return substituted_caption
+    except KeyError as e:
+        print(f"Warning: Parameter {e} not found for caption substitution in: {caption}")
+        return caption
+    except Exception as e:
+        print(f"Warning: Error substituting parameters in caption '{caption}': {e}")
+        return caption
+
+
 def create_figure_from_template(data: List[Dict], x_col: str, y_col: str, 
                               filter_conditions: Optional[List[Tuple[str, str]]], groupby_col: str,
                               title: str, caption: str, label: str,
@@ -355,6 +415,13 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
         y_label += ' (seconds)'
     elif 'throughput' in actual_y_col:
         y_label += ' (ops/sec)'
+    
+    # Substitute parameters in caption and title
+    caption = substitute_caption_parameters(caption, filter_conditions, data, x_col, y_col, groupby_col)
+    title = substitute_caption_parameters(title, filter_conditions, data, x_col, y_col, groupby_col)
+    
+    # Substitute parameters in caption
+    caption = substitute_caption_parameters(caption, filter_conditions, data, x_col, y_col, groupby_col)
     
     # Apply replacements
     replacements = {
