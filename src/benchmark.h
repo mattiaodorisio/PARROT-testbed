@@ -71,35 +71,38 @@ class Benchmark {
   }
 
   template <Workload W, class Index>
-  double RunWorkload(Index& index, size_t batch_size) {
+  double RunWorkload(Index& index, const bench_config& config) {
     if constexpr (W == LOOKUP_EXISTING) {
-      return DoLookupExisting(index, batch_size);
+      return DoLookupExisting(index, config);
     } else if constexpr (W == LOOKUP_IN_DISTRIBUTION) {
-      return DoLookupInDistribution(index, batch_size);
+      return DoLookupInDistribution(index, config);
     } else if constexpr (W == INSERT_IN_DISTRIBUTION) {
-      return DoInsertInDistribution(index, batch_size);
+      return DoInsertInDistribution(index, config);
     }
     return 0.0;
   }
 
   private:
   template <class Index>
-  double DoLookupExisting(Index& index, size_t batch_size) {
+  double DoLookupExisting(Index& index, const bench_config& config) {
     // Get existing keys from the dataset
     std::vector<std::pair<KeyType, PayloadType>> lookup_pairs = 
-        utils::get_existing_keys(key_values_.begin(), key_values_.end(), batch_size);
+        utils::get_existing_keys(key_values_.begin(), key_values_.end(), config.batch_size);
 
-    return DoEqualityLookups<Index, false, true>(index, lookup_pairs);
+    if (config.clear_cache)
+      return DoEqualityLookups<Index, false, true>(index, lookup_pairs);
+    else
+      return DoEqualityLookups<Index, false, false>(index, lookup_pairs);
   }
 
   template <class Index>
-  double DoLookupInDistribution(Index& index, size_t batch_size) {
+  double DoLookupInDistribution(Index& index, const bench_config& config) {
     std::vector<std::pair<KeyType, PayloadType>> lookup_pairs;
     
     // Prepare the lookup pair vector
     {
       auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
-      std::vector<KeyType> lookup_keys = utils::get_non_existing_keys(keys.begin(), keys.end(), batch_size);
+      std::vector<KeyType> lookup_keys = utils::get_non_existing_keys(keys.begin(), keys.end(), config.batch_size);
 
       lookup_pairs.reserve(lookup_keys.size());
       for (const auto& key : lookup_keys) {
@@ -109,8 +112,11 @@ class Benchmark {
         lookup_pairs.emplace_back(key, expected_payload);
       }
     }
-    
-    return DoEqualityLookups<Index, false, true>(index, lookup_pairs);
+
+    if (config.clear_cache)
+      return DoEqualityLookups<Index, true, true>(index, lookup_pairs);
+    else
+      return DoEqualityLookups<Index, false, false>(index, lookup_pairs);
   }
 
 private:
@@ -201,9 +207,9 @@ private:
   }
 
   template <class Index>
-  double DoInsertInDistribution(Index& index, size_t batch_size) {
+  double DoInsertInDistribution(Index& index, const bench_config& config) {
     auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
-    std::vector<KeyType> insert_keys = utils::get_non_existing_keys(keys.begin(), keys.end(), batch_size);
+    std::vector<KeyType> insert_keys = utils::get_non_existing_keys(keys.begin(), keys.end(), config.batch_size);
     std::vector<std::pair<KeyType, PayloadType>> insert_pairs;
     for (const auto& key : insert_keys) {
       insert_pairs.emplace_back(key, rand_gen());
@@ -225,8 +231,13 @@ private:
 };
 
 
-template<class IndexWrapper, typename KeyType, typename PayloadType>
-void run_benchmark(const bench_config& config, std::vector<std::pair<KeyType, PayloadType>> key_values, Workload workload) {
+template<class IndexWrapper>
+void run_benchmark(const bench_config& config, 
+                   std::vector<std::pair<typename IndexWrapper::KeyType, typename IndexWrapper::PayloadType>> key_values,
+                   Workload workload) {
+  
+    using KeyType = typename IndexWrapper::KeyType;
+    using PayloadType = typename IndexWrapper::PayloadType;
 
     // Create the benchmark instance
     deli_testbed::Benchmark<KeyType, PayloadType> benchmark(key_values);
@@ -242,13 +253,13 @@ void run_benchmark(const bench_config& config, std::vector<std::pair<KeyType, Pa
       double batch_time;
       switch (workload) {
         case LOOKUP_EXISTING: 
-          batch_time = benchmark.template RunWorkload<LOOKUP_EXISTING, IndexWrapper>(index, config.batch_size); 
+          batch_time = benchmark.template RunWorkload<LOOKUP_EXISTING, IndexWrapper>(index, config); 
           break;
         case LOOKUP_IN_DISTRIBUTION: 
-          batch_time = benchmark.template RunWorkload<LOOKUP_IN_DISTRIBUTION, IndexWrapper>(index, config.batch_size); 
+          batch_time = benchmark.template RunWorkload<LOOKUP_IN_DISTRIBUTION, IndexWrapper>(index, config); 
           break;
         case INSERT_IN_DISTRIBUTION: 
-          batch_time = benchmark.template RunWorkload<INSERT_IN_DISTRIBUTION, IndexWrapper>(index, config.batch_size); 
+          batch_time = benchmark.template RunWorkload<INSERT_IN_DISTRIBUTION, IndexWrapper>(index, config); 
           break;
         default: 
           throw std::runtime_error("Workload not implemented");

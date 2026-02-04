@@ -18,6 +18,9 @@ template <typename KEY_TYPE, typename PAYLOAD_TYPE,
           unsigned int high_bits>
 class BenchmarkDeLI {
   public:
+    using KeyType = KEY_TYPE;
+    using PayloadType = PAYLOAD_TYPE;
+
     BenchmarkDeLI() {}
   
     void bulk_load(std::pair<KEY_TYPE, PAYLOAD_TYPE>* values, size_t num_keys) {
@@ -83,15 +86,15 @@ void benchmark_deli(const bench_config& config,
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 2>, KeyType, PayloadType>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 3>, KeyType, PayloadType>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 4>, KeyType, PayloadType>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 5>, KeyType, PayloadType>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 6>, KeyType, PayloadType>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 7>, KeyType, PayloadType>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 8>, KeyType, PayloadType>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 9>, KeyType, PayloadType>(config, key_values, wl);
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 10>, KeyType, PayloadType>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 2>>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 3>>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 4>>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 5>>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 6>>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 7>>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 8>>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 9>>(config, key_values, wl);
+    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 10>>(config, key_values, wl);
   }
 }
 }  // namespace deli_testbed

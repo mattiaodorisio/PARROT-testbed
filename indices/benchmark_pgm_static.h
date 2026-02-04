@@ -13,6 +13,9 @@ namespace deli_testbed {
 template <typename KEY_TYPE, typename PAYLOAD_TYPE, size_t epsilon>
 class BenchmarkStaticPGM {
   public:
+    using KeyType = KEY_TYPE;
+    using PayloadType = PAYLOAD_TYPE;
+
     BenchmarkStaticPGM() : index() {}
 
     void bulk_load(std::pair<KEY_TYPE, PAYLOAD_TYPE>* values, size_t num_keys) {
@@ -64,7 +67,7 @@ void benchmark_pgm_static(const bench_config& config,
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType, 64>, KeyType, PayloadType>(config, key_values, wl);
+    deli_testbed::run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType, 64>>(config, key_values, wl);
   }
 }
 }  // namespace deli_testbed

@@ -54,11 +54,12 @@ void execute(const std::string& keys_file_path,
   // Prepare benchmark config object
   bench_config config {
       out_file,
-      batch_size,
       lookup_distribution,
       time_limit,
+      batch_size,
+      NUM_BATCHES,
       print_batch_stats,
-      NUM_BATCHES
+      clear_cache
   };
   
   for (size_t current_init_key_size = min_size; current_init_key_size <= max_size; current_init_key_size *= 2) {

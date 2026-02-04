@@ -11,11 +11,12 @@ std::mt19937_64 rand_gen(seed);
 
 struct bench_config {
   std::ofstream& out_file;
-  int batch_size;
   const std::string& lookup_distribution;
   double time_limit;
-  bool print_batch_stats;
+  int batch_size;
   int max_batches;
+  bool print_batch_stats;
+  bool clear_cache;
 };
 
 namespace utils {

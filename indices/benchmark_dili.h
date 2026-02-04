@@ -12,8 +12,11 @@ class BenchmarkDILI {
                 "DILI only supports long payloads");
 
   public:
+    using KeyType = KeyType;
+    using PayloadType = PayloadType;
+
     BenchmarkDILI() {}
-  
+
     void bulk_load(std::pair<KeyType, PayloadType>* values, size_t num_keys) {
       // std::sort(values, values + num_keys,
       //           [](auto const& a, auto const& b) { return a.first < b.first; });
