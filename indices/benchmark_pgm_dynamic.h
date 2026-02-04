@@ -48,6 +48,10 @@ class BenchmarkDynamicPGM {
       return std::to_string(epsilon);
     }
 
+    bool applicable(const std::string& data_filename) {
+      return true;
+    }
+
   private:
     std::vector<KEY_TYPE> data;
     pgm::DynamicPGMIndex<KEY_TYPE, PAYLOAD_TYPE, pgm::PGMIndex<KEY_TYPE, epsilon>> index;

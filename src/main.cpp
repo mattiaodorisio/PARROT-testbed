@@ -11,6 +11,7 @@
 #include "../indices/benchmark_deli.h"
 #include "../indices/benchmark_pgm_static.h"
 #include "../indices/benchmark_pgm_dynamic.h"
+#include "../indices/benchmark_rs.h"
 
 #include <iomanip>
 #include <fstream>
@@ -49,17 +50,18 @@ void execute(const std::string& keys_file_path,
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
   // Define index types and names
-  std::vector<std::string> index_names = {"ALEX", "LIPP", "DeLI", "PGM-Static", "PGM-Dynamic"};
+  std::vector<std::string> index_names = {"ALEX", "LIPP", "RS", /*"DeLI",*/ "PGM-Static", "PGM-Dynamic"};
 
   // Prepare benchmark config object
   bench_config config {
-      out_file,
-      lookup_distribution,
-      time_limit,
-      batch_size,
-      NUM_BATCHES,
-      print_batch_stats,
-      clear_cache
+      out_file: out_file,
+      data_filename: keys_file_path,
+      lookup_distribution: lookup_distribution,
+      time_limit: time_limit,
+      batch_size: batch_size,
+      max_batches: NUM_BATCHES,
+      print_batch_stats: print_batch_stats,
+      clear_cache: clear_cache
   };
   
   for (size_t current_init_key_size = min_size; current_init_key_size <= max_size; current_init_key_size *= 2) {
@@ -84,6 +86,9 @@ void execute(const std::string& keys_file_path,
       }
       else if (index_name == "LIPP") {
         deli_testbed::benchmark_lipp<KeyType, PayloadType>(config, key_values);
+      }
+      else if (index_name == "RS") {
+        deli_testbed::benchmark_rs<KeyType, PayloadType>(config, key_keys);
       }
       else if (index_name == "DeLI") {
         deli_testbed::benchmark_deli<KeyType, PayloadType>(config, key_keys);

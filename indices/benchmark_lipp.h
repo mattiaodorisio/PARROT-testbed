@@ -40,6 +40,10 @@ class BenchmarkLIPP {
       return "none";
     }
 
+    bool applicable(const std::string& data_filename) {
+      return true;
+    }
+
   private:
       LIPP<KEY_TYPE, PAYLOAD_TYPE> index;
 };

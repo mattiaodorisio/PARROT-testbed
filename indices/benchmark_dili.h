@@ -46,6 +46,10 @@ class BenchmarkDILI {
     static std::vector<Workload> supported_workloads() {
       return {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION};
     }
+
+    bool applicable(const std::string& data_filename) {
+      return false;
+    }
   
   private:
     DILI index;

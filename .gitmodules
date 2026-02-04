@@ -10,3 +10,6 @@
 [submodule "indices/PGM-index"]
 	path = indices/PGM-index
 	url = https://github.com/gvinciguerra/PGM-index.git
+[submodule "indices/RadixSpline"]
+	path = indices/RadixSpline
+	url = https://github.com/learnedsystems/RadixSpline.git

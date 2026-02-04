@@ -244,6 +244,11 @@ void run_benchmark(const bench_config& config,
     
     // Create the index and bulk load initial keys
     IndexWrapper index;
+
+    if (!index.applicable(config.data_filename)) {
+      return;
+    }
+
     benchmark.BulkLoad(index);
 
     // Run workload

@@ -41,6 +41,10 @@ class BenchmarkALEX {
       return "none";
     }
 
+    bool applicable(const std::string& data_filename) {
+      return true;
+    }
+
   private:
     alex::Alex<KEY_TYPE, PAYLOAD_TYPE> index;
 };

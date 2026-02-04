@@ -75,6 +75,10 @@ class BenchmarkDeLI {
       return ss.str();
     }
 
+    bool applicable(const std::string& data_filename) {
+      return true;
+    }
+
   private:
     std::vector<std::pair<KEY_TYPE, PAYLOAD_TYPE>> data;
     DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, T, high_bits> index;

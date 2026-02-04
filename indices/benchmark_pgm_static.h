@@ -56,6 +56,10 @@ class BenchmarkStaticPGM {
       return std::to_string(epsilon);
     }
 
+    bool applicable(const std::string& data_filename) {
+      return true;
+    }
+
   private:
     std::vector<KEY_TYPE> keys;
     pgm::PGMIndex<KEY_TYPE, epsilon> index;
