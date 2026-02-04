@@ -36,14 +36,15 @@ void execute(const std::string& keys_file_path,
              const std::string& lookup_distribution,
              double time_limit,
              bool print_batch_stats,
-             std::ofstream& out_file) {
+             std::ofstream& out_file,
+             bool clear_cache) {
 
   // Read keys from file
-  std::vector<KeyType> keys = load_binary_data<KeyType>(keys_file_path);
+  std::vector<KeyType> keys = utils::load_binary_data<KeyType>(keys_file_path);
 
   // Generate exponentially increasing init_num_keys sizes
-  constexpr size_t min_size = 1 << 15;   // Starting size
-  constexpr size_t max_size = 1 << 18;  // Maximum size
+  constexpr size_t min_size = 1 << 8;   // Starting size
+  constexpr size_t max_size = 1 << 20;  // Maximum size
   
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
@@ -84,10 +85,10 @@ void execute(const std::string& keys_file_path,
         deli_testbed::benchmark_lipp<KeyType, PayloadType>(config, key_values);
       }
       else if (index_name == "DeLI") {
-        deli_testbed::benchmark_deli<KeyType, PayloadType>(config, key_values);
+        deli_testbed::benchmark_deli<KeyType, PayloadType>(config, key_keys);
       }
       else if (index_name == "PGM-Static") {
-        deli_testbed::benchmark_pgm_static<KeyType, PayloadType>(config, key_values);
+        deli_testbed::benchmark_pgm_static<KeyType, PayloadType>(config, key_keys);
       }
       else if (index_name == "PGM-Dynamic") {
         deli_testbed::benchmark_pgm_dynamic<KeyType, PayloadType>(config, key_values);
@@ -109,15 +110,17 @@ void execute(const std::string& keys_file_path,
  * --lookup_distribution    lookup keys distribution (options: uniform or zipf)
  * --time_limit             time limit, in minutes
  * --print_batch_stats      whether to output stats for each batch
+ * --clear_cache            whether to clear cache before each batch
  */
 int main(int argc, char* argv[]) {
   auto flags = parse_flags(argc, argv);
   std::string keys_file_path = get_required(flags, "keys_file");
   auto batch_size = stoi(get_required(flags, "batch_size"));
+  std::string output_folder = get_required(flags, "output_folder");
   std::string lookup_distribution = get_with_default(flags, "lookup_distribution", "uniform");
   auto time_limit = stod(get_with_default(flags, "time_limit", "0.5"));
   bool print_batch_stats = get_boolean_flag(flags, "print_batch_stats");
-  std::string output_folder = get_required(flags, "output_folder");
+  bool clear_cache = get_boolean_flag(flags, "clear_cache");
 
   // Check if input file does exist
   {
@@ -161,9 +164,9 @@ int main(int argc, char* argv[]) {
 
   // Call execute with appropriate key type based on filename suffix
   if (keys_file_path.ends_with("_uint32")) {
-    execute<uint32_t, uint32_t>(keys_file_path, batch_size, lookup_distribution, time_limit, print_batch_stats, out_file);
+    execute<uint32_t, uint32_t>(keys_file_path, batch_size, lookup_distribution, time_limit, print_batch_stats, out_file, clear_cache);
   } else if (keys_file_path.ends_with("_uint64")) {
-    execute<uint64_t, uint64_t>(keys_file_path, batch_size, lookup_distribution, time_limit, print_batch_stats, out_file);
+    execute<uint64_t, uint64_t>(keys_file_path, batch_size, lookup_distribution, time_limit, print_batch_stats, out_file, clear_cache);
   } else {
     throw std::runtime_error("Unsupported key type in filename. Expected suffixes: _uint32 or _uint64");
   }

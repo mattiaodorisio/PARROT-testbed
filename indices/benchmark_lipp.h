@@ -17,7 +17,7 @@ class BenchmarkLIPP {
       index.bulk_load(values, num_keys);
     }
   
-    PAYLOAD_TYPE lower_bound(const KEY_TYPE& key) {
+    PAYLOAD_TYPE lower_bound(const KEY_TYPE key) {
       return index.at(key);
     }
   
@@ -36,7 +36,7 @@ class BenchmarkLIPP {
     static std::string variant() {
       return "none";
     }
-    
+
   private:
       LIPP<KEY_TYPE, PAYLOAD_TYPE> index;
 };

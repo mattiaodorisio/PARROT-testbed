@@ -6,7 +6,8 @@
 #include <random>
 #include "zipf.h"
 
-std::mt19937_64 rand_gen(std::random_device{}());
+static constexpr uint64_t seed = 123456789;
+std::mt19937_64 rand_gen(seed);
 
 struct bench_config {
   std::ofstream& out_file;
@@ -16,6 +17,8 @@ struct bench_config {
   bool print_batch_stats;
   int max_batches;
 };
+
+namespace utils {
 
 // Loads values from binary file into vector.
 template <typename T>
@@ -57,12 +60,11 @@ bool load_text_data(T array[], int length, const std::string& file_path) {
 template <class RandomIt>
 std::vector<typename std::iterator_traits<RandomIt>::value_type> get_existing_keys(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
   using T = typename std::iterator_traits<RandomIt>::value_type;
-  std::mt19937_64 gen(std::random_device{}());
   std::uniform_int_distribution<int> dis(0, std::distance(data_begin, data_end) - 1);
   std::vector<T> data_sample;
   data_sample.reserve(num_searches);
   for (int i = 0; i < num_searches; i++) {
-    int pos = dis(gen);
+    int pos = dis(rand_gen);
     data_sample.push_back(data_begin[pos]);
   }
   return data_sample;
@@ -73,7 +75,6 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existin
   using T = typename std::iterator_traits<RandomIt>::value_type;
   auto [min_it, max_it] = std::minmax_element(data_begin, data_end);
   T min_ = *min_it, max_ = *max_it;
-  std::mt19937_64 gen(std::random_device{}());
   std::uniform_int_distribution<T> dis(min_, max_);
   std::unordered_set<T> existing_keys(data_begin, data_end);
   std::vector<T> data_sample;
@@ -81,7 +82,7 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existin
   int attempts = 0;
   int increases = 0;
   while (data_sample.size() < num_searches) {
-    T key = dis(gen);
+    T key = dis(rand_gen);
     if (existing_keys.find(key) == existing_keys.end()) {
       data_sample.push_back(key);
       existing_keys.insert(key);
@@ -112,3 +113,13 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_existing_ke
   }
   return data_sample;
 }
+
+uint64_t timing(std::function<void()> fn) {
+  const auto start = std::chrono::high_resolution_clock::now();
+  fn();
+  const auto end = std::chrono::high_resolution_clock::now();
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
+          .count();
+}
+
+}  // namespace utils

@@ -17,8 +17,9 @@ class BenchmarkALEX {
       index.bulk_load(values, num_keys);
     }
   
-    PAYLOAD_TYPE lower_bound(const KEY_TYPE& key) {
-      return index.lower_bound(key) == index.end() ? PAYLOAD_TYPE{} : index.lower_bound(key).payload();
+    PAYLOAD_TYPE lower_bound(const KEY_TYPE key) {
+      auto it = index.lower_bound(key);
+      return it == index.cend() ? PAYLOAD_TYPE{} : it.payload();
     }
   
     void insert(const KEY_TYPE& key, const PAYLOAD_TYPE& payload) {

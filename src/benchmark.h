@@ -38,12 +38,8 @@ std::string workload_name(Workload workload) {
 template <typename KeyType, typename PayloadType>
 class Benchmark {
  public:
-  Benchmark(std::vector<std::pair<KeyType, PayloadType>>& key_values,
-            const size_t num_repeats = 1)
-      : key_values_(key_values),
-        num_repeats_(num_repeats),
-        first_run_(true) {
-  }
+  Benchmark(std::vector<std::pair<KeyType, PayloadType>>& key_values)
+      : key_values_(key_values) {}
 
   template <class Index>
   void BulkLoad(Index& index) {
@@ -91,54 +87,123 @@ class Benchmark {
   double DoLookupExisting(Index& index, size_t batch_size) {
     // Get existing keys from the dataset
     std::vector<std::pair<KeyType, PayloadType>> lookup_pairs = 
-        get_existing_keys(key_values_.begin(), key_values_.end(), batch_size);
+        utils::get_existing_keys(key_values_.begin(), key_values_.end(), batch_size);
 
-    auto start_time = std::chrono::high_resolution_clock::now();
-    for (const auto& [key, expected] : lookup_pairs) {
-      auto result = index.lower_bound(key);
-      // Prevent optimization
-      volatile auto dummy = result;
-      (void)dummy;
-    }
-    auto end_time = std::chrono::high_resolution_clock::now();
-    
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+    return DoEqualityLookups<Index, false, true>(index, lookup_pairs);
   }
 
   template <class Index>
   double DoLookupInDistribution(Index& index, size_t batch_size) {
-    auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
-    std::vector<KeyType> lookup_keys = get_non_existing_keys(keys.begin(), keys.end(), batch_size);
-
-    /* TODO: this is needed for checks
-    std::vector<std::pair<KeyType, PayloadType>> lookup_pairs(lookup_keys.size());
-    for (size_t i = 0; i < lookup_keys.size(); i++) {
-      auto expected_payload_it = std::lower_bound(
-          key_values_.begin(), key_values_.end(), lookup_keys[i],
-          [](auto const& a, auto const& b) { return a.first < b; });
-      PayloadType expected_payload = (expected_payload_it != key_values_.end()) ? expected_payload_it->second : PayloadType{};
-      lookup_pairs[i] = {lookup_keys[i], expected_payload};
-    }
-    */
-
-    auto start_time = std::chrono::high_resolution_clock::now();
-    for (const auto& key : lookup_keys) {
-      auto result = index.lower_bound(key);
-      // Prevent optimization
-      volatile auto dummy = result;
-      (void)dummy;
-
-      // TODO: introduce version with checks here...
-    }
-    auto end_time = std::chrono::high_resolution_clock::now();
+    std::vector<std::pair<KeyType, PayloadType>> lookup_pairs;
     
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+    // Prepare the lookup pair vector
+    {
+      auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
+      std::vector<KeyType> lookup_keys = utils::get_non_existing_keys(keys.begin(), keys.end(), batch_size);
+
+      lookup_pairs.reserve(lookup_keys.size());
+      for (const auto& key : lookup_keys) {
+        auto expected_payload_it = std::lower_bound(key_values_.begin(), key_values_.end(), key,
+          [](const auto& pair, const KeyType& k) { return pair.first < k; });
+        PayloadType expected_payload = (expected_payload_it != key_values_.end()) ? expected_payload_it->second : PayloadType{};
+        lookup_pairs.emplace_back(key, expected_payload);
+      }
+    }
+    
+    return DoEqualityLookups<Index, false, true>(index, lookup_pairs);
+  }
+
+private:
+  bool CheckResults(PayloadType actual, PayloadType expected, KeyType lookup_key) {
+    if (actual != expected) {
+       // TODO: Check if further cheks are needed here
+
+      std::cerr << "equality lookup returned wrong result:" << std::endl;
+      std::cerr << "lookup key: " << lookup_key << std::endl;
+      std::cerr << "actual: " << actual << ", expected: " << expected
+                << std::endl;
+
+      return false;
+    }
+
+    return true;
+  }
+
+  template <class Index, bool fence, bool clear_cache>
+  uint64_t DoEqualityLookups(Index& index, std::vector<std::pair<KeyType, PayloadType>>& lookups_) {
+    bool run_failed = false;
+
+    if constexpr (clear_cache) std::cout << "rsum was: " << random_sum_ << std::endl;
+
+    random_sum_ = 0;
+    individual_ns_sum_ = 0;
+
+    uint64_t ns = utils::timing([&] {
+      DoEqualityLookupsCoreLoop<Index, fence, clear_cache>(
+          index, run_failed, lookups_);
+    });
+
+    if constexpr (clear_cache) {
+      ns = individual_ns_sum_;
+    }
+
+    if (run_failed) {
+      return std::numeric_limits<uint64_t>::max();
+    }
+
+    return ns;
+  }
+
+  template <class Index, bool fence, bool clear_cache>
+  void DoEqualityLookupsCoreLoop(Index& index, bool& run_failed,
+                                 std::vector<std::pair<KeyType, PayloadType>>& lookups_) {
+    size_t qualifying;
+    uint64_t result;
+
+    for (unsigned int idx = 0; idx < lookups_.size(); ++idx) {
+      // Compute the actual index for debugging.
+      const volatile KeyType lookup_key = lookups_[idx].first;
+      const volatile PayloadType expected = lookups_[idx].second;
+
+      if constexpr (clear_cache) {
+        // Make sure that all cache lines from large buffer are loaded
+        for (uint64_t& iter : memory_) {
+          random_sum_ += iter;
+        }
+        _mm_mfence();
+
+        const auto start = std::chrono::high_resolution_clock::now();
+        const auto lb = index.lower_bound(lookup_key);
+        if (!CheckResults(lb, expected, lookup_key)) {
+          run_failed = true;
+          return;
+        }
+        const auto end = std::chrono::high_resolution_clock::now();
+
+        const auto timing =
+            std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
+                .count();
+        individual_ns_sum_ += timing;
+
+      } else {
+        // Not tracking errors, measure the lookup time.
+        const auto lb = index.lower_bound(lookup_key);
+        if (!CheckResults(lb, expected, lookup_key)) {
+          run_failed = true;
+          return;
+        }
+        volatile auto dummy = lb;
+        (void)dummy;
+      }
+
+      if constexpr (fence) __sync_synchronize();
+    }
   }
 
   template <class Index>
   double DoInsertInDistribution(Index& index, size_t batch_size) {
     auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
-    std::vector<KeyType> insert_keys = get_non_existing_keys(keys.begin(), keys.end(), batch_size);
+    std::vector<KeyType> insert_keys = utils::get_non_existing_keys(keys.begin(), keys.end(), batch_size);
     std::vector<std::pair<KeyType, PayloadType>> insert_pairs;
     for (const auto& key : insert_keys) {
       insert_pairs.emplace_back(key, rand_gen());
@@ -154,8 +219,9 @@ class Benchmark {
   }
 
   std::vector<std::pair<KeyType, PayloadType>>& key_values_;
-  size_t num_repeats_;
-  bool first_run_;
+  uint64_t random_sum_ = 0;
+  uint64_t individual_ns_sum_ = 0;
+  std::vector<uint64_t> memory_;  // Some memory used to flush the cache
 };
 
 

@@ -28,7 +28,7 @@ class BenchmarkDILI {
       // index.bulk_load(dili_values);
     }
   
-    PayloadType lower_bound(const KeyType& key) {
+    PayloadType lower_bound(const KeyType key) {
       return index.search(key);
     }
   

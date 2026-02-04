@@ -31,7 +31,7 @@ class BenchmarkDeLI {
       index.bulk_load(keys.begin(), keys.end());
     }
   
-    PAYLOAD_TYPE lower_bound(const KEY_TYPE& key) {
+    PAYLOAD_TYPE lower_bound(const KEY_TYPE key) {
       auto res = index.find_next(key);
       return res ? res.value() : PAYLOAD_TYPE{};
     }
@@ -83,14 +83,14 @@ void benchmark_deli(const bench_config& config,
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 2>, KeyType, PayloadType>(config, key_values, wl);
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 3>, KeyType, PayloadType>(config, key_values, wl);
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 4>, KeyType, PayloadType>(config, key_values, wl);
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 5>, KeyType, PayloadType>(config, key_values, wl);
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 6>, KeyType, PayloadType>(config, key_values, wl);
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 7>, KeyType, PayloadType>(config, key_values, wl);
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 8>, KeyType, PayloadType>(config, key_values, wl);
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 9>, KeyType, PayloadType>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 2>, KeyType, PayloadType>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 3>, KeyType, PayloadType>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 4>, KeyType, PayloadType>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 5>, KeyType, PayloadType>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 6>, KeyType, PayloadType>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 7>, KeyType, PayloadType>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 8>, KeyType, PayloadType>(config, key_values, wl);
+    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 9>, KeyType, PayloadType>(config, key_values, wl);
     deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 10>, KeyType, PayloadType>(config, key_values, wl);
   }
 }

@@ -24,7 +24,7 @@ class BenchmarkDynamicPGM {
       new (&index) decltype(index)(values, values + num_keys);
     }
 
-    PAYLOAD_TYPE lower_bound(const KEY_TYPE& key) {
+    PAYLOAD_TYPE lower_bound(const KEY_TYPE key) {
       auto lower_bound_it = index.lower_bound(key);
       return lower_bound_it != index.end() ? lower_bound_it->second : PAYLOAD_TYPE{};
     }
@@ -54,7 +54,7 @@ template <typename KeyType, typename PayloadType>
 void benchmark_pgm_dynamic(const bench_config& config, 
                            std::vector<std::pair<KeyType, PayloadType>> key_values) {
 
-  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION };
+  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, INSERT_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 16>, KeyType, PayloadType>(config, key_values, wl);
   }

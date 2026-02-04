@@ -24,11 +24,12 @@ class BenchmarkStaticPGM {
       index = pgm::PGMIndex<KEY_TYPE>(keys.begin(), keys.end());
     }
 
-    PAYLOAD_TYPE lower_bound(const KEY_TYPE& key) {
+    PAYLOAD_TYPE lower_bound(const KEY_TYPE key) {
       auto approx_pos = index.search(key);
       // Last mile search
-      auto it = std::lower_bound(keys.begin() + approx_pos.lo, keys.begin() + approx_pos.hi, key);
-      if (it != keys.begin() + approx_pos.hi) {
+      size_t end_limit = std::min(approx_pos.hi + 1, keys.size());
+      auto it = std::lower_bound(keys.begin() + approx_pos.lo, keys.begin() + end_limit, key);
+      if (it != keys.begin() + end_limit) {
         size_t index = std::distance(keys.begin(), it);
         return keys[index];
       } else {

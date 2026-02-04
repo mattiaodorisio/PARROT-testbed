@@ -6,6 +6,8 @@ if [ ! -f "CMakeLists.txt" ]; then
   exit 1
 fi
 
+set -e
+
 mkdir -p build results
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
