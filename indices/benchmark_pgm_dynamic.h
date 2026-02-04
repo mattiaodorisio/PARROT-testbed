@@ -61,6 +61,13 @@ template <typename KeyType, typename PayloadType>
 void benchmark_pgm_dynamic(const bench_config& config, 
                            std::vector<std::pair<KeyType, PayloadType>> key_values) {
 
+  // Check for sentinel value
+  constexpr KeyType sentinel = std::numeric_limits<KeyType>::has_infinity ? std::numeric_limits<KeyType>::infinity()
+                                                                          : std::numeric_limits<KeyType>::max();
+  if (std::any_of(key_values.begin(), key_values.end(), [sentinel](const auto& kv) { return kv.first == sentinel; })) {
+    return;
+  }
+
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, INSERT_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 16>>(config, key_values, wl);

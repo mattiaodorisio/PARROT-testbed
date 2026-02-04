@@ -17,7 +17,9 @@ make -j$(nproc)
 for file in ../data/*; do
     echo "Running benchmark for $file"
     ./deLi_testbed --keys_file=$file --batch_size=100000 --output_folder=../results --print_batch_stats
-    break
 done
+
+cd ../plotter
+./plot.py --output plots.tex ../results/
 
 cd ..

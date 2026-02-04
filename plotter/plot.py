@@ -18,6 +18,8 @@ import sys
 from typing import Dict, List, Tuple, Optional
 import argparse
 import statistics
+import glob
+from datetime import datetime
 
 
 def parse_filter(filter_str: str) -> Optional[List[Tuple[str, str]]]:
@@ -459,10 +461,97 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
     return result_content
 
 
+def find_benchmark_files(directory_path: str) -> Dict[str, str]:
+    """
+    Find benchmark files in directory and return the most recent file for each dataset.
+    
+    Args:
+        directory_path (str): Path to directory containing benchmark files
+        
+    Returns:
+        Dict[str, str]: Mapping of dataset_name -> most_recent_file_path
+    """
+    # Pattern: benchmark_<dataset_name>_<timestamp>.txt
+    pattern = os.path.join(directory_path, 'benchmark_*_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9].txt')
+    
+    # Find all matching files
+    matching_files = glob.glob(pattern)
+    
+    if not matching_files:
+        raise ValueError(f"No benchmark files found in {directory_path} matching pattern benchmark_*_YYYYMMDD_HHMMSS.txt")
+    
+    # Group files by dataset name
+    dataset_files = {}
+    
+    for file_path in matching_files:
+        filename = os.path.basename(file_path)
+        
+        # Extract dataset name and timestamp
+        # Pattern: benchmark_<dataset_name>_<YYYYMMDD_HHMMSS>.txt
+        match = re.match(r'^benchmark_(.+)_(\d{8}_\d{6})\.txt$', filename)
+        
+        if match:
+            dataset_name = match.group(1)
+            timestamp_str = match.group(2)
+            
+            # Parse timestamp for comparison
+            try:
+                timestamp = datetime.strptime(timestamp_str, '%Y%m%d_%H%M%S')
+            except ValueError:
+                print(f"Warning: Could not parse timestamp from {filename}, skipping")
+                continue
+            
+            # Keep track of most recent file for each dataset
+            if dataset_name not in dataset_files or timestamp > dataset_files[dataset_name][1]:
+                dataset_files[dataset_name] = (file_path, timestamp)
+    
+    # Extract just the file paths (most recent for each dataset)
+    result = {dataset_name: file_info[0] for dataset_name, file_info in dataset_files.items()}
+    
+    print(f"Found {len(matching_files)} benchmark files, {len(result)} unique datasets")
+    for dataset_name, file_path in result.items():
+        print(f"  {dataset_name}: {os.path.basename(file_path)}")
+    
+    return result
+
+
+def parse_multiple_benchmark_logs(dataset_files: Dict[str, str]) -> List[Dict]:
+    """
+    Parse multiple benchmark log files and combine the data with dataset names.
+    
+    Args:
+        dataset_files (Dict[str, str]): Mapping of dataset_name -> file_path
+        
+    Returns:
+        List[Dict]: Combined benchmark data with dataset_name field added
+    """
+    all_data = []
+    
+    for dataset_name, file_path in dataset_files.items():
+        print(f"\nParsing {dataset_name}: {file_path}")
+        
+        try:
+            # Parse individual file
+            file_data = parse_benchmark_log(file_path)
+            
+            # Add dataset_name field to each row
+            for row in file_data:
+                row['dataset_name'] = dataset_name
+            
+            all_data.extend(file_data)
+            print(f"Added {len(file_data)} records from {dataset_name}")
+            
+        except Exception as e:
+            print(f"Error parsing {file_path}: {e}")
+            continue
+    
+    return all_data
+
+
 def main():
     """Main function to parse arguments and execute the plotting workflow."""
     parser = argparse.ArgumentParser(description='Generate LaTeX plots from benchmark logs')
-    parser.add_argument('log_file', help='Path to benchmark log file')
+    parser.add_argument('input_path', help='Path to directory containing benchmark log files, or single benchmark log file')
     parser.add_argument('--multiplot-template', help='Path to multiplot template file')
     parser.add_argument('--figure-template', help='Path to figure template file (for individual figures)')
     parser.add_argument('--output', help='Output LaTeX file path', 
@@ -471,12 +560,33 @@ def main():
     args = parser.parse_args()
     
     try:
-        # Parse benchmark log
-        data = parse_benchmark_log(args.log_file)
+        # Check if input is a directory or file
+        if os.path.isdir(args.input_path):
+            # Directory mode: find and parse multiple benchmark files
+            dataset_files = find_benchmark_files(args.input_path)
+            if not dataset_files:
+                raise ValueError(f"No benchmark files found in directory {args.input_path}")
+            data = parse_multiple_benchmark_logs(dataset_files)
+        elif os.path.isfile(args.input_path):
+            # Single file mode: parse single benchmark log (backward compatibility)
+            print(f"Single file mode: {args.input_path}")
+            data = parse_benchmark_log(args.input_path)
+            # For single file mode, try to extract dataset name from filename if possible
+            filename = os.path.basename(args.input_path)
+            match = re.match(r'^benchmark_(.+)_(\d{8}_\d{6})\.txt$', filename)
+            if match:
+                dataset_name = match.group(1)
+                for row in data:
+                    row['dataset_name'] = dataset_name
+                print(f"Extracted dataset name: {dataset_name}")
+        else:
+            raise ValueError(f"Input path {args.input_path} is neither a file nor a directory")
         
         # Print summary statistics
         print("\n=== Benchmark Summary ===")
         indices = set(row.get('index_name', 'Unknown') for row in data)
+        datasets = set(row.get('dataset_name', 'Unknown') for row in data)
+        print(f"Datasets: {', '.join(sorted(datasets))}")
         print(f"Indices tested: {', '.join(sorted(indices))}")
         print(f"Total records: {len(data)}")
         
