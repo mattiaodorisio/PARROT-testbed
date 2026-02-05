@@ -99,6 +99,44 @@ void benchmark_deli(const bench_config& config,
     // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 8>>(config, key_values, wl);
     // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 9>>(config, key_values, wl);
     deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 10>>(config, key_values, wl);
+
+    // Define high_bits
+    /////////// This works with one parameter
+    // constexpr auto high_bits = std::make_integer_sequence<unsigned int, 11>{};
+
+    // if (config.pareto) {
+    //   auto run_pareto = []<unsigned int... bits>(std::integer_sequence<unsigned int, bits...>, const bench_config& cfg, const std::vector<std::pair<KeyType, PayloadType>>& kv, Workload workload) {
+    //     (deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, bits>>(cfg, kv, workload), ...);
+    //   };
+    //   run_pareto(high_bits, config, key_values, wl);
+    // }
+    /////////// End with one parameter
+    
+    if (config.pareto) {
+      constexpr auto high_bits = std::make_integer_sequence<unsigned int, 11>{};
+      constexpr auto load_balance = std::integer_sequence<size_t, 40, 60, 80>{};
+      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2, 4>{};
+    
+      auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled>(
+          std::integer_sequence<unsigned int, bits...>, 
+          std::integer_sequence<size_t, loads...>, 
+          std::integer_sequence<size_t, simd_unrolled...>,
+          const bench_config& cfg, 
+          const std::vector<std::pair<KeyType, PayloadType>>& kv, 
+          Workload workload) {
+        // Helper lambda to run all loads and simd_unrolled for a fixed bits value
+        auto run_for_bits = [&]<unsigned int B>() {
+          // Helper lambda to run all simd_unrolled for fixed bits and loads values
+          auto run_for_loads = [&]<size_t L>() {
+            (deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, simd_unrolled, L, DeLI::TopLevelOptimization::none, KeyType, B>>(cfg, kv, workload), ...);
+          };
+          (run_for_loads.template operator()<loads>(), ...);
+        };
+        // Run for all bits values
+        (run_for_bits.template operator()<bits>(), ...);
+      };
+      run_pareto(high_bits, load_balance, rht_simd_unrolled, config, key_values, wl);
+    }
   }
 }
 }  // namespace deli_testbed
