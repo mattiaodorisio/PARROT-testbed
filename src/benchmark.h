@@ -55,6 +55,7 @@ class Benchmark {
                    const std::string& lookup_distribution, double batch_time,
                    std::ofstream& out_file) {
     
+    bool error = (batch_time == std::numeric_limits<uint64_t>::max());
     double batch_overall_throughput = (batch_time > 0) ? (batch_operations / batch_time * 1e9) : 0.0;
 
     // Log results in the same format as main.cpp
@@ -66,12 +67,12 @@ class Benchmark {
             << "init_num_keys=" << init_num_keys << " "
             << "batch_operations=" << batch_operations << " "
             << "lookup_distribution=" << lookup_distribution << " "
-            << std::fixed << std::setprecision(2) << "throughput=" << batch_overall_throughput << " "
-            << std::fixed << std::setprecision(6) << "total_time=" << batch_time / 1e9 << std::endl;
+            << std::fixed << std::setprecision(2) << "throughput=" << (!error ? std::to_string(batch_overall_throughput) : "error") << " "
+            << std::fixed << std::setprecision(6) << "total_time=" << (!error ? std::to_string(1.0 * batch_time / 1e9) : "error") << std::endl;
   }
 
   template <Workload W, class Index>
-  double RunWorkload(Index& index, const bench_config& config) {
+  uint64_t RunWorkload(Index& index, const bench_config& config) {
     if constexpr (W == LOOKUP_EXISTING) {
       return DoLookupExisting(index, config);
     } else if constexpr (W == LOOKUP_IN_DISTRIBUTION) {
@@ -79,12 +80,12 @@ class Benchmark {
     } else if constexpr (W == INSERT_IN_DISTRIBUTION) {
       return DoInsertInDistribution(index, config);
     }
-    return 0.0;
+    return 0;
   }
 
   private:
   template <class Index>
-  double DoLookupExisting(Index& index, const bench_config& config) {
+  uint64_t DoLookupExisting(Index& index, const bench_config& config) {
     // Get existing keys from the dataset
     std::vector<std::pair<KeyType, PayloadType>> lookup_pairs = 
         utils::get_existing_keys(key_values_.begin(), key_values_.end(), config.batch_size);
@@ -96,13 +97,25 @@ class Benchmark {
   }
 
   template <class Index>
-  double DoLookupInDistribution(Index& index, const bench_config& config) {
+  uint64_t DoLookupInDistribution(Index& index, const bench_config& config) {
     std::vector<std::pair<KeyType, PayloadType>> lookup_pairs;
     
     // Prepare the lookup pair vector
     {
       auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
-      std::vector<KeyType> lookup_keys = utils::get_non_existing_keys(keys.begin(), keys.end(), config.batch_size);
+      std::vector<KeyType> lookup_keys = utils::get_non_existing_keys_in_distribution(keys.begin(), keys.end(), config.batch_size);
+
+      if (lookup_keys.size() < config.batch_size) {
+        // existing keys are the ones in keys and in insert_keys
+        std::vector<KeyType> existing_keys;
+        existing_keys.reserve(keys.size() + lookup_keys.size());
+        existing_keys.insert(existing_keys.end(), keys.begin(), keys.end());
+        existing_keys.insert(existing_keys.end(), lookup_keys.begin(), lookup_keys.end());
+
+        std::vector<KeyType> extra_keys =
+            utils::get_non_existing_keys(existing_keys.begin(), existing_keys.end(), config.batch_size - lookup_keys.size());
+        lookup_keys.insert(lookup_keys.end(), extra_keys.begin(), extra_keys.end());
+      }
 
       lookup_pairs.reserve(lookup_keys.size());
       for (const auto& key : lookup_keys) {
@@ -178,17 +191,16 @@ private:
         }
         _mm_mfence();
 
-        const auto start = std::chrono::high_resolution_clock::now();
-        const auto lb = index.lower_bound(lookup_key);
+        PayloadType lb;
+        const auto timing = utils::timing([&] {
+          lb = index.lower_bound(lookup_key);
+        });
+
         if (!CheckResults(lb, expected, lookup_key)) {
           run_failed = true;
           return;
         }
-        const auto end = std::chrono::high_resolution_clock::now();
 
-        const auto timing =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
-                .count();
         individual_ns_sum_ += timing;
 
       } else {
@@ -207,21 +219,32 @@ private:
   }
 
   template <class Index>
-  double DoInsertInDistribution(Index& index, const bench_config& config) {
+  uint64_t DoInsertInDistribution(Index& index, const bench_config& config) {
     auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
-    std::vector<KeyType> insert_keys = utils::get_non_existing_keys(keys.begin(), keys.end(), config.batch_size);
+    std::vector<KeyType> insert_keys = utils::get_non_existing_keys_in_distribution(keys.begin(), keys.end(), config.batch_size);
+
+    if (insert_keys.size() < config.batch_size) {
+      // existing keys are the ones in keys and in insert_keys
+      std::vector<KeyType> existing_keys;
+      existing_keys.reserve(keys.size() + insert_keys.size());
+      existing_keys.insert(existing_keys.end(), keys.begin(), keys.end());
+      existing_keys.insert(existing_keys.end(), insert_keys.begin(), insert_keys.end());
+
+      std::vector<KeyType> extra_keys =
+          utils::get_non_existing_keys(existing_keys.begin(), existing_keys.end(), config.batch_size - insert_keys.size());
+      insert_keys.insert(insert_keys.end(), extra_keys.begin(), extra_keys.end());
+    }
+    
     std::vector<std::pair<KeyType, PayloadType>> insert_pairs;
     for (const auto& key : insert_keys) {
       insert_pairs.emplace_back(key, rand_gen());
     }
     
-    auto start_time = std::chrono::high_resolution_clock::now();
-    for (const auto& [key, payload] : insert_pairs) {
-      index.insert(key, payload);
-    }
-    auto end_time = std::chrono::high_resolution_clock::now();
-    
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+    return utils::timing([&] {
+      for (const auto& [key, payload] : insert_pairs) {
+        index.insert(key, payload);
+      }
+    });
   }
 
   std::vector<std::pair<KeyType, PayloadType>>& key_values_;
@@ -255,7 +278,7 @@ void run_benchmark(const bench_config& config,
     auto batch_start_time = std::chrono::high_resolution_clock::now();
 
     for (int batch_no = 0; batch_no < config.max_batches; ++batch_no) {
-      double batch_time;
+      uint64_t batch_time;
       switch (workload) {
         case LOOKUP_EXISTING: 
           batch_time = benchmark.template RunWorkload<LOOKUP_EXISTING, IndexWrapper>(index, config); 

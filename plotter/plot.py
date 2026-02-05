@@ -257,8 +257,12 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
         
         # Sort each group data by x_col and create plot lines
         for group_value, group_data in sorted(groups.items()):
-            # Filter out rows that don't have the required columns
-            valid_data = [row for row in group_data if x_col in row and y_col in row]
+            # Filter out rows that don't have the required columns or have invalid values
+            valid_data = [
+                row for row in group_data 
+                if x_col in row and y_col in row 
+                and is_valid_plot_value(row[x_col]) and is_valid_plot_value(row[y_col])
+            ]
             if not valid_data:
                 continue
                 
@@ -279,7 +283,11 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
     
     else:
         # No grouping, plot all data as a single series
-        valid_data = [row for row in data if x_col in row and y_col in row]
+        valid_data = [
+            row for row in data 
+            if x_col in row and y_col in row 
+            and is_valid_plot_value(row[x_col]) and is_valid_plot_value(row[y_col])
+        ]
         if valid_data:
             valid_data.sort(key=lambda row: row[x_col])
             
@@ -613,6 +621,32 @@ def parse_multiple_benchmark_logs(dataset_files: Dict[str, str]) -> List[Dict]:
             continue
     
     return all_data
+
+
+def is_valid_plot_value(value) -> bool:
+    """
+    Check if a value is valid for plotting (numerical and not containing "error").
+    
+    Args:
+        value: The value to check
+        
+    Returns:
+        bool: True if the value is valid for plotting, False otherwise
+    """
+    if value is None:
+        return False
+    
+    # Convert to string to check for "error" keyword
+    str_value = str(value).lower()
+    if "error" in str_value:
+        return False
+    
+    # Check if it's a valid number
+    try:
+        float(value)
+        return True
+    except (ValueError, TypeError):
+        return False
 
 
 def main():

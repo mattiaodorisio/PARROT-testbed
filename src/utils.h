@@ -62,11 +62,14 @@ bool load_text_data(T array[], int length, const std::string& file_path) {
 template <class RandomIt>
 std::vector<typename std::iterator_traits<RandomIt>::value_type> get_existing_keys(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
   using T = typename std::iterator_traits<RandomIt>::value_type;
-  std::uniform_int_distribution<int> dis(0, std::distance(data_begin, data_end) - 1);
+  const size_t data_size = std::distance(data_begin, data_end);
+  std::uniform_int_distribution<int> dis(0, data_size - 1);
   std::vector<T> data_sample;
   data_sample.reserve(num_searches);
   for (int i = 0; i < num_searches; i++) {
     int pos = dis(rand_gen);
+    // Lower bound: Searches for the FIRST element which is not ordered before value
+    while (pos > 0 && data_begin[pos].first == data_begin[pos - 1].first) --pos;
     data_sample.push_back(data_begin[pos]);
   }
   return data_sample;
@@ -100,6 +103,36 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existin
       attempts = 0;
     }
   }
+  return data_sample;
+}
+
+template <class RandomIt>
+std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existing_keys_in_distribution(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
+  using T = typename std::iterator_traits<RandomIt>::value_type;
+  auto [min_it, max_it] = std::minmax_element(data_begin, data_end);
+  T min_ = *min_it, max_ = *max_it;
+  constexpr size_t interval_range = 100;
+  const size_t size_ = std::distance(data_begin, data_end);
+  std::uniform_int_distribution<size_t> dis(0, (size_ - 1) / interval_range);
+  std::unordered_set<T> existing_keys(data_begin, data_end);
+  std::vector<T> data_sample;
+  data_sample.reserve(num_searches);
+  int attempts = 0;
+  while (data_sample.size() < num_searches) {
+    const size_t index_start_range = dis(rand_gen) * interval_range;
+    const size_t index_end_range = std::min(index_start_range + interval_range - 1, size_ - 1);
+    std::uniform_int_distribution<T> inner_dis(data_begin[index_start_range], data_begin[index_end_range]);
+    T key = inner_dis(rand_gen);
+    if (existing_keys.find(key) == existing_keys.end()) {
+      data_sample.push_back(key);
+      existing_keys.insert(key);
+    }
+    if (++attempts > num_searches * 8) {
+      break;
+    }
+  }
+
+  // This can return a lower number of samples than requested
   return data_sample;
 }
 
