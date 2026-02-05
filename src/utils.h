@@ -18,9 +18,12 @@ struct bench_config {
   int max_batches;
   bool print_batch_stats;
   bool clear_cache;
+  bool pareto;
 };
 
 namespace utils {
+
+static constexpr bool FAST_COMPILE = true;
 
 // Loads values from binary file into vector.
 template <typename T>

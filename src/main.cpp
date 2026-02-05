@@ -38,7 +38,8 @@ void execute(const std::string& keys_file_path,
              double time_limit,
              bool print_batch_stats,
              std::ofstream& out_file,
-             bool clear_cache) {
+             bool clear_cache,
+             bool pareto) {
 
   // Read keys from file
   std::vector<KeyType> keys = utils::load_binary_data<KeyType>(keys_file_path);
@@ -50,7 +51,7 @@ void execute(const std::string& keys_file_path,
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
   // Define index types and names
-  std::vector<std::string> index_names = {"ALEX", "LIPP", "RS", /*"DeLI",*/ "PGM-Static", "PGM-Dynamic"};
+  std::vector<std::string> index_names = {"ALEX", "LIPP", "RS", "DeLI", "PGM-Static", "PGM-Dynamic"};
 
   // Prepare benchmark config object
   bench_config config {
@@ -61,14 +62,15 @@ void execute(const std::string& keys_file_path,
       batch_size: batch_size,
       max_batches: NUM_BATCHES,
       print_batch_stats: print_batch_stats,
-      clear_cache: clear_cache
+      clear_cache: clear_cache,
+      pareto: pareto
   };
   
   for (size_t current_init_key_size = min_size; current_init_key_size <= max_size; current_init_key_size *= 2) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
 
     // Create values array for current init size
-    // Two vectors to be used depending on the index... TODO: improve this
+    // Two vectors: key-value and key_key to be used depending on the index... TODO: improve this
     std::vector<std::pair<KeyType, PayloadType>> key_values(current_init_key_size);
     std::vector<std::pair<KeyType, PayloadType>> key_keys(current_init_key_size);
     for (size_t i = 0; i < key_values.size(); ++i) {
@@ -117,6 +119,7 @@ void execute(const std::string& keys_file_path,
  * --time_limit             time limit, in minutes
  * --print_batch_stats      whether to output stats for each batch
  * --clear_cache            whether to clear cache before each batch
+ * --pareto                 whether to run the benchmark for all the parameters
  */
 int main(int argc, char* argv[]) {
   auto flags = parse_flags(argc, argv);
@@ -127,6 +130,7 @@ int main(int argc, char* argv[]) {
   auto time_limit = stod(get_with_default(flags, "time_limit", "0.5"));
   bool print_batch_stats = get_boolean_flag(flags, "print_batch_stats");
   bool clear_cache = get_boolean_flag(flags, "clear_cache");
+  bool pareto = get_boolean_flag(flags, "pareto");
 
   // Check if input file does exist
   {
@@ -170,9 +174,9 @@ int main(int argc, char* argv[]) {
 
   // Call execute with appropriate key type based on filename suffix
   if (keys_file_path.ends_with("_uint32")) {
-    execute<uint32_t, uint32_t>(keys_file_path, batch_size, lookup_distribution, time_limit, print_batch_stats, out_file, clear_cache);
+    execute<uint32_t, uint32_t>(keys_file_path, batch_size, lookup_distribution, time_limit, print_batch_stats, out_file, clear_cache, pareto);
   } else if (keys_file_path.ends_with("_uint64")) {
-    execute<uint64_t, uint64_t>(keys_file_path, batch_size, lookup_distribution, time_limit, print_batch_stats, out_file, clear_cache);
+    execute<uint64_t, uint64_t>(keys_file_path, batch_size, lookup_distribution, time_limit, print_batch_stats, out_file, clear_cache, pareto);
   } else {
     throw std::runtime_error("Unsupported key type in filename. Expected suffixes: _uint32 or _uint64");
   }

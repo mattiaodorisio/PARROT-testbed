@@ -3,6 +3,7 @@
 #include "RadixSpline/include/rs/builder.h"
 #include "RadixSpline/include/rs/radix_spline.h"
 #include "../src/benchmark.h"
+#include "../src/utils.h"
 
 // Wrapper object
 
@@ -163,6 +164,20 @@ void benchmark_rs(const bench_config& config,
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 10>>(config, key_values, wl);
+
+    if constexpr (!utils::FAST_COMPILE) {
+      if (config.pareto) {
+        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 1>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 2>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 3>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 4>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 5>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 6>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 7>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 8>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 9>>(config, key_values, wl);
+      }
+    }
   }
 }
 

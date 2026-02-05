@@ -2,6 +2,7 @@
 
 #include "PGM-index/include/pgm/pgm_index_dynamic.hpp"
 #include "../src/benchmark.h"
+#include "../src/utils.h"
 
 // Wrapper object
 
@@ -71,6 +72,18 @@ void benchmark_pgm_dynamic(const bench_config& config,
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, INSERT_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 16>>(config, key_values, wl);
+
+    if constexpr (!utils::FAST_COMPILE) {
+      if (config.pareto) {
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 8>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 32>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 64>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 128>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 256>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 512>>(config, key_values, wl);
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 1024>>(config, key_values, wl);
+      }
+    }
   }
 }
 }  // namespace deli_testbed

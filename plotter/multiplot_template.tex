@@ -3,6 +3,7 @@
 \pgfplotsset{compat=1.18}
 \usepackage{geometry}
 \geometry{a4paper, margin=1in}
+\usepackage{float}
 
 \begin{document}
 
@@ -32,41 +33,39 @@ The workloads are:
   \item In-distribution Insertion: inserting $k$ keys drawn from the same distribution of the dataset.
 \end{itemize}
 
-\paragraph{books\_200M\_uint32}
+\subsubsection{books\_200M\_uint32}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
-\paragraph{books\_800M\_uint64}
+\subsubsection{books\_800M\_uint64}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
-\paragraph{companynet\_uint32}
+\subsubsection{companynet\_uint32}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
-\paragraph{fb\_200M\_uint64}
+\subsubsection{fb\_200M\_uint64}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
-\paragraph{friendster\_50M\_uint32}
+\subsubsection{friendster\_50M\_uint32}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
-\paragraph{osm\_cellids\_800M\_uint64}
+\subsubsection{osm\_cellids\_800M\_uint64}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
-\paragraph{wiki\_ts\_200M\_uint64}
+\subsubsection{wiki\_ts\_200M\_uint64}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-
-\section{Analysis}
 
 \end{document}
