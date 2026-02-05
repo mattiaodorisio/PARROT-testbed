@@ -4,6 +4,7 @@
 
 #include "DeLI/include/DeLI/deli.h"
 #include "../src/benchmark.h"
+#include "../src/utils.h"
 
 // Wrapper object
 
@@ -90,14 +91,6 @@ void benchmark_deli(const bench_config& config,
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 2>>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 3>>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 4>>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 5>>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 6>>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 7>>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 8>>(config, key_values, wl);
-    // deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 9>>(config, key_values, wl);
     deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 10>>(config, key_values, wl);
 
     // Define high_bits
@@ -111,32 +104,60 @@ void benchmark_deli(const bench_config& config,
     //   run_pareto(high_bits, config, key_values, wl);
     // }
     /////////// End with one parameter
-    
+
+#ifndef FAST_COMPILE
     if (config.pareto) {
-      constexpr auto high_bits = std::make_integer_sequence<unsigned int, 11>{};
-      constexpr auto load_balance = std::integer_sequence<size_t, 40, 60, 80>{};
+
+      #ifdef DELI_FAST_CONFIG
+        constexpr auto high_bits = std::integer_sequence<unsigned int, 4, 8, 16>{};
+      #else
+        constexpr auto high_bits = std::make_integer_sequence<unsigned int, 11>{};
+      #endif
+      
+      constexpr auto load_balance = std::integer_sequence<size_t, 20, 40, 60>{};
       constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2, 4>{};
+      constexpr auto rht_opts = std::integer_sequence<int, 0, 1>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
+      constexpr auto top_opts = std::integer_sequence<int, 0, 2>{}; // Top optimization 1 unsupported with dynamic
     
-      auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled>(
+      auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
           std::integer_sequence<unsigned int, bits...>, 
           std::integer_sequence<size_t, loads...>, 
           std::integer_sequence<size_t, simd_unrolled...>,
+          std::integer_sequence<int, rht_optimizations...>,
+          std::integer_sequence<int, top_optimizations...>,
           const bench_config& cfg, 
           const std::vector<std::pair<KeyType, PayloadType>>& kv, 
           Workload workload) {
-        // Helper lambda to run all loads and simd_unrolled for a fixed bits value
+        
+        // 5-level nested cartesian product
         auto run_for_bits = [&]<unsigned int B>() {
-          // Helper lambda to run all simd_unrolled for fixed bits and loads values
           auto run_for_loads = [&]<size_t L>() {
-            (deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, simd_unrolled, L, DeLI::TopLevelOptimization::none, KeyType, B>>(cfg, kv, workload), ...);
+            auto run_for_simd = [&]<size_t S>() {
+              auto run_for_rht = [&]<int R>() {
+                auto run_for_top = [&]<int T>() {
+                  // Convert int values to enum types at compile time
+                  constexpr DeLI::RhtOptimization rht_opt = static_cast<DeLI::RhtOptimization>(R);
+                  constexpr DeLI::TopLevelOptimization top_opt = static_cast<DeLI::TopLevelOptimization>(T);
+
+                  // Check constraint: slot_index optimization (1) cannot be used with SIMD (S > 0)
+                  if constexpr (rht_opt != DeLI::RhtOptimization::slot_index || S == 0) {
+                    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, rht_opt, S, L, top_opt, KeyType, B>>(cfg, kv, workload);
+                  }
+                  
+                };
+                (run_for_top.template operator()<top_optimizations>(), ...);
+              };
+              (run_for_rht.template operator()<rht_optimizations>(), ...);
+            };
+            (run_for_simd.template operator()<simd_unrolled>(), ...);
           };
           (run_for_loads.template operator()<loads>(), ...);
         };
-        // Run for all bits values
         (run_for_bits.template operator()<bits>(), ...);
       };
-      run_pareto(high_bits, load_balance, rht_simd_unrolled, config, key_values, wl);
+      run_pareto(high_bits, load_balance, rht_simd_unrolled, rht_opts, top_opts, config, key_values, wl);
     }
-  }
+#endif // FAST_COMPILE
+}
 }
 }  // namespace deli_testbed

@@ -165,19 +165,19 @@ void benchmark_rs(const bench_config& config,
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 10>>(config, key_values, wl);
 
-    if constexpr (!utils::FAST_COMPILE) {
-      if (config.pareto) {
-        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 1>>(config, key_values, wl);
-        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 2>>(config, key_values, wl);
-        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 3>>(config, key_values, wl);
-        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 4>>(config, key_values, wl);
-        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 5>>(config, key_values, wl);
-        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 6>>(config, key_values, wl);
-        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 7>>(config, key_values, wl);
-        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 8>>(config, key_values, wl);
-        deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 9>>(config, key_values, wl);
-      }
+#ifndef FAST_COMPILE
+    if (config.pareto) {
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 1>>(config, key_values, wl);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 2>>(config, key_values, wl);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 3>>(config, key_values, wl);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 4>>(config, key_values, wl);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 5>>(config, key_values, wl);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 6>>(config, key_values, wl);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 7>>(config, key_values, wl);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 8>>(config, key_values, wl);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 9>>(config, key_values, wl);
     }
+#endif // FAST_COMPILE
   }
 }
 
