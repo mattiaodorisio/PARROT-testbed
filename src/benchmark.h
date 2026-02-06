@@ -297,7 +297,7 @@ void run_benchmark(const bench_config& config,
           std::cout << std::scientific << std::setprecision(3);
           std::cout << index.name() << " " << workload_name(workload) << ": " << config.batch_size << " operations completed\n";
           std::cout << "Total time: " << batch_time / 1e9 << " seconds\n";
-          double batch_overall_throughput = (batch_time > 0) ? (config.batch_size / batch_time * 1e9) : 0.0;
+          double batch_overall_throughput = (batch_time > 0) ? (1. * config.batch_size / batch_time * 1e9) : 0.0;
           std::cout << "Throughput: " << batch_overall_throughput << " ops/sec\n";
         }
 
