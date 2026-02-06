@@ -42,7 +42,7 @@ void execute(const bench_config& config) {
   // Define index types and names
   std::vector<std::string> index_names = {"ALEX", "LIPP", "RS", "DeLI", "PGM-Static", "PGM-Dynamic"};
 
-  for (size_t current_init_key_size = config.min_size; current_init_key_size <= config.max_size; current_init_key_size *= 2) {
+  for (size_t current_init_key_size = (1 << config.min_size); current_init_key_size <= (1 << config.max_size); current_init_key_size *= 2) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
 
     // Create values array for current init size
