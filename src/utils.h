@@ -19,6 +19,8 @@ struct bench_config {
   bool print_batch_stats;
   bool clear_cache;
   bool pareto;
+  int min_size;
+  int max_size;
 };
 
 namespace utils {

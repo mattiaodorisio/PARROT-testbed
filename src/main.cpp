@@ -32,41 +32,17 @@
 static constexpr size_t NUM_BATCHES = 1;
 
 template <typename KeyType, typename PayloadType>
-void execute(const std::string& keys_file_path,
-             int batch_size,
-             const std::string& lookup_distribution,
-             double time_limit,
-             bool print_batch_stats,
-             std::ofstream& out_file,
-             bool clear_cache,
-             bool pareto) {
+void execute(const bench_config& config) {
 
   // Read keys from file
-  std::vector<KeyType> keys = utils::load_binary_data<KeyType>(keys_file_path);
+  std::vector<KeyType> keys = utils::load_binary_data<KeyType>(config.data_filename);
 
-  // Generate exponentially increasing init_num_keys sizes
-  constexpr size_t min_size = 1 << 8;   // Starting size
-  constexpr size_t max_size = 1 << 20;  // Maximum size
-  
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
   // Define index types and names
   std::vector<std::string> index_names = {"ALEX", "LIPP", "RS", "DeLI", "PGM-Static", "PGM-Dynamic"};
 
-  // Prepare benchmark config object
-  bench_config config {
-      out_file: out_file,
-      data_filename: keys_file_path,
-      lookup_distribution: lookup_distribution,
-      time_limit: time_limit,
-      batch_size: batch_size,
-      max_batches: NUM_BATCHES,
-      print_batch_stats: print_batch_stats,
-      clear_cache: clear_cache,
-      pareto: pareto
-  };
-  
-  for (size_t current_init_key_size = min_size; current_init_key_size <= max_size; current_init_key_size *= 2) {
+  for (size_t current_init_key_size = config.min_size; current_init_key_size <= config.max_size; current_init_key_size *= 2) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
 
     // Create values array for current init size
@@ -120,6 +96,8 @@ void execute(const std::string& keys_file_path,
  * --print_batch_stats      whether to output stats for each batch
  * --clear_cache            whether to clear cache before each batch
  * --pareto                 whether to run the benchmark for all the parameters
+ * --min_size               log of the minimum number of initial keys (default: 8 -> 2^8)
+ * --max_size               log of the maximum number of initial keys (default: 20 -> 2^20)
  */
 int main(int argc, char* argv[]) {
   auto flags = parse_flags(argc, argv);
@@ -131,6 +109,8 @@ int main(int argc, char* argv[]) {
   bool print_batch_stats = get_boolean_flag(flags, "print_batch_stats");
   bool clear_cache = get_boolean_flag(flags, "clear_cache");
   bool pareto = get_boolean_flag(flags, "pareto");
+  auto min_size = stoi(get_with_default(flags, "min_size", "8"));
+  auto max_size = stoi(get_with_default(flags, "max_size", "20"));
 
   // Check if input file does exist
   {
@@ -172,11 +152,26 @@ int main(int argc, char* argv[]) {
 
   std::cout << "Benchmark results will be written to: " << out_filename << std::endl;
 
+  // Prepare benchmark config object
+  bench_config config {
+      out_file: out_file,
+      data_filename: keys_file_path,
+      lookup_distribution: lookup_distribution,
+      time_limit: time_limit,
+      batch_size: batch_size,
+      max_batches: NUM_BATCHES,
+      print_batch_stats: print_batch_stats,
+      clear_cache: clear_cache,
+      pareto: pareto,
+      min_size: min_size,
+      max_size: max_size
+  };
+
   // Call execute with appropriate key type based on filename suffix
   if (keys_file_path.ends_with("_uint32")) {
-    execute<uint32_t, uint32_t>(keys_file_path, batch_size, lookup_distribution, time_limit, print_batch_stats, out_file, clear_cache, pareto);
+    execute<uint32_t, uint32_t>(config);
   } else if (keys_file_path.ends_with("_uint64")) {
-    execute<uint64_t, uint64_t>(keys_file_path, batch_size, lookup_distribution, time_limit, print_batch_stats, out_file, clear_cache, pareto);
+    execute<uint64_t, uint64_t>(config);
   } else {
     throw std::runtime_error("Unsupported key type in filename. Expected suffixes: _uint32 or _uint64");
   }
