@@ -16,6 +16,7 @@ add_compile_options(-g -fno-omit-frame-pointer -O3 -march=native)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/indices)
 
 add_executable(deLi_testbed src/main.cpp)
+add_executable(generate_datasets src/generate_datasets.cpp)
 
 add_subdirectory(indices/DILI)
 target_link_libraries(deLi_testbed PRIVATE dili_func)

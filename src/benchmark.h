@@ -49,8 +49,9 @@ class Benchmark {
     index.bulk_load(key_values_.data(), key_values_.size());
   }
 
-  template <class Index>
-  void PrintResult(const Index& index, const std::string& workload_name, 
+  void PrintResult(const std::string& index_name,
+                   const std::string& index_variant,
+                   const std::string& workload_name,
                    int batch_no, size_t init_num_keys, size_t batch_operations,
                    const std::string& lookup_distribution, double batch_time,
                    std::ofstream& out_file) {
@@ -60,8 +61,8 @@ class Benchmark {
 
     // Log results in the same format as main.cpp
     out_file << "RESULT "
-            << "index_name=" << Index::name() << " "
-            << "index_variant=" << Index::variant() << " "
+            << "index_name=" << index_name << " "
+            << "index_variant=" << index_variant << " "
             << "batch_no=" << batch_no << " "
             << "workload_type=" << workload_name << " "
             << "init_num_keys=" << init_num_keys << " "
@@ -302,8 +303,8 @@ void run_benchmark(const bench_config& config,
         }
 
         // Use the benchmark's print method for consistent formatting
-        benchmark.PrintResult(index, workload_name(workload), batch_no, key_values.size(), 
-                             config.batch_size, config.lookup_distribution, batch_time, config.out_file);
+        benchmark.PrintResult(IndexWrapper::name(), IndexWrapper::variant(), workload_name(workload), batch_no, key_values.size(), 
+                              config.batch_size, config.lookup_distribution, batch_time, config.out_file);
 
         // Check time limit
         double workload_elapsed_time =

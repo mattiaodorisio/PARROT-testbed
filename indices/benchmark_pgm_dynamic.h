@@ -69,7 +69,7 @@ void benchmark_pgm_dynamic(const bench_config& config,
     return;
   }
 
-  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, INSERT_IN_DISTRIBUTION };
+  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 16>>(config, key_values, wl);
 

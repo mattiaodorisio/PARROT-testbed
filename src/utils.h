@@ -66,6 +66,19 @@ bool load_text_data(T array[], int length, const std::string& file_path) {
 }
 
 template <class RandomIt>
+size_t count_distinct_sorted(RandomIt data_begin, RandomIt data_end) {
+  if (data_begin == data_end) return 0;
+
+  size_t count = 1;
+  for (auto it = std::next(data_begin); it != data_end; ++it) {
+    if (*it != *std::prev(it)) {
+      count++;
+    }
+  }
+  return count;
+}
+
+template <class RandomIt>
 std::vector<typename std::iterator_traits<RandomIt>::value_type> get_existing_keys(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
   using T = typename std::iterator_traits<RandomIt>::value_type;
   const size_t data_size = std::distance(data_begin, data_end);
