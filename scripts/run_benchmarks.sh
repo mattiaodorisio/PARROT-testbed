@@ -13,11 +13,21 @@ cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j$(nproc)
 
-# Run the benchmark for each file in the data folder
-for file in ../data/*; do
-    echo "Running benchmark for $file"
-    ./deLi_testbed --keys_file=$file --batch_size=100000 --output_folder=../results --print_batch_stats --pareto
-done
+# List the file in ../data/enabled_datasets.txt and run the benchmark for each of them
+while IFS= read -r line; do
+    # Skip empty lines and comments
+    if [[ -z "$line" || "$line" == \#* ]]; then
+      echo "Skipping $line"
+      continue
+    else
+      if [ ! -f "../data/$line" ]; then
+        echo "File ../data/$line does not exist. Skipping."
+        continue
+      fi
+      echo "Running benchmark for $line"
+      ./deLi_testbed --keys_file=../data/$line --batch_size=16384 --output_folder=../results --print_batch_stats --pareto
+    fi
+done < "../data/enabled_datasets.txt"
 
 cd ../plotter
 ./plot.py --output plots.tex ../results/
