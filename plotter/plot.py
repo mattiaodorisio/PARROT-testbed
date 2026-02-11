@@ -71,6 +71,99 @@ def parse_aggregation(col_str: str) -> Tuple[str, str]:
         return ('NONE', col_str)
 
 
+def parse_groupby_clause(groupby_str: str) -> Tuple[str, Optional[Tuple[str, str]]]:
+    """
+    Parse a groupby clause that might contain BEST aggregation.
+    
+    Examples:
+        'index_name' -> ('index_name', None)
+        'index_name;BEST(index_variant)' -> ('index_name', ('BEST', 'index_variant'))
+    
+    Args:
+        groupby_str (str): Groupby string, possibly with BEST aggregation
+        
+    Returns:
+        Tuple[str, Optional[Tuple[str, str]]]: (primary_groupby_column, (agg_func, agg_column) or None)
+    """
+    groupby_str = groupby_str.strip()
+    
+    # Split by semicolon to separate primary groupby from aggregation
+    parts = [part.strip() for part in groupby_str.split(';')]
+    
+    primary_groupby = parts[0]
+    best_aggregation = None
+    
+    # Check for BEST aggregation in remaining parts
+    for part in parts[1:]:
+        best_pattern = r'^BEST\(([^)]+)\)$'
+        match = re.match(best_pattern, part, re.IGNORECASE)
+        if match:
+            best_aggregation = ('BEST', match.group(1))
+            break
+    
+    return (primary_groupby, best_aggregation)
+
+
+def select_best_variant(data: List[Dict], primary_groupby_col: str, best_col: str, 
+                       y_col: str, x_col: str) -> List[Dict]:
+    """
+    For each group in primary_groupby_col, select the best variant based on y_col performance.
+    The "best" variant is the one with the lowest total y_col value across all x values.
+    
+    Args:
+        data (List[Dict]): Input data (already filtered and aggregated)
+        primary_groupby_col (str): Primary column to group by (e.g., 'index_name')
+        best_col (str): Column to select best from (e.g., 'index_variant') 
+        y_col (str): Y-axis column for performance comparison (e.g., 'total_time')
+        x_col (str): X-axis column for grouping performance measurements
+        
+    Returns:
+        List[Dict]: Data with only the best variant selected for each primary group
+    """
+    # Group by primary groupby column
+    primary_groups = {}
+    for row in data:
+        if primary_groupby_col in row and best_col in row:
+            primary_key = row[primary_groupby_col]
+            if primary_key not in primary_groups:
+                primary_groups[primary_key] = []
+            primary_groups[primary_key].append(row)
+    
+    result_data = []
+    
+    # For each primary group, select the best variant
+    for primary_key, primary_group_data in primary_groups.items():
+        # Group by variant to calculate total performance for each variant
+        variant_performance = {}
+        
+        for row in primary_group_data:
+            if best_col in row and y_col in row and is_valid_plot_value(row[y_col]):
+                variant = row[best_col]
+                if variant not in variant_performance:
+                    variant_performance[variant] = []
+                variant_performance[variant].append(row[y_col])
+        
+        # Calculate total (sum) performance for each variant
+        variant_totals = {}
+        for variant, values in variant_performance.items():
+            # Use sum of all y values as the total performance metric
+            # Lower total means better performance (assuming y_col represents time/cost)
+            variant_totals[variant] = sum(values)
+        
+        # Find the best variant (lowest total)
+        if variant_totals:
+            best_variant = min(variant_totals.keys(), key=lambda v: variant_totals[v])
+            
+            print(f"Best variant for {primary_key}: {best_variant} (total {y_col}: {variant_totals[best_variant]:.6f})")
+            
+            # Add all data points for the best variant
+            for row in primary_group_data:
+                if row.get(best_col) == best_variant:
+                    result_data.append(row)
+        
+    return result_data
+
+
 def apply_filter(data: List[Dict], filter_conditions: Optional[List[Tuple[str, str]]]) -> List[Dict]:
     """
     Apply multiple filter conditions to the data. All conditions must be satisfied (AND logic).
@@ -107,7 +200,7 @@ def group_and_aggregate(data: List[Dict], groupby_col: str, agg_func: str, agg_c
     
     Args:
         data (List[Dict]): Input data
-        groupby_col (str): Column to group by
+        groupby_col (str): Column to group by (may include BEST aggregation)
         agg_func (str): Aggregation function (MEDIAN, AVG, etc.)
         agg_col (str): Column to aggregate
         x_col (str): X-axis column name
@@ -115,17 +208,20 @@ def group_and_aggregate(data: List[Dict], groupby_col: str, agg_func: str, agg_c
     Returns:
         List[Dict]: Grouped and aggregated data
     """
-    # Group data by groupby_col and x_col
+    # Parse groupby clause to check for BEST aggregation
+    primary_groupby, best_aggregation = parse_groupby_clause(groupby_col)
+    
+    # Group data by primary groupby column and x_col
     groups = {}
     for row in data:
-        if groupby_col in row and agg_col in row and x_col in row:
-            group_key = (row[groupby_col], row[x_col])
+        if primary_groupby in row and agg_col in row and x_col in row:
+            group_key = (row[primary_groupby], row[x_col])
             if group_key not in groups:
                 groups[group_key] = []
             groups[group_key].append(row)
     
     # Aggregate each group
-    result_data = []
+    aggregated_data = []
     for (group_value, x_value), group_rows in groups.items():
         # Filter out invalid values
         valid_values = [row[agg_col] for row in group_rows if agg_col in row and row[agg_col] is not None]
@@ -149,7 +245,7 @@ def group_and_aggregate(data: List[Dict], groupby_col: str, agg_func: str, agg_c
         
         # Create result row
         result_row = {
-            groupby_col: group_value,
+            primary_groupby: group_value,
             x_col: x_value,
             f'{agg_func.lower()}_{agg_col}': agg_result,
             'group_size': len(valid_values)
@@ -161,9 +257,19 @@ def group_and_aggregate(data: List[Dict], groupby_col: str, agg_func: str, agg_c
                 if key not in result_row:
                     result_row[key] = value
         
-        result_data.append(result_row)
+        aggregated_data.append(result_row)
     
-    return result_data
+    # Apply BEST selection if specified
+    if best_aggregation:
+        best_func, best_col = best_aggregation
+        if best_func.upper() == 'BEST':
+            # Determine the y column name after aggregation
+            y_col_name = f'{agg_func.lower()}_{agg_col}' if agg_func != 'NONE' else agg_col
+            
+            # Select best variants
+            aggregated_data = select_best_variant(aggregated_data, primary_groupby, best_col, y_col_name, x_col)
+    
+    return aggregated_data
 
 
 def parse_benchmark_log(log_file_path: str) -> List[Dict]:
@@ -238,7 +344,7 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
         data (List[Dict]): Benchmark data (already filtered and aggregated)
         x_col (str): Column name for x-axis
         y_col (str): Column name for y-axis  
-        groupby_col (str): Column used for grouping (for legend)
+        groupby_col (str): Column used for grouping (for legend, may include BEST aggregation)
         
     Returns:
         str: Formatted data for pgfplot
@@ -247,10 +353,13 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
     
     # Group by the groupby column (usually index_name) to create separate plot lines
     if groupby_col:
+        # Parse groupby clause to get the primary column name
+        primary_groupby, best_aggregation = parse_groupby_clause(groupby_col)
+        
         groups = {}
         for row in data:
-            if groupby_col in row:
-                group_value = row[groupby_col]
+            if primary_groupby in row:
+                group_value = row[primary_groupby]
                 if group_value not in groups:
                     groups[group_value] = []
                 groups[group_value].append(row)
@@ -269,7 +378,22 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
             # Sort by x column
             valid_data.sort(key=lambda row: row[x_col])
             
-            data_lines.append(f"% Data for {group_value}")
+            # Determine legend entry - include variant if BEST aggregation was used
+            if best_aggregation and best_aggregation[0] == 'BEST':
+                variant_col = best_aggregation[1]
+                # Get the variant from the first valid data point (they should all be the same due to BEST selection)
+                if valid_data and variant_col in valid_data[0]:
+                    variant_value = valid_data[0][variant_col]
+                    if variant_value and str(variant_value).lower() != 'none':
+                        legend_entry = f"{group_value} ({variant_value})"
+                    else:
+                        legend_entry = group_value
+                else:
+                    legend_entry = group_value
+            else:
+                legend_entry = group_value
+
+            data_lines.append(f"% Data for {legend_entry}")
             data_lines.append(f"\\addplot coordinates {{")
             
             for row in valid_data:
@@ -278,7 +402,7 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
                 data_lines.append(f"    ({x_val}, {y_val})")
             
             data_lines.append("};")
-            data_lines.append(f"\\addlegendentry{{{group_value}}}")
+            data_lines.append(f"\\addlegendentry{{{legend_entry}}}")
             data_lines.append("")
     
     else:
@@ -399,8 +523,16 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
     if not filtered_data:
         return f"% No data available for filter {filter_conditions}"
     
+    # Parse groupby clause
+    primary_groupby_col, best_aggregation = parse_groupby_clause(groupby_col)
+    
+    # If BEST aggregation is specified, select the best variant
+    if best_aggregation and best_aggregation[0] == 'BEST':
+        best_col = best_aggregation[1]
+        filtered_data = select_best_variant(filtered_data, primary_groupby_col, best_col, actual_y_col, x_col)
+    
     # Group and aggregate data
-    processed_data = group_and_aggregate(filtered_data, groupby_col, agg_func, actual_y_col, x_col)
+    processed_data = group_and_aggregate(filtered_data, primary_groupby_col, agg_func, actual_y_col, x_col)
     
     if not processed_data:
         return f"% No aggregated data available for {title}"
@@ -408,7 +540,7 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
     # Determine the actual y column name after aggregation
     actual_y_col_name = f'{agg_func.lower()}_{actual_y_col}' if agg_func != 'NONE' else actual_y_col
     
-    # Generate plot data
+    # Generate plot data (pass original groupby_col to preserve BEST aggregation info)
     plot_data = generate_pgfplot_data(processed_data, x_col, actual_y_col_name, groupby_col)
     
     # Prepare better labels
@@ -495,11 +627,19 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
         # Parse aggregation from y_col
         agg_func, actual_y_col = parse_aggregation(y_col)
         
+        # Parse groupby clause to get primary groupby column
+        primary_groupby, best_aggregation = parse_groupby_clause(groupby_col)
+        
         # Check if the required columns exist in the data
         has_required_cols = any(
-            x_col in row and actual_y_col in row and groupby_col in row 
+            x_col in row and actual_y_col in row and primary_groupby in row 
             for row in data
         )
+        
+        # If BEST aggregation is specified, also check for the best column
+        if best_aggregation:
+            best_col = best_aggregation[1]
+            has_required_cols = has_required_cols and any(best_col in row for row in data)
         
         # Check if filter can be applied
         filter_applicable = True
@@ -525,7 +665,10 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
             placeholder = f"%% {{{{PLOT:{x_col},{y_col},{filter_str},{groupby_col},{title},{caption},{label}}}}}"
             missing_info = []
             if not has_required_cols:
-                missing_info.append(f"missing columns {x_col}/{actual_y_col}/{groupby_col}")
+                missing_cols = [x_col, actual_y_col, primary_groupby]
+                if best_aggregation:
+                    missing_cols.append(best_aggregation[1])
+                missing_info.append(f"missing columns {'/'.join(missing_cols)}")
             if not filter_applicable:
                 missing_info.append(f"filter not applicable: {filter_str}")
             

@@ -45,7 +45,7 @@ The following figures shows the performance of DeLI index under different config
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,Index_name}}
 
 \section{Comparisons among indexes}
-All the plots here below compare the performance of different indexes on various datasets by varying the initial dataset size. Please note, that the dataset size can change due to updates. 
+The plots below compare the performance of different indexes on various datasets by varying the initial dataset size. Please note, that the dataset size can change due to updates. 
 All the workloads are run as a batch of $k$ operations. Each batch is repeated multiple times to obtain median of the execution time.
 The workloads are:
 \begin{itemize}
@@ -55,63 +55,63 @@ The workloads are:
 \end{itemize}
 
 \subsection{uniform\_50M\_uint32}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \subsection{lognormal\_50M\_uint32}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=lognormal_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=lognormal_50M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=lognormal_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=lognormal_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=lognormal_50M_uint32;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=lognormal_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \subsection{normal\_50M\_uint32}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=normal_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=normal_50M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=normal_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=normal_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=normal_50M_uint32;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=normal_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \subsection{exponential\_50M\_uint32}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \subsection{zipf\_50M\_uint32}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \subsubsection{books\_200M\_uint32}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \subsubsection{books\_800M\_uint64}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \subsubsection{companynet\_uint32}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \subsubsection{fb\_200M\_uint64}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \subsubsection{friendster\_50M\_uint32}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \subsubsection{osm\_cellids\_800M\_uint64}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \subsubsection{wiki\_ts\_200M\_uint64}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \end{document}
