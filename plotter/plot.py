@@ -21,6 +21,72 @@ import statistics
 import glob
 from datetime import datetime
 
+# Global color scheme for consistent series coloring
+_SERIES_COLOR_MAP = {}
+_AVAILABLE_COLORS = [
+    'blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray',
+    'olive', 'cyan', 'magenta', 'yellow', 'black', 'teal', 'lime'
+]
+_COLOR_INDEX = 0
+
+def get_series_color(series_name: str) -> str:
+    """
+    Get a consistent color for a data series (e.g., index name).
+    Same series will always get the same color across all plots.
+    
+    Args:
+        series_name (str): Name of the data series (should be just the index_name)
+        
+    Returns:
+        str: Color name for pgfplots
+    """
+    global _SERIES_COLOR_MAP, _COLOR_INDEX
+    
+    if series_name not in _SERIES_COLOR_MAP:
+        if _COLOR_INDEX < len(_AVAILABLE_COLORS):
+            _SERIES_COLOR_MAP[series_name] = _AVAILABLE_COLORS[_COLOR_INDEX]
+            _COLOR_INDEX += 1
+        else:
+            # If we run out of predefined colors, cycle through them
+            _SERIES_COLOR_MAP[series_name] = _AVAILABLE_COLORS[_COLOR_INDEX % len(_AVAILABLE_COLORS)]
+            _COLOR_INDEX += 1
+    
+    return _SERIES_COLOR_MAP[series_name]
+
+
+def reset_color_mapping():
+    """Reset the color mapping - useful for testing or when starting a new document."""
+    global _SERIES_COLOR_MAP, _COLOR_INDEX
+    _SERIES_COLOR_MAP = {}
+    _COLOR_INDEX = 0
+
+
+def initialize_color_mapping(data: List[Dict], groupby_col: str):
+    """
+    Initialize color mapping by discovering all unique series names in the data.
+    This ensures consistent color assignment order across the entire document.
+    
+    Args:
+        data (List[Dict]): All benchmark data
+        groupby_col (str): Primary groupby column (e.g., 'index_name')
+    """
+    # Parse groupby clause to get the primary column name
+    primary_groupby, _ = parse_groupby_clause(groupby_col)
+    
+    # Collect all unique series names (index names)
+    series_names = set()
+    for row in data:
+        if primary_groupby in row:
+            # Convert to string to ensure consistent types for sorting
+            series_names.add(str(row[primary_groupby]))
+    
+    # Pre-assign colors to ensure consistent ordering
+    for series_name in sorted(series_names):
+        get_series_color(series_name)
+    
+    print(f"Color mapping initialized for {len(series_names)} series: {sorted(series_names)}")
+    print(f"Color assignments: {dict(_SERIES_COLOR_MAP)}")
+
 
 def parse_filter(filter_str: str) -> Optional[List[Tuple[str, str]]]:
     """
@@ -393,8 +459,11 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
             else:
                 legend_entry = group_value
 
+            # Get consistent color for the series based on index_name only
+            series_color = get_series_color(str(group_value))
+
             data_lines.append(f"% Data for {legend_entry}")
-            data_lines.append(f"\\addplot coordinates {{")
+            data_lines.append(f"\\addplot[color={series_color}, mark=*, mark size=1.5pt] coordinates {{")
             
             for row in valid_data:
                 x_val = row[x_col]
@@ -614,6 +683,13 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
     if not plot_matches:
         raise ValueError(f"No plots defined in template file {multiplot_template_path}. "
                         f"Template must contain at least one %% {{{{PLOT:...}}}} directive with 7 parameters.")
+    
+    # Initialize color mapping for consistent colors across all plots
+    # Always use 'index_name' as the basis for color consistency
+    try:
+        initialize_color_mapping(data, 'index_name')
+    except Exception as e:
+        print(f"Warning: Could not initialize color mapping: {e}")
     
     result_content = template_content
     
