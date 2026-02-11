@@ -196,6 +196,11 @@ int main(int argc, char* argv[]) {
     std::cout << "zipf_50M_uint32" << std::endl;
     if (print_stats_flag) print_stats(data);
 
+    data = generate_uniform_distr(M50);
+    write_bin32_file("../data/uniform_50M_uint32", data);
+    std::cout << "uniform_50M_uint32" << std::endl;
+    if (print_stats_flag) print_stats(data);
+
     data = read_bin32_file("../data/books_200M_uint32");
     // REWRITING THE FILE ON DISK TO REPLACE UINT32_MAX with UINT32_MAX - 1 for safety for some libs
     for (size_t i = data.size() - 1; i >= 0; --i) {

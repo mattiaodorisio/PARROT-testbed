@@ -12,18 +12,39 @@
 \date{\today}
 \maketitle
 
-\section{Performance Results}
+\section{Deli Configuration}
 
 % Add the plots here
 % %% {{PLOT:x_col,y_col,filter,groupby,Title,Caption,Label}}
 
-\subsection{DeLI}
 The following figures shows the performance of DeLI index under different configurations.
-%% {{PLOT:init_num_keys,MEDIAN(total_time),workload_type=LOOKUP_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),workload_type=LOOKUP_EXISTING;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
-%% {{PLOT:init_num_keys,MEDIAN(total_time),workload_type=INSERT_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
 
-\subsection{Comparisons among indexes}
+\subsection{uniform\_50M\_uint32}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=LOOKUP_EXISTING;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+
+\subsection{normal\_50M\_uint32}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=normal_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=normal_50M_uint32;workload_type=LOOKUP_EXISTING;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=normal_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+
+\subsection{lognormal\_50M\_uint32}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=lognormal_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=lognormal_50M_uint32;workload_type=LOOKUP_EXISTING;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=lognormal_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+
+\subsection{exponential\_50M\_uint32}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=LOOKUP_EXISTING;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+
+\subsection{zipf\_50M\_uint32}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=LOOKUP_EXISTING;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION;index_name=DeLI,index_variant,Time,In-distribution Lookup Workload,Index_name}}
+
+\section{Comparisons among indexes}
 All the plots here below compare the performance of different indexes on various datasets by varying the initial dataset size. Please note, that the dataset size can change due to updates. 
 All the workloads are run as a batch of $k$ operations. Each batch is repeated multiple times to obtain median of the execution time.
 The workloads are:
@@ -32,6 +53,31 @@ The workloads are:
   \item Out-of-distribution Lookup: searching for $k$ keys that do not belong to the same dataset, but whose distribution follows the same of the dataset.
   \item In-distribution Insertion: inserting $k$ keys drawn from the same distribution of the dataset.
 \end{itemize}
+
+\subsection{uniform\_50M\_uint32}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+
+\subsection{lognormal\_50M\_uint32}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=lognormal_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=lognormal_50M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=lognormal_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+
+\subsection{normal\_50M\_uint32}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=normal_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=normal_50M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=normal_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+
+\subsection{exponential\_50M\_uint32}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+
+\subsection{zipf\_50M\_uint32}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=LOOKUP_EXISTING,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+%% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
 
 \subsubsection{books\_200M\_uint32}
 %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name,Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
