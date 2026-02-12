@@ -99,7 +99,7 @@ void benchmark_deli_dynamic(const bench_config& config,
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, 10>>(config, key_values, wl);
+    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, KeyType, 10>>(config, key_values, wl);
 
     // Define high_bits
     /////////// This works with one parameter
@@ -107,17 +107,17 @@ void benchmark_deli_dynamic(const bench_config& config,
 
     // if (config.pareto) {
     //   auto run_pareto = []<unsigned int... bits>(std::integer_sequence<unsigned int, bits...>, const bench_config& cfg, const std::vector<std::pair<KeyType, PayloadType>>& kv, Workload workload) {
-    //     (deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, KeyType, bits>>(cfg, kv, workload), ...);
+    //     (deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, KeyType, bits>>(cfg, kv, workload), ...);
     //   };
     //   run_pareto(high_bits, config, key_values, wl);
     // }
     /////////// End with one parameter
 
-#if 0
+#ifndef FAST_COMPILE
     if (config.pareto) {
 
       #ifdef DELI_FAST_CONFIG
-        constexpr auto high_bits = std::integer_sequence<unsigned int, 4, 8, 16>{};
+        constexpr auto high_bits = std::integer_sequence<unsigned int, 4, 8, 12, 16>{};
       #else
         constexpr auto high_bits = std::make_integer_sequence<unsigned int, 11>{};
       #endif
@@ -189,11 +189,11 @@ void benchmark_deli_static(const bench_config& config,
     // }
     /////////// End with one parameter
 
-// #ifndef FAST_COMPILE
+#ifndef FAST_COMPILE
     if (config.pareto) {
 
       #ifdef DELI_FAST_CONFIG
-        constexpr auto high_bits = std::integer_sequence<unsigned int, 4, 8, 16>{};
+        constexpr auto high_bits = std::integer_sequence<unsigned int, 4, 8, 12, 16>{};
       #else
         constexpr auto high_bits = std::make_integer_sequence<unsigned int, 11>{};
       #endif
@@ -241,7 +241,7 @@ void benchmark_deli_static(const bench_config& config,
       };
       run_pareto(high_bits, load_balance, rht_simd_unrolled, rht_opts, top_opts, config, key_values, wl);
     }
-// #endif // FAST_COMPILE
+#endif // FAST_COMPILE
 }
 }
 }  // namespace deli_testbed
