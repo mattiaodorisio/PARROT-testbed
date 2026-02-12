@@ -40,7 +40,7 @@ void execute(const bench_config& config) {
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
   // Define index types and names
-  std::vector<std::string> index_names = {"ALEX", "LIPP", "RS", "DeLI", "PGM-Static", "PGM-Dynamic"};
+  std::vector<std::string> index_names = {"ALEX", "LIPP", "RS", "DeLI-Static", "DeLI-Dynamic", "PGM-Static", "PGM-Dynamic"};
 
   for (size_t current_init_key_size = (1 << config.min_size); current_init_key_size <= (1 << config.max_size); current_init_key_size *= 2) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
@@ -68,8 +68,11 @@ void execute(const bench_config& config) {
       else if (index_name == "RS") {
         deli_testbed::benchmark_rs<KeyType, PayloadType>(config, key_keys);
       }
-      else if (index_name == "DeLI") {
-        deli_testbed::benchmark_deli<KeyType, PayloadType>(config, key_keys);
+      else if (index_name == "DeLI-Dynamic") {
+        deli_testbed::benchmark_deli_dynamic<KeyType, PayloadType>(config, key_keys);
+      }
+      else if (index_name == "DeLI-Static") {
+        deli_testbed::benchmark_deli_static<KeyType, PayloadType>(config, key_keys);
       }
       else if (index_name == "PGM-Static") {
         deli_testbed::benchmark_pgm_static<KeyType, PayloadType>(config, key_keys);

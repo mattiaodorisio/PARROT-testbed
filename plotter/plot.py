@@ -416,6 +416,7 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
         str: Formatted data for pgfplot
     """
     data_lines = []
+    max_legend_entry = 10
     
     # Group by the groupby column (usually index_name) to create separate plot lines
     if groupby_col:
@@ -471,7 +472,9 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
                 data_lines.append(f"    ({x_val}, {y_val})")
             
             data_lines.append("};")
-            data_lines.append(f"\\addlegendentry{{{legend_entry}}}")
+            if max_legend_entry > 0:
+                data_lines.append(f"\\addlegendentry{{{legend_entry}}}")
+                max_legend_entry -= 1
             data_lines.append("")
     
     else:
