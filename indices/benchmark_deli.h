@@ -19,6 +19,7 @@ template <typename KEY_TYPE, typename PAYLOAD_TYPE,
           unsigned int high_bits>
 class BenchmarkDeLI {
   public:
+    using index_t = DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, T, high_bits>;
     using KeyType = KEY_TYPE;
     using PayloadType = PAYLOAD_TYPE;
 
@@ -79,7 +80,8 @@ class BenchmarkDeLI {
          << rht_simd_unrolled << ";"
          << rht_max_load_perc << ";"
          << opt_str << ";"
-         << high_bits;
+         << high_bits <<";"
+         << index_t::rht_simd_width;
 
       return ss.str();
     }
@@ -90,7 +92,7 @@ class BenchmarkDeLI {
 
   private:
     std::vector<std::pair<KEY_TYPE, PAYLOAD_TYPE>> data;
-    DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, T, high_bits> index;
+    index_t index;
 };
 
 template <typename KeyType, typename PayloadType>

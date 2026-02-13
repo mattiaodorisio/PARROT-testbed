@@ -4,6 +4,7 @@
 #pragma once
 #include <unordered_set>
 #include <random>
+#include <functional>
 #include "zipf.h"
 
 static constexpr uint64_t seed = 123456789;

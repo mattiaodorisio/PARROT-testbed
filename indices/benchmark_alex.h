@@ -22,7 +22,7 @@ class BenchmarkALEX {
   
     PAYLOAD_TYPE lower_bound(const KEY_TYPE key) {
       auto it = index.lower_bound(key);
-      return it == index.cend() ? PAYLOAD_TYPE{} : it.payload();
+      return it.is_end() ? PAYLOAD_TYPE{} : it.payload();
     }
   
     void insert(const KEY_TYPE& key, const PAYLOAD_TYPE& payload) {
