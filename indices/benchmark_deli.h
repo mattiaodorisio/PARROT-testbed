@@ -58,11 +58,14 @@ class BenchmarkDeLI {
     }
 
     static std::string name() {
-      return "DeLI";
+      if constexpr (dynamic) {
+        return "DeLI-Dynamic";
+      } else {
+        return "DeLI-Static";
+      }
     }
 
     static std::string variant() {
-      constexpr std::string_view dynamic_str = dynamic ? "Dyn" : "Sta";
       constexpr std::string_view rht_opt_str =
           rht_opt == DeLI::RhtOptimization::none ? "N" :
           rht_opt == DeLI::RhtOptimization::slot_index ? "SI" :

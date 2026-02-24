@@ -234,6 +234,10 @@ def apply_filter(data: List[Dict], filter_conditions: Optional[List[Tuple[str, s
     """
     Apply multiple filter conditions to the data. All conditions must be satisfied (AND logic).
     
+    Supports both exact matching and substring matching:
+    - Exact match: key=value
+    - Substring match: key=*substring* (checks if substring is contained in the field value)
+    
     Args:
         data (List[Dict]): Input data
         filter_conditions (List[Tuple[str, str]] or None): List of (key, value) filter conditions
@@ -250,9 +254,24 @@ def apply_filter(data: List[Dict], filter_conditions: Optional[List[Tuple[str, s
         # Check if all filter conditions are satisfied
         all_conditions_met = True
         for key, value in filter_conditions:
-            if key not in row or str(row[key]) != value:
+            if key not in row:
                 all_conditions_met = False
                 break
+            
+            row_value = str(row[key])
+            
+            # Check if this is a substring filter (starts and ends with *)
+            if value.startswith('*') and value.endswith('*') and len(value) > 2:
+                # Substring matching - remove the * characters and check if substring is in the value
+                substring = value[1:-1]  # Remove leading and trailing *
+                if substring not in row_value:
+                    all_conditions_met = False
+                    break
+            else:
+                # Exact matching (original behavior)
+                if row_value != value:
+                    all_conditions_met = False
+                    break
         
         if all_conditions_met:
             filtered_data.append(row)
