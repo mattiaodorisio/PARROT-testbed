@@ -72,7 +72,6 @@ std::vector<uint32_t> generate_uniform_distr(size_t size) {
     for (auto x = 0; x < size; x++) {
         data[x] = distr(generator); 
     }
-    std::sort(data.begin(), data.end());
     return data;
 }
 
@@ -88,7 +87,6 @@ std::vector<uint32_t> generate_normal_distr(size_t size) {
         } while( sample<0 || sample>(UINT32_MAX >> 1));
         data[x] = (int) sample;
     }
-    std::sort(data.begin(), data.end());
     return data;
 }
 
@@ -104,7 +102,6 @@ std::vector<uint32_t> generate_lognormal_distr(size_t size) {
         } while( sample<0 || sample>(UINT32_MAX >> 1) );
         data[x] = (int) sample;
     }
-    std::sort(data.begin(), data.end());
     return data;
 }
 
@@ -120,7 +117,6 @@ std::vector<uint32_t> generate_exponential_distr(size_t size) {
         } while( sample<0 || sample>(UINT32_MAX >> 1) );
         data[x] = (int) sample;
     }
-    std::sort(data.begin(), data.end());
     return data;
 }
 
@@ -136,7 +132,6 @@ std::vector<uint32_t> generate_chisquared_distr(size_t size) {
         } while( sample<0 || sample>(UINT32_MAX >> 1) );
         data[x] = (int) sample;
     }
-    std::sort(data.begin(), data.end());
     return data;
 }
 
@@ -146,7 +141,6 @@ std::vector<uint32_t> generate_zipf_distr(size_t size) {
     for (size_t i = 0; i < size; ++i) {
       data[i] = zipf_gen.nextValue();
     }
-    std::sort(data.begin(), data.end());
     return data;
 }
 
