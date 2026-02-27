@@ -78,8 +78,7 @@ class BenchmarkDeLI {
           opt == DeLI::TopLevelOptimization::bucket_index ? "BI" : "unknown";
 
       std::stringstream ss;
-      ss << dynamic_str << ";"
-         << rht_opt_str << ";"
+      ss << rht_opt_str << ";"
          << rht_simd_unrolled << ";"
          << rht_max_load_perc << ";"
          << opt_str << ";"
