@@ -18,8 +18,6 @@ class BenchmarkDILI {
     BenchmarkDILI() {}
 
     void bulk_load(std::pair<KeyType, PayloadType>* values, size_t num_keys) {
-      // std::sort(values, values + num_keys,
-      //           [](auto const& a, auto const& b) { return a.first < b.first; });
       std::vector<std::pair<long, long>> dili_values(num_keys);
       for (size_t i = 0; i < num_keys; i++) {
         dili_values[i].first = values[i].first;

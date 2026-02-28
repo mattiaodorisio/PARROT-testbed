@@ -56,6 +56,10 @@ void execute(const bench_config& config) {
       key_keys[i].first = key_keys[i].second = keys[i];
     }
 
+    // Sort by key
+    std::sort(key_values.begin(), key_values.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
+    std::sort(key_keys.begin(), key_keys.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
+
     for (const auto& index_name : index_names) {
       std::cout << "--- Running workloads for " << index_name << " (init_keys=" << current_init_key_size << ") ---" << std::endl;
       

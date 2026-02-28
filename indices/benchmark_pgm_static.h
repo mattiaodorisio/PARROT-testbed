@@ -20,8 +20,6 @@ class BenchmarkStaticPGM {
     BenchmarkStaticPGM() : index() {}
 
     void bulk_load(std::pair<KEY_TYPE, PAYLOAD_TYPE>* values, size_t num_keys) {
-      std::sort(values, values + num_keys, [](auto const& a, auto const& b) { return a.first < b.first; });
-      
       // Unlike dynamic indexes (ALEX, LIPP, Dynamic-PGM) PGM does not have payloads
       auto keys_iter = std::ranges::subrange(values, values + num_keys) | std::ranges::views::transform([](auto const& p) { return p.first; });
       keys.assign(keys_iter.begin(), keys_iter.end());

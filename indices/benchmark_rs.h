@@ -17,9 +17,6 @@ class BenchmarkRS {
     BenchmarkRS() {}
   
     void bulk_load(std::pair<KeyType, PayloadType>* values, size_t num_keys) {
-      std::sort(values, values + num_keys,
-                [](auto const& a, auto const& b) { return a.first < b.first; });
-      
       auto keys_iter = std::ranges::subrange(values, values + num_keys) | std::ranges::views::transform([](auto const& p) { return p.first; });
 
       auto min = std::numeric_limits<KeyType>::min();

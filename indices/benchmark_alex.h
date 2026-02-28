@@ -15,8 +15,6 @@ class BenchmarkALEX {
     BenchmarkALEX() : index() {}
   
     void bulk_load(std::pair<KEY_TYPE, PAYLOAD_TYPE>* values, size_t num_keys) {
-      std::sort(values, values + num_keys,
-                [](auto const& a, auto const& b) { return a.first < b.first; });
       index.bulk_load(values, num_keys);
     }
   
