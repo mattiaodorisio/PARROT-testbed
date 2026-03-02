@@ -24,8 +24,22 @@ from datetime import datetime
 # Global color scheme for consistent series coloring
 _SERIES_COLOR_MAP = {}
 _AVAILABLE_COLORS = [
+    # Primary colors
     'blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray',
-    'olive', 'cyan', 'magenta', 'yellow', 'black', 'teal', 'lime'
+    'olive', 'cyan', 'magenta', 'yellow', 'black', 'teal', 'lime',
+    
+    # RGB-defined colors for better compatibility (12 additional colors)
+    '{rgb,255:red,0;green,128;blue,128}',      # maroon
+    '{rgb,255:red,0;green,100;blue,0}',        # dark green
+    '{rgb,255:red,70;green,130;blue,180}',     # steel blue  
+    '{rgb,255:red,255;green,140;blue,0}',      # dark orange
+    '{rgb,255:red,75;green,0;blue,130}',       # indigo
+    '{rgb,255:red,220;green,20;blue,60}',      # crimson
+    '{rgb,255:red,0;green,206;blue,209}',      # dark turquoise
+    '{rgb,255:red,255;green,215;blue,0}',      # gold
+    '{rgb,255:red,107;green,142;blue,35}',     # olive drab
+    '{rgb,255:red,72;green,61;blue,139}',      # dark slate blue
+    '{rgb,255:red,160;green,82;blue,45}',      # saddle brown
 ]
 _COLOR_INDEX = 0
 
@@ -103,12 +117,20 @@ def parse_filter(filter_str: str) -> Optional[List[Tuple[str, str]]]:
         return None
     
     conditions = []
-    # Split by semicolon to get individual conditions
-    for condition in filter_str.split(';'):
+    
+    # First, temporarily replace escaped semicolons with a placeholder
+    placeholder = "___ESCAPED_SEMICOLON___"
+    temp_str = filter_str.replace('\\;', placeholder)
+    
+    # Split by unescaped semicolons to get individual conditions
+    for condition in temp_str.split(';'):
         condition = condition.strip()
         if '=' in condition:
             key, value = condition.split('=', 1)
-            conditions.append((key.strip(), value.strip()))
+            # Restore escaped semicolons in both key and value
+            key = key.strip().replace(placeholder, ';')
+            value = value.strip().replace(placeholder, ';')
+            conditions.append((key, value))
     
     return conditions if conditions else None
 
@@ -435,7 +457,7 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
         str: Formatted data for pgfplot
     """
     data_lines = []
-    max_legend_entry = 10
+    max_legend_entry = 16
     
     # Group by the groupby column (usually index_name) to create separate plot lines
     if groupby_col:
