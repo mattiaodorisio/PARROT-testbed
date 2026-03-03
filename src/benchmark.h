@@ -277,6 +277,78 @@ private:
     }
   }
 
+  template <class Index, bool fence, bool clear_cache>
+  uint64_t DoMixedOperations(Index& index, std::vector<std::pair<KeyType, PayloadType>>& mixed_pairs_) {
+    bool run_failed = false;
+
+    if constexpr (clear_cache) std::cout << "rsum was: " << random_sum_ << std::endl;
+
+    random_sum_ = 0;
+    individual_ns_sum_ = 0;
+
+    uint64_t ns = utils::timing([&] {
+      DoMixedOperationsCoreLoop<Index, fence, clear_cache>(
+          index, run_failed, mixed_pairs_);
+    });
+
+    if constexpr (clear_cache) {
+      ns = individual_ns_sum_;
+    }
+
+    if (run_failed) {
+      return std::numeric_limits<uint64_t>::max();
+    }
+
+    return ns;
+  }
+
+  template <class Index, bool fence, bool clear_cache>
+  void DoMixedOperationsCoreLoop(Index& index, bool& run_failed,
+                                 std::vector<std::pair<KeyType, PayloadType>>& mixed_pairs_) {
+    // Each iteration performs one insert and one lookup, stepping by 2
+    for (unsigned int i = 0; i + 1 < mixed_pairs_.size(); i += 2) {
+      const KeyType insert_key = mixed_pairs_[i].first;
+      const PayloadType insert_payload = mixed_pairs_[i].second;
+      const KeyType lookup_key = mixed_pairs_[i + 1].first;
+      // For lookups in mixed workload, we don't validate results since we're looking up 
+      // keys that haven't been inserted yet - this is expected behavior
+
+      if constexpr (clear_cache) {
+        // Make sure that all cache lines from large buffer are loaded
+        for (uint64_t& iter : memory_) {
+          random_sum_ += iter;
+        }
+        _mm_mfence();
+
+        const auto timing = utils::timing([&] {
+          // Insert key i
+          index.insert(insert_key, insert_payload);
+          
+          // Lookup key i+1
+          PayloadType lb = index.lower_bound(lookup_key);
+          // For mixed workload, we don't check the result of the lookup
+          // as it potentially depends on keys that have just been inserted
+          volatile auto dummy = lb;
+          (void)dummy;
+        });
+
+        individual_ns_sum_ += timing;
+
+      } else {
+        // Insert key i
+        index.insert(insert_key, insert_payload);
+        
+        // Lookup key i+1  
+        PayloadType lb = index.lower_bound(lookup_key);
+        // No checks, as above
+        volatile auto dummy = lb;
+        (void)dummy;
+      }
+
+      if constexpr (fence) __sync_synchronize();
+    }
+  }
+
   template <class Index>
   uint64_t DoInsertInDistribution(Index& index, const bench_config& config) {
     auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
@@ -307,8 +379,31 @@ private:
 
   template <class Index>
   uint64_t DoMixed(Index& index, const bench_config& config) {
-    // Placeholder for mixed workload - to be implemented
-    throw std::runtime_error("Mixed workload not yet implemented");
+    auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
+    std::vector<KeyType> mixed_keys = utils::get_non_existing_keys_in_distribution(keys.begin(), keys.end(), config.batch_size);
+
+    if (mixed_keys.size() < config.batch_size) {
+      // existing keys are the ones in keys and in mixed_keys
+      std::vector<KeyType> existing_keys;
+      existing_keys.reserve(keys.size() + mixed_keys.size());
+      existing_keys.insert(existing_keys.end(), keys.begin(), keys.end());
+      existing_keys.insert(existing_keys.end(), mixed_keys.begin(), mixed_keys.end());
+
+      std::vector<KeyType> extra_keys =
+          utils::get_non_existing_keys(existing_keys.begin(), existing_keys.end(), config.batch_size - mixed_keys.size());
+      mixed_keys.insert(mixed_keys.end(), extra_keys.begin(), extra_keys.end());
+    }
+    
+    // Create pairs with random payloads for mixed operations
+    std::vector<std::pair<KeyType, PayloadType>> mixed_pairs;
+    for (const auto& key : mixed_keys) {
+      mixed_pairs.emplace_back(key, rand_gen());
+    }
+
+    if (config.clear_cache)
+      return DoMixedOperations<Index, false, true>(index, mixed_pairs);
+    else
+      return DoMixedOperations<Index, false, false>(index, mixed_pairs);
   }
 
   std::vector<std::pair<KeyType, PayloadType>>& key_values_;

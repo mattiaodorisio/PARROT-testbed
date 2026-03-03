@@ -51,7 +51,7 @@ template <typename KeyType, typename PayloadType>
 void benchmark_alex(const bench_config& config,
                     std::vector<std::pair<KeyType, PayloadType>> key_values) {
   
-  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION };
+  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION, MIXED };
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkALEX<KeyType, PayloadType>>(config, key_values, wl);
   }
