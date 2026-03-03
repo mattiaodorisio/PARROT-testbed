@@ -18,9 +18,9 @@ enum Workload : int {
   LOOKUP_EXISTING,
   LOOKUP_IN_DISTRIBUTION,
   INSERT_IN_DISTRIBUTION,
+  MIXED,
   
   NUM_WORKLOADS,  // TODO: to be implemented
-  MIXED,
   SHIFTING,
 };
 
@@ -80,6 +80,10 @@ class Benchmark {
       return DoLookupInDistribution(index, config);
     } else if constexpr (W == INSERT_IN_DISTRIBUTION) {
       return DoInsertInDistribution(index, config);
+    } else if constexpr (W == MIXED) {
+      return DoMixed(index, config);
+    } else {
+      throw std::runtime_error("Workload not implemented");
     }
     return 0;
   }
@@ -219,6 +223,60 @@ private:
     }
   }
 
+  template <class Index, bool fence, bool clear_cache>
+  uint64_t DoInserts(Index& index, std::vector<std::pair<KeyType, PayloadType>>& inserts_) {
+    bool run_failed = false;
+
+    if constexpr (clear_cache) std::cout << "rsum was: " << random_sum_ << std::endl;
+
+    random_sum_ = 0;
+    individual_ns_sum_ = 0;
+
+    uint64_t ns = utils::timing([&] {
+      DoInsertsCoreLoop<Index, fence, clear_cache>(
+          index, run_failed, inserts_);
+    });
+
+    if constexpr (clear_cache) {
+      ns = individual_ns_sum_;
+    }
+
+    if (run_failed) {
+      return std::numeric_limits<uint64_t>::max();
+    }
+
+    return ns;
+  }
+
+  template <class Index, bool fence, bool clear_cache>
+  void DoInsertsCoreLoop(Index& index, bool& run_failed,
+                         std::vector<std::pair<KeyType, PayloadType>>& inserts_) {
+    for (unsigned int idx = 0; idx < inserts_.size(); ++idx) {
+      const KeyType insert_key = inserts_[idx].first;
+      const PayloadType insert_payload = inserts_[idx].second;
+
+      if constexpr (clear_cache) {
+        // Make sure that all cache lines from large buffer are loaded
+        for (uint64_t& iter : memory_) {
+          random_sum_ += iter;
+        }
+        _mm_mfence();
+
+        const auto timing = utils::timing([&] {
+          index.insert(insert_key, insert_payload);
+        });
+
+        individual_ns_sum_ += timing;
+
+      } else {
+        // Not tracking individual timing, just do the insert
+        index.insert(insert_key, insert_payload);
+      }
+
+      if constexpr (fence) __sync_synchronize();
+    }
+  }
+
   template <class Index>
   uint64_t DoInsertInDistribution(Index& index, const bench_config& config) {
     auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
@@ -240,12 +298,17 @@ private:
     for (const auto& key : insert_keys) {
       insert_pairs.emplace_back(key, rand_gen());
     }
-    
-    return utils::timing([&] {
-      for (const auto& [key, payload] : insert_pairs) {
-        index.insert(key, payload);
-      }
-    });
+
+    if (config.clear_cache)
+      return DoInserts<Index, false, true>(index, insert_pairs);
+    else
+      return DoInserts<Index, false, false>(index, insert_pairs);
+  }
+
+  template <class Index>
+  uint64_t DoMixed(Index& index, const bench_config& config) {
+    // Placeholder for mixed workload - to be implemented
+    throw std::runtime_error("Mixed workload not yet implemented");
   }
 
   std::vector<std::pair<KeyType, PayloadType>>& key_values_;
@@ -289,6 +352,9 @@ void run_benchmark(const bench_config& config,
           break;
         case INSERT_IN_DISTRIBUTION: 
           batch_time = benchmark.template RunWorkload<INSERT_IN_DISTRIBUTION, IndexWrapper>(index, config); 
+          break;
+        case MIXED: 
+          batch_time = benchmark.template RunWorkload<MIXED, IndexWrapper>(index, config); 
           break;
         default: 
           throw std::runtime_error("Workload not implemented");

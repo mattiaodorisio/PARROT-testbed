@@ -25,7 +25,7 @@ while IFS= read -r line; do
         continue
       fi
       echo "Running benchmark for $line"
-      ./deLi_testbed --keys_file=../data/$line --batch_size=16384 --output_folder=../results --print_batch_stats --pareto
+      ./deLi_testbed --keys_file=../data/$line --num_batches=3 --batch_size=8192 --output_folder=../results --print_batch_stats --pareto
     fi
 done < "../data/enabled_datasets.txt"
 

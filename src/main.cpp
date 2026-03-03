@@ -27,9 +27,6 @@
 
 // TODO:
 // - Implement missing workloads
-// - Fix batches
-
-static constexpr size_t NUM_BATCHES = 1;
 
 template <typename KeyType, typename PayloadType>
 void execute(const bench_config& config) {
@@ -94,8 +91,9 @@ void execute(const bench_config& config) {
 /*
  * Required flags:
  * --keys_file              path to the file that contains keys
- * --batch_size             number of operations (lookup or insert) per batch
- * --output_folder          folder path for benchmark output (default: results/)
+ * --batch_size             number of operations per batch
+ * --num_batches            number of batches to run
+ * --output_folder          folder path for benchmark output
  *
  * Optional flags:
  * --lookup_distribution    lookup keys distribution (options: uniform or zipf)
@@ -110,6 +108,7 @@ int main(int argc, char* argv[]) {
   auto flags = parse_flags(argc, argv);
   std::string keys_file_path = get_required(flags, "keys_file");
   auto batch_size = stoi(get_required(flags, "batch_size"));
+  auto num_batches = stoi(get_required(flags, "num_batches"));
   std::string output_folder = get_required(flags, "output_folder");
   std::string lookup_distribution = get_with_default(flags, "lookup_distribution", "uniform");
   auto time_limit = stod(get_with_default(flags, "time_limit", "0.5"));
@@ -166,7 +165,7 @@ int main(int argc, char* argv[]) {
       lookup_distribution: lookup_distribution,
       time_limit: time_limit,
       batch_size: batch_size,
-      max_batches: NUM_BATCHES,
+      max_batches: num_batches,
       print_batch_stats: print_batch_stats,
       clear_cache: clear_cache,
       pareto: pareto,
