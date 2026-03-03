@@ -96,9 +96,15 @@ class Benchmark {
         utils::get_existing_keys(key_values_.begin(), key_values_.end(), config.batch_size);
 
     if (config.clear_cache)
-      return DoEqualityLookups<Index, false, true>(index, lookup_pairs);
+      return DoCoreLoop<Index, false, true>(index, lookup_pairs, 
+        [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoEqualityLookupsCoreLoop<Index, false, true>(idx, failed, pairs);
+        });
     else
-      return DoEqualityLookups<Index, false, false>(index, lookup_pairs);
+      return DoCoreLoop<Index, false, false>(index, lookup_pairs, 
+        [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoEqualityLookupsCoreLoop<Index, false, false>(idx, failed, pairs);
+        });
   }
 
   template <class Index>
@@ -132,9 +138,15 @@ class Benchmark {
     }
 
     if (config.clear_cache)
-      return DoEqualityLookups<Index, true, true>(index, lookup_pairs);
+      return DoCoreLoop<Index, true, true>(index, lookup_pairs, 
+        [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoEqualityLookupsCoreLoop<Index, true, true>(idx, failed, pairs);
+        });
     else
-      return DoEqualityLookups<Index, false, false>(index, lookup_pairs);
+      return DoCoreLoop<Index, false, false>(index, lookup_pairs, 
+        [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoEqualityLookupsCoreLoop<Index, false, false>(idx, failed, pairs);
+        });
   }
 
 private:
@@ -153,8 +165,10 @@ private:
     return true;
   }
 
+  // Generic operation function to be used for timing a "core loop"
   template <class Index, bool fence, bool clear_cache>
-  uint64_t DoEqualityLookups(Index& index, std::vector<std::pair<KeyType, PayloadType>>& lookups_) {
+  uint64_t DoCoreLoop(Index& index, std::vector<std::pair<KeyType, PayloadType>>& pairs_, 
+                        std::function<void(Index&, bool&, std::vector<std::pair<KeyType, PayloadType>>&)> core_loop_func) {
     bool run_failed = false;
 
     if constexpr (clear_cache) std::cout << "rsum was: " << random_sum_ << std::endl;
@@ -163,8 +177,7 @@ private:
     individual_ns_sum_ = 0;
 
     uint64_t ns = utils::timing([&] {
-      DoEqualityLookupsCoreLoop<Index, fence, clear_cache>(
-          index, run_failed, lookups_);
+      core_loop_func(index, run_failed, pairs_);
     });
 
     if constexpr (clear_cache) {
@@ -224,31 +237,6 @@ private:
   }
 
   template <class Index, bool fence, bool clear_cache>
-  uint64_t DoInserts(Index& index, std::vector<std::pair<KeyType, PayloadType>>& inserts_) {
-    bool run_failed = false;
-
-    if constexpr (clear_cache) std::cout << "rsum was: " << random_sum_ << std::endl;
-
-    random_sum_ = 0;
-    individual_ns_sum_ = 0;
-
-    uint64_t ns = utils::timing([&] {
-      DoInsertsCoreLoop<Index, fence, clear_cache>(
-          index, run_failed, inserts_);
-    });
-
-    if constexpr (clear_cache) {
-      ns = individual_ns_sum_;
-    }
-
-    if (run_failed) {
-      return std::numeric_limits<uint64_t>::max();
-    }
-
-    return ns;
-  }
-
-  template <class Index, bool fence, bool clear_cache>
   void DoInsertsCoreLoop(Index& index, bool& run_failed,
                          std::vector<std::pair<KeyType, PayloadType>>& inserts_) {
     for (unsigned int idx = 0; idx < inserts_.size(); ++idx) {
@@ -275,31 +263,6 @@ private:
 
       if constexpr (fence) __sync_synchronize();
     }
-  }
-
-  template <class Index, bool fence, bool clear_cache>
-  uint64_t DoMixedOperations(Index& index, std::vector<std::pair<KeyType, PayloadType>>& mixed_pairs_) {
-    bool run_failed = false;
-
-    if constexpr (clear_cache) std::cout << "rsum was: " << random_sum_ << std::endl;
-
-    random_sum_ = 0;
-    individual_ns_sum_ = 0;
-
-    uint64_t ns = utils::timing([&] {
-      DoMixedOperationsCoreLoop<Index, fence, clear_cache>(
-          index, run_failed, mixed_pairs_);
-    });
-
-    if constexpr (clear_cache) {
-      ns = individual_ns_sum_;
-    }
-
-    if (run_failed) {
-      return std::numeric_limits<uint64_t>::max();
-    }
-
-    return ns;
   }
 
   template <class Index, bool fence, bool clear_cache>
@@ -372,9 +335,15 @@ private:
     }
 
     if (config.clear_cache)
-      return DoInserts<Index, false, true>(index, insert_pairs);
+      return DoCoreLoop<Index, false, true>(index, insert_pairs, 
+        [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoInsertsCoreLoop<Index, false, true>(idx, failed, pairs);
+        });
     else
-      return DoInserts<Index, false, false>(index, insert_pairs);
+      return DoCoreLoop<Index, false, false>(index, insert_pairs, 
+        [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoInsertsCoreLoop<Index, false, false>(idx, failed, pairs);
+        });
   }
 
   template <class Index>
@@ -401,9 +370,15 @@ private:
     }
 
     if (config.clear_cache)
-      return DoMixedOperations<Index, false, true>(index, mixed_pairs);
+      return DoCoreLoop<Index, false, true>(index, mixed_pairs, 
+        [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoMixedOperationsCoreLoop<Index, false, true>(idx, failed, pairs);
+        });
     else
-      return DoMixedOperations<Index, false, false>(index, mixed_pairs);
+      return DoCoreLoop<Index, false, false>(index, mixed_pairs, 
+        [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoMixedOperationsCoreLoop<Index, false, false>(idx, failed, pairs);
+        });
   }
 
   std::vector<std::pair<KeyType, PayloadType>>& key_values_;
