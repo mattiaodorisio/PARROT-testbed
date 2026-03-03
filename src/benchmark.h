@@ -18,6 +18,7 @@ enum Workload : int {
   LOOKUP_EXISTING,
   LOOKUP_IN_DISTRIBUTION,
   INSERT_IN_DISTRIBUTION,
+  DELETE_EXISTING,
   MIXED,
   
   NUM_WORKLOADS,  // TODO: to be implemented
@@ -29,6 +30,7 @@ std::string workload_name(Workload workload) {
     case LOOKUP_EXISTING: return "LOOKUP_EXISTING";
     case LOOKUP_IN_DISTRIBUTION: return "LOOKUP_IN_DISTRIBUTION";
     case INSERT_IN_DISTRIBUTION: return "INSERT_IN_DISTRIBUTION";
+    case DELETE_EXISTING: return "DELETE_EXISTING";
     case MIXED: return "MIXED";
     case SHIFTING: return "SHIFTING";
     default: return "UNKNOWN_WORKLOAD";
@@ -80,6 +82,8 @@ class Benchmark {
       return DoLookupInDistribution(index, config);
     } else if constexpr (W == INSERT_IN_DISTRIBUTION) {
       return DoInsertInDistribution(index, config);
+    } else if constexpr (W == DELETE_EXISTING) {
+      return DoDeleteExisting(index, config);
     } else if constexpr (W == MIXED) {
       return DoMixed(index, config);
     } else {
@@ -146,6 +150,24 @@ class Benchmark {
       return DoCoreLoop<Index, false, false>(index, lookup_pairs, 
         [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
           DoEqualityLookupsCoreLoop<Index, false, false>(idx, failed, pairs);
+        });
+  }
+
+  template <class Index>
+  uint64_t DoDeleteExisting(Index& index, const bench_config& config) {
+    // Get existing keys from the dataset (opposite of insert workload which gets non-existing keys)
+    std::vector<std::pair<KeyType, PayloadType>> delete_pairs = 
+        utils::get_existing_keys(key_values_.begin(), key_values_.end(), config.batch_size);
+
+    if (config.clear_cache)
+      return DoCoreLoop<Index, false, true>(index, delete_pairs, 
+        [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoDeletesCoreLoop<Index, false, true>(idx, failed, pairs);
+        });
+    else
+      return DoCoreLoop<Index, false, false>(index, delete_pairs, 
+        [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoDeletesCoreLoop<Index, false, false>(idx, failed, pairs);
         });
   }
 
@@ -259,6 +281,34 @@ private:
       } else {
         // Not tracking individual timing, just do the insert
         index.insert(insert_key, insert_payload);
+      }
+
+      if constexpr (fence) __sync_synchronize();
+    }
+  }
+
+  template <class Index, bool fence, bool clear_cache>
+  void DoDeletesCoreLoop(Index& index, bool& run_failed,
+                         std::vector<std::pair<KeyType, PayloadType>>& deletes_) {
+    for (unsigned int idx = 0; idx < deletes_.size(); ++idx) {
+      const KeyType delete_key = deletes_[idx].first;
+
+      if constexpr (clear_cache) {
+        // Make sure that all cache lines from large buffer are loaded
+        for (uint64_t& iter : memory_) {
+          random_sum_ += iter;
+        }
+        _mm_mfence();
+
+        const auto timing = utils::timing([&] {
+          index.erase(delete_key);
+        });
+
+        individual_ns_sum_ += timing;
+
+      } else {
+        // Not tracking individual timing, just do the delete
+        index.erase(delete_key);
       }
 
       if constexpr (fence) __sync_synchronize();
@@ -422,6 +472,9 @@ void run_benchmark(const bench_config& config,
           break;
         case INSERT_IN_DISTRIBUTION: 
           batch_time = benchmark.template RunWorkload<INSERT_IN_DISTRIBUTION, IndexWrapper>(index, config); 
+          break;
+        case DELETE_EXISTING: 
+          batch_time = benchmark.template RunWorkload<DELETE_EXISTING, IndexWrapper>(index, config); 
           break;
         case MIXED: 
           batch_time = benchmark.template RunWorkload<MIXED, IndexWrapper>(index, config); 

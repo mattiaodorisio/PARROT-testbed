@@ -42,7 +42,7 @@ class BenchmarkDILI {
     }
 
     static std::vector<Workload> supported_workloads() {
-      return {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION, MIXED};
+      return {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED};
     }
 
     bool applicable(const std::string& data_filename) {

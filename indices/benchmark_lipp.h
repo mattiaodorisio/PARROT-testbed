@@ -29,7 +29,7 @@ class BenchmarkLIPP {
     }
 
     void erase(const KEY_TYPE& key) {
-      index.erase(key);
+      throw std::runtime_error("Erase not supported on LIPP index");
     }
 
     static std::string name() {
