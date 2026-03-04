@@ -136,7 +136,7 @@ void benchmark_deli_dynamic(const bench_config& config,
           std::integer_sequence<int, rht_optimizations...>,
           std::integer_sequence<int, top_optimizations...>,
           const bench_config& cfg, 
-          const std::vector<std::pair<KeyType, PayloadType>>& kv, 
+          std::vector<std::pair<KeyType, PayloadType>>& kv, 
           Workload workload) {
         
         // 5-level nested cartesian product

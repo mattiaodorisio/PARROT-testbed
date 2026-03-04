@@ -53,9 +53,10 @@ class Benchmark {
 
   template <class Index>
   void BulkLoad(Index& index) {
-    // Sort the data before bulk loading
-    std::sort(key_values_.begin(), key_values_.end(), 
-              [](auto const& a, auto const& b) { return a.first < b.first; });
+    if (!std::is_sorted(key_values_.begin(), key_values_.end(),
+                        [](auto const& a, auto const& b) { return a.first < b.first; })) {
+      throw std::runtime_error("Data must be sorted by key before bulk loading");
+    }
     index.bulk_load(key_values_.data(), key_values_.size());
   }
 
