@@ -42,6 +42,13 @@ void execute(const bench_config& config) {
   for (size_t current_init_key_size = (1 << config.min_size); current_init_key_size <= (1 << config.max_size); current_init_key_size *= 2) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
 
+    // Check if we have enough keys loaded
+    if (current_init_key_size > keys.size()) {
+      std::cerr << "Error: Not enough keys loaded. Requested: " << current_init_key_size 
+                << ", Available: " << keys.size() << std::endl;
+      continue;  // Skip this size and try the next one
+    }
+
     // Create values array for current init size
     // Two vectors: key-value and key_key to be used depending on the index... TODO: improve this
     std::vector<std::pair<KeyType, PayloadType>> key_values(current_init_key_size);

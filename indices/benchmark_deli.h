@@ -97,7 +97,7 @@ class BenchmarkDeLI {
 
 template <typename KeyType, typename PayloadType>
 void benchmark_deli_dynamic(const bench_config& config,
-                    std::vector<std::pair<KeyType, PayloadType>> key_values) {
+                    std::vector<std::pair<KeyType, PayloadType>>& key_values) {
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED };
   for (const auto& wl : supported_workloads) {
@@ -173,7 +173,7 @@ void benchmark_deli_dynamic(const bench_config& config,
 
 template <typename KeyType, typename PayloadType>
 void benchmark_deli_static(const bench_config& config,
-                    std::vector<std::pair<KeyType, PayloadType>> key_values) {
+                    std::vector<std::pair<KeyType, PayloadType>>& key_values) {
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {

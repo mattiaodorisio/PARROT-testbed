@@ -10,6 +10,8 @@
 #include <iomanip>
 #include <random>
 #include <unordered_set>
+#include <queue>
+#include <numeric>
 
 #include "utils.h"
 
@@ -41,7 +43,13 @@ template <typename KeyType, typename PayloadType>
 class Benchmark {
  public:
   Benchmark(std::vector<std::pair<KeyType, PayloadType>>& key_values)
-      : key_values_(key_values) {}
+      : key_values_(key_values) {
+    // Initialize cache clearing buffer - allocate ~64MB for cache flushing
+    constexpr size_t cache_flush_size = 64 * 1024 * 1024 / sizeof(uint64_t);
+    memory_.resize(cache_flush_size);
+    // Initialize with some values to avoid potential issues
+    std::iota(memory_.begin(), memory_.end(), 0);
+  }
 
   template <class Index>
   void BulkLoad(Index& index) {
@@ -49,6 +57,23 @@ class Benchmark {
     std::sort(key_values_.begin(), key_values_.end(), 
               [](auto const& a, auto const& b) { return a.first < b.first; });
     index.bulk_load(key_values_.data(), key_values_.size());
+  }
+
+  // Initialize shifting window state - must be called after BulkLoad
+  void InitializeShiftingWindow() {
+    if (!shifting_initialized_) {
+      // Find the maximum key from bulk loaded data
+      auto max_it = std::max_element(key_values_.begin(), key_values_.end(),
+                                   [](const auto& a, const auto& b) { return a.first < b.first; });
+      next_insert_key_ = (max_it != key_values_.end()) ? max_it->first + 1 : KeyType{1};
+      
+      // Populate priority queue with all current keys
+      for (const auto& kv : key_values_) {
+        current_keys_.push(kv.first);
+      }
+      
+      shifting_initialized_ = true;
+    }
   }
 
   void PrintResult(const std::string& index_name,
@@ -86,6 +111,8 @@ class Benchmark {
       return DoDeleteExisting(index, config);
     } else if constexpr (W == MIXED) {
       return DoMixed(index, config);
+    } else if constexpr (W == SHIFTING) {
+      return DoShifting(index, config);
     } else {
       throw std::runtime_error("Workload not implemented");
     }
@@ -362,6 +389,43 @@ private:
     }
   }
 
+  template <class Index, bool fence, bool clear_cache>
+  void DoShiftingCoreLoop(Index& index, bool& run_failed,
+                         std::vector<std::pair<KeyType, PayloadType>>& shifting_pairs_,
+                         const std::vector<bool>& is_insert_op) {
+    for (unsigned int idx = 0; idx < shifting_pairs_.size(); ++idx) {
+      const KeyType key = shifting_pairs_[idx].first;
+      const PayloadType payload = shifting_pairs_[idx].second;
+      const bool is_insert = is_insert_op[idx];
+
+      if constexpr (clear_cache) {
+        // Cache clearing logic
+        for (uint64_t& iter : memory_) {
+          random_sum_ += iter;
+        }
+        _mm_mfence();
+
+        const auto timing = utils::timing([&] {
+          if (is_insert) {
+            index.insert(key, payload);
+          } else {
+            index.erase(key);
+          }
+        });
+
+        individual_ns_sum_ += timing;
+      } else {
+        if (is_insert) {
+          index.insert(key, payload);
+        } else {
+          index.erase(key);
+        }
+      }
+
+      if constexpr (fence) __sync_synchronize();
+    }
+  }
+
   template <class Index>
   uint64_t DoInsertInDistribution(Index& index, const bench_config& config) {
     auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
@@ -431,16 +495,65 @@ private:
         });
   }
 
+  template <class Index>
+  uint64_t DoShifting(Index& index, const bench_config& config) {
+    InitializeShiftingWindow();
+    
+    // Generate batch operations: alternating insert/delete
+    std::vector<std::pair<KeyType, PayloadType>> shifting_pairs;
+    std::vector<bool> is_insert_op;  // true = insert, false = delete
+    
+    for (size_t i = 0; i < config.batch_size; ++i) {
+      if (i % 2 == 0) {  // Insert operation
+        KeyType new_key = next_insert_key_++;
+        PayloadType payload = rand_gen();
+        shifting_pairs.emplace_back(new_key, payload);
+        current_keys_.push(new_key);  // Track for future deletions
+        is_insert_op.push_back(true);
+      } else {  // Delete operation
+        if (!current_keys_.empty()) {
+          KeyType key_to_delete = current_keys_.top();
+          current_keys_.pop();
+          shifting_pairs.emplace_back(key_to_delete, PayloadType{});
+          is_insert_op.push_back(false);
+        } else {
+          // No keys to delete, make it an insert instead
+          KeyType new_key = next_insert_key_++;
+          PayloadType payload = rand_gen();
+          shifting_pairs.emplace_back(new_key, payload);
+          current_keys_.push(new_key);
+          is_insert_op.push_back(true);
+        }
+      }
+    }
+
+    if (config.clear_cache)
+      return DoCoreLoop<Index, false, true>(index, shifting_pairs, 
+        [this, &is_insert_op](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoShiftingCoreLoop<Index, false, true>(idx, failed, pairs, is_insert_op);
+        });
+    else
+      return DoCoreLoop<Index, false, false>(index, shifting_pairs, 
+        [this, &is_insert_op](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoShiftingCoreLoop<Index, false, false>(idx, failed, pairs, is_insert_op);
+        });
+  }
+
   std::vector<std::pair<KeyType, PayloadType>>& key_values_;
   uint64_t random_sum_ = 0;
   uint64_t individual_ns_sum_ = 0;
   std::vector<uint64_t> memory_;  // Some memory used to flush the cache
+  
+  // Shifting window state
+  KeyType next_insert_key_{};  // Next key to insert (always increasing)
+  std::priority_queue<KeyType, std::vector<KeyType>, std::greater<KeyType>> current_keys_;  // Min-heap for deletions
+  bool shifting_initialized_ = false;
 };
 
 
 template<class IndexWrapper>
 void run_benchmark(const bench_config& config, 
-                   std::vector<std::pair<typename IndexWrapper::KeyType, typename IndexWrapper::PayloadType>> key_values,
+                   std::vector<std::pair<typename IndexWrapper::KeyType, typename IndexWrapper::PayloadType>>& key_values,
                    Workload workload) {
   
     using KeyType = typename IndexWrapper::KeyType;
@@ -478,6 +591,9 @@ void run_benchmark(const bench_config& config,
           break;
         case MIXED: 
           batch_time = benchmark.template RunWorkload<MIXED, IndexWrapper>(index, config); 
+          break;
+        case SHIFTING: 
+          batch_time = benchmark.template RunWorkload<SHIFTING, IndexWrapper>(index, config); 
           break;
         default: 
           throw std::runtime_error("Workload not implemented");

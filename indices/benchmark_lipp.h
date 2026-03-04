@@ -50,7 +50,7 @@ class BenchmarkLIPP {
 
 template <typename KeyType, typename PayloadType>
 void benchmark_lipp(const bench_config& config,
-                    std::vector<std::pair<KeyType, PayloadType>> key_values) {
+                    std::vector<std::pair<KeyType, PayloadType>>& key_values) {
 
   // Check if there are duplicates
   for (size_t i = 1; i < key_values.size(); ++i) {

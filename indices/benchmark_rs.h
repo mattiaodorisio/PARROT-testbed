@@ -156,7 +156,7 @@ class BenchmarkRS {
 
 template <typename KeyType, typename PayloadType>
 void benchmark_rs(const bench_config& config,
-                             std::vector<std::pair<KeyType, PayloadType>> key_values) {
+                             std::vector<std::pair<KeyType, PayloadType>>& key_values) {
 
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {

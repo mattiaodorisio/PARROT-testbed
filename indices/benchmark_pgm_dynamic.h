@@ -57,7 +57,7 @@ class BenchmarkDynamicPGM {
 
 template <typename KeyType, typename PayloadType>
 void benchmark_pgm_dynamic(const bench_config& config, 
-                           std::vector<std::pair<KeyType, PayloadType>> key_values) {
+                           std::vector<std::pair<KeyType, PayloadType>>& key_values) {
 
   // Check for sentinel value
   constexpr KeyType sentinel = std::numeric_limits<KeyType>::has_infinity ? std::numeric_limits<KeyType>::infinity()
