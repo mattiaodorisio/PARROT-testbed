@@ -25,12 +25,13 @@ class BenchmarkDeLI {
 
     BenchmarkDeLI() {}
   
-    void bulk_load(std::pair<KEY_TYPE, PAYLOAD_TYPE>* values, size_t num_keys) {
+    template<typename Iterator>
+    void bulk_load(const Iterator begin, const Iterator end) {
       // Unlike dynamic indexes (ALEX, LIPP, Dynamic-PGM) DeLI does not have payloads
-      auto keys = std::ranges::subrange(values, values + num_keys) | std::ranges::views::transform([](auto const& p) { return p.first; });
+      auto keys = std::ranges::subrange(begin, end) | std::ranges::views::transform([](auto const& p) { return p.first; });
 
       // Retain a copy of the data
-      data.assign(values, values + num_keys);
+      data.assign(begin, end);
       index.bulk_load(keys.begin(), keys.end());
     }
   

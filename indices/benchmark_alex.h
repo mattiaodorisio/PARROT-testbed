@@ -14,8 +14,9 @@ class BenchmarkALEX {
 
     BenchmarkALEX() : index() {}
   
-    void bulk_load(std::pair<KEY_TYPE, PAYLOAD_TYPE>* values, size_t num_keys) {
-      index.bulk_load(values, num_keys);
+    template<typename Iterator>
+    void bulk_load(const Iterator begin, const Iterator end) {
+      index.bulk_load(&*begin, std::distance(begin, end));
     }
   
     PAYLOAD_TYPE lower_bound(const KEY_TYPE key) {

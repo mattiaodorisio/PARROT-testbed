@@ -15,14 +15,15 @@ class BenchmarkDynamicPGM {
 
     BenchmarkDynamicPGM() : index() {}
 
-    void bulk_load(std::pair<KEY_TYPE, PAYLOAD_TYPE>* values, size_t num_keys) {
-      auto keys = std::ranges::subrange(values, values + num_keys) | std::ranges::views::transform([](auto const& p) { return p.first; });
+    template<typename Iterator>
+    void bulk_load(const Iterator begin, const Iterator end) {
+      auto keys = std::ranges::subrange(begin, end) | std::ranges::views::transform([](auto const& p) { return p.first; });
 
       // Retain a copy of the data
       data.assign(keys.begin(), keys.end());
       // Re-initialize the index (PGMDynamic does not support copy/move, nor provide a bulk_load function)
       index.~DynamicPGMIndex();
-      new (&index) decltype(index)(values, values + num_keys);
+      new (&index) decltype(index)(&*begin, &*end);
     }
 
     PAYLOAD_TYPE lower_bound(const KEY_TYPE key) {

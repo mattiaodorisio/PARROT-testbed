@@ -51,15 +51,6 @@ class Benchmark {
     std::iota(memory_.begin(), memory_.end(), 0);
   }
 
-  template <class Index>
-  void BulkLoad(Index& index) {
-    if (!std::is_sorted(key_values_.begin(), key_values_.end(),
-                        [](auto const& a, auto const& b) { return a.first < b.first; })) {
-      throw std::runtime_error("Data must be sorted by key before bulk loading");
-    }
-    index.bulk_load(key_values_.data(), key_values_.size());
-  }
-
   // Initialize shifting window state - must be called after BulkLoad
   void InitializeShiftingWindow() {
     if (!shifting_initialized_) {
@@ -570,7 +561,7 @@ void run_benchmark(const bench_config& config,
       return;
     }
 
-    benchmark.BulkLoad(index);
+    index.bulk_load(key_values.begin(), key_values.end());
 
     // Run workload
     auto batch_start_time = std::chrono::high_resolution_clock::now();
