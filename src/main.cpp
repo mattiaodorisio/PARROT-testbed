@@ -12,6 +12,7 @@
 #include "../indices/benchmark_pgm_static.h"
 #include "../indices/benchmark_pgm_dynamic.h"
 #include "../indices/benchmark_rs.h"
+#include "../indices/benchmark_tlx.h"
 
 #include <iomanip>
 #include <fstream>
@@ -37,7 +38,7 @@ void execute(const bench_config& config) {
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
   // Define index types and names
-  std::vector<std::string> index_names = {"ALEX", "LIPP", "RS", "DeLI-Static", "DeLI-Dynamic", "PGM-Static", "PGM-Dynamic"};
+  const std::vector<std::string> index_names = {"ALEX", "LIPP", "RS", "DeLI-Static", "DeLI-Dynamic", "PGM-Static", "PGM-Dynamic", "TLX"};
 
   for (size_t current_init_key_size = (1 << config.min_size); current_init_key_size <= (1 << config.max_size); current_init_key_size *= 2) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
@@ -87,6 +88,9 @@ void execute(const bench_config& config) {
       }
       else if (index_name == "PGM-Dynamic") {
         deli_testbed::benchmark_pgm_dynamic<KeyType, PayloadType>(config, key_values);
+      }
+      else if (index_name == "TLX") {
+        deli_testbed::benchmark_tlx<KeyType, PayloadType>(config, key_keys);
       }
       else {
         throw std::runtime_error("Unsupported index: " + index_name);

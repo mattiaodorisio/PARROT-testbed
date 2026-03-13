@@ -75,6 +75,22 @@ def reset_color_mapping():
     _COLOR_INDEX = 0
 
 
+def escape_latex_text(value) -> str:
+    """Escape LaTeX special characters in text content."""
+    text = str(value)
+    replacements = {
+        '\\': r'\textbackslash{}',
+        '&': r'\&',
+        '%': r'\%',
+        '$': r'\$',
+        '#': r'\#',
+        '_': r'\_',
+        '{': r'\{',
+        '}': r'\}',
+    }
+    return ''.join(replacements.get(char, char) for char in text)
+
+
 def initialize_color_mapping(data: List[Dict], groupby_col: str):
     """
     Initialize color mapping by discovering all unique series names in the data.
@@ -514,7 +530,8 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
             
             data_lines.append("};")
             if max_legend_entry > 0:
-                data_lines.append(f"\\addlegendentry{{{legend_entry}}}")
+                safe_legend_entry = escape_latex_text(legend_entry)
+                data_lines.append(f"\\addlegendentry{{{safe_legend_entry}}}")
                 max_legend_entry -= 1
             data_lines.append("")
     

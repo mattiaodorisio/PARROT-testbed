@@ -13,3 +13,6 @@
 [submodule "indices/RadixSpline"]
 	path = indices/RadixSpline
 	url = https://github.com/learnedsystems/RadixSpline.git
+[submodule "indices/tlx"]
+	path = indices/tlx
+	url = https://github.com/tlx/tlx.git

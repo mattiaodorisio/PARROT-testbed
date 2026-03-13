@@ -14,6 +14,7 @@ add_compile_options(-g -fno-omit-frame-pointer -O3 -march=native)
 
 # Add include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/indices)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/indices/tlx)
 
 add_executable(deLi_testbed src/main.cpp)
 add_executable(generate_datasets src/generate_datasets.cpp)
