@@ -450,6 +450,11 @@ private:
         [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
           DoInsertsCoreLoop<Index, false, false>(idx, failed, pairs);
         });
+
+    // Add insert keys to the dataset for future batches, as they are now part of the index
+    std::sort(insert_pairs.begin(), insert_pairs.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
+    key_values_.insert(key_values_.end(), insert_pairs.begin(), insert_pairs.end());
+    std::inplace_merge(key_values_.begin(), key_values_.end() - insert_pairs.size(), key_values_.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
   }
 
   template <class Index>
@@ -485,6 +490,15 @@ private:
         [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
           DoMixedOperationsCoreLoop<Index, false, false>(idx, failed, pairs);
         });
+
+    // Add insert keys to the dataset for future batches, as they are now part of the index
+    std::vector<std::pair<KeyType, PayloadType>> insert_pairs;
+    for (size_t i = 0; i < mixed_pairs.size(); i += 2) {
+      insert_pairs.push_back(mixed_pairs[i]);  // Even indices are inserts
+    }
+    std::sort(insert_pairs.begin(), insert_pairs.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
+    key_values_.insert(key_values_.end(), insert_pairs.begin(), insert_pairs.end());
+    std::inplace_merge(key_values_.begin(), key_values_.end() - insert_pairs.size(), key_values_.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
   }
 
   template <class Index>

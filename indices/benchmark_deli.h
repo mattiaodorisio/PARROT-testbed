@@ -99,6 +99,12 @@ class BenchmarkDeLI {
 template <typename KeyType, typename PayloadType>
 void benchmark_deli_dynamic(const bench_config& config,
                     std::vector<std::pair<KeyType, PayloadType>>& key_values) {
+  // Check if there are duplicates
+  for (size_t i = 1; i < key_values.size(); ++i) {
+    if (key_values[i].first == key_values[i - 1].first) {
+      return;
+    }
+  }
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED };
   for (const auto& wl : supported_workloads) {
@@ -175,6 +181,12 @@ void benchmark_deli_dynamic(const bench_config& config,
 template <typename KeyType, typename PayloadType>
 void benchmark_deli_static(const bench_config& config,
                     std::vector<std::pair<KeyType, PayloadType>>& key_values) {
+  // Check if there are duplicates
+  for (size_t i = 1; i < key_values.size(); ++i) {
+    if (key_values[i].first == key_values[i - 1].first) {
+      return;
+    }
+  }
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {

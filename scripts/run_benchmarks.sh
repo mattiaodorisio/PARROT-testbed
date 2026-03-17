@@ -13,6 +13,10 @@ cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j$(nproc)
 
+LOG_FILE="../results/deLi_testbed_$(date +%Y%m%d_%H%M%S).log"
+: > "$LOG_FILE"
+echo "Writing benchmark log to $LOG_FILE"
+
 # List the file in ../data/enabled_datasets.txt and run the benchmark for each of them
 while IFS= read -r line; do
     # Skip empty lines and comments
@@ -25,7 +29,7 @@ while IFS= read -r line; do
         continue
       fi
       echo "Running benchmark for $line"
-      ./deLi_testbed --keys_file=../data/$line --num_batches=3 --batch_size=8192 --output_folder=../results --print_batch_stats --pareto
+      ./deLi_testbed --keys_file=../data/$line --num_batches=3 --batch_size=8192 --output_folder=../results --print_batch_stats --pareto >> "$LOG_FILE" 2>&1
     fi
 done < "../data/enabled_datasets.txt"
 
