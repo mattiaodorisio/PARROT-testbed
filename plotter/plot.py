@@ -521,7 +521,7 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
             series_color = get_series_color(str(group_value))
 
             data_lines.append(f"% Data for {legend_entry}")
-            data_lines.append(f"\\addplot[color={series_color}, mark=*, mark size=1.5pt] coordinates {{")
+            data_lines.append(f"\\addplot[color={series_color}, mark=*, mark size=0.7pt] coordinates {{")
             
             for row in valid_data:
                 x_val = row[x_col]
@@ -711,6 +711,23 @@ def build_shared_legend(series_names: List[str]) -> str:
     return "\n".join(legend_lines)
 
 
+def get_workload_display_name(filter_conditions: Optional[List[Tuple[str, str]]]) -> str:
+    """Return a human-readable workload name from filter conditions."""
+    if not filter_conditions:
+        return ""
+
+    filter_dict = {k: v for k, v in filter_conditions}
+    workload_type = filter_dict.get('workload_type', '')
+    workload_display_map = {
+        'LOOKUP_IN_DISTRIBUTION': 'In-Distribution Lookup',
+        'LOOKUP_EXISTING': 'Existing Lookup',
+        'INSERT_IN_DISTRIBUTION': 'In-Distribution Insert',
+        'DELETE_EXISTING': 'Delete Existing',
+        'MIXED': 'Mixed',
+    }
+    return workload_display_map.get(workload_type, workload_type.replace('_', ' ').title())
+
+
 def create_figure_from_template(data: List[Dict], x_col: str, y_col: str, 
                               filter_conditions: Optional[List[Tuple[str, str]]], groupby_col: str,
                               title: str, caption: str, label: str,
@@ -852,12 +869,13 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
         axis_code = extract_axis_from_figure(figure_content)
         axis_code, axis_series = extract_series_names_and_strip_legend(axis_code)
         axis_code = compact_axis_for_subfigure(axis_code)
+        workload_caption = get_workload_display_name(filter_conditions)
         for series_name in axis_series:
             if series_name not in shared_series_names:
                 shared_series_names.append(series_name)
         
         if axis_code and "% No data" not in axis_code:
-            subfigures.append(axis_code)
+            subfigures.append((axis_code, workload_caption))
     
     if not subfigures:
         return f"% No valid data for multiplot {title}"
@@ -874,7 +892,12 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
         "\\centering",
     ]
     
-    for i, axis_code in enumerate(subfigures):
+    total_subfigures = len(subfigures)
+    last_row_count = total_subfigures % cols_per_row
+    if last_row_count == 0:
+        last_row_count = cols_per_row
+
+    for i, (axis_code, workload_caption) in enumerate(subfigures):
         # Add newline before starting new row (except first row)
         if i > 0 and i % cols_per_row == 0:
             latex_lines.append("")
@@ -884,15 +907,23 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
         latex_lines.append("\\begin{tikzpicture}")
         latex_lines.append(axis_code)
         latex_lines.append("\\end{tikzpicture}")
+        if workload_caption:
+            latex_lines.append(f"\\caption{{{escape_latex_text(workload_caption)}}}")
         latex_lines.append("\\end{subfigure}")
 
         is_end_of_row = (i + 1) % cols_per_row == 0
         is_last = i == len(subfigures) - 1
+        in_last_row = i >= (total_subfigures - last_row_count)
+        position_in_last_row = i - (total_subfigures - last_row_count)
         if not is_last:
             if is_end_of_row:
                 latex_lines.append("\\par\\medskip")
             else:
-                latex_lines.append("\\hfill")
+                # Keep a natural left-to-right flow for incomplete final rows.
+                if in_last_row and last_row_count == 2 and position_in_last_row == 0:
+                    latex_lines.append("\\hspace{0.035\\textwidth}")
+                else:
+                    latex_lines.append("\\hfill")
 
     # Add one shared legend for all subfigures.
     shared_legend = build_shared_legend(shared_series_names)
