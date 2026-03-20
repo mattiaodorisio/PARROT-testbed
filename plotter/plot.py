@@ -591,6 +591,12 @@ def substitute_caption_parameters(caption: str, filter_conditions: Optional[List
     if 'dataset_name' in parameters:
         # Clean up dataset name for display (replace underscores with spaces)
         parameters['dataset_display_name'] = parameters['dataset_name'].replace('_', ' ').title()
+    else:
+        # Fallback for templates that use dataset placeholders without an explicit dataset filter.
+        dataset_names = sorted({row.get('dataset_name') for row in data if row.get('dataset_name')})
+        if len(dataset_names) == 1:
+            parameters['dataset_name'] = dataset_names[0]
+            parameters['dataset_display_name'] = dataset_names[0].replace('_', ' ').title()
     
     # Add workload type display name
     if 'workload_type' in parameters:
@@ -603,16 +609,106 @@ def substitute_caption_parameters(caption: str, filter_conditions: Optional[List
             parameters['workload_type'], parameters['workload_type']
         )
     
-    # Substitute parameters in caption
-    try:
-        substituted_caption = caption.format(**parameters)
-        return substituted_caption
-    except KeyError as e:
-        print(f"Warning: Parameter {e} not found for caption substitution in: {caption}")
-        return caption
-    except Exception as e:
-        print(f"Warning: Error substituting parameters in caption '{caption}': {e}")
-        return caption
+    # Replace only identifier-like placeholders, leaving LaTeX braces untouched.
+    placeholder_pattern = re.compile(r'\{([A-Za-z_][A-Za-z0-9_]*)\}')
+
+    def replace_placeholder(match: re.Match) -> str:
+        key = match.group(1)
+        if key in parameters:
+            return str(parameters[key])
+        # Unresolved placeholders should not leak into final LaTeX.
+        return ''
+
+    return placeholder_pattern.sub(replace_placeholder, caption)
+
+
+def extract_axis_from_figure(figure_latex: str) -> str:
+    """
+    Extract the axis code from a complete figure LaTeX.
+    
+    Args:
+        figure_latex (str): Complete figure LaTeX code
+        
+    Returns:
+        str: Just the axis and plot data portions
+    """
+    # Match the axis environment
+    axis_pattern = r'\\begin\{axis\}.*?\\end\{axis\}'
+    match = re.search(axis_pattern, figure_latex, re.DOTALL)
+    if match:
+        return match.group(0)
+    return figure_latex
+
+
+def compact_axis_for_subfigure(axis_code: str) -> str:
+    """Make axis compact for dense multiplot layouts and remove local legend placement."""
+    compact_axis = axis_code
+
+    # Remove explicit legend placement from each subplot; a shared legend is added globally.
+    compact_axis = re.sub(r'\s*legend\s+pos\s*=\s*[^,]+,\s*\n', '\n', compact_axis)
+
+    # Force compact dimensions suitable for 3 plots per row.
+    # Replace only dedicated axis option lines (not "line width" nor plot lines).
+    compact_axis = re.sub(
+        r'(^\s*)width\s*=\s*[^,\n]+,\s*$',
+        r'\1width=0.82\\linewidth,',
+        compact_axis,
+        flags=re.MULTILINE,
+    )
+    compact_axis = re.sub(
+        r'(^\s*)height\s*=\s*[^,\n]+,\s*$',
+        r'\1height=0.56\\linewidth,',
+        compact_axis,
+        flags=re.MULTILINE,
+    )
+
+    # Keep labels readable while reducing footprint.
+    compact_axis = compact_axis.replace(
+        '\\begin{axis}[',
+        '\\begin{axis}[\n    scale only axis=true,\n    tick label style={font=\\tiny},\n    label style={font=\\scriptsize},\n    title style={font=\\scriptsize},\n    xticklabel style={rotate=45, anchor=east},',
+        1
+    )
+
+    return compact_axis
+
+
+def extract_series_names_and_strip_legend(axis_code: str) -> Tuple[str, List[str]]:
+    """Remove per-axis legend entries and return series names in stable order."""
+    series_names = []
+    for match in re.finditer(r'^% Data for (.+)$', axis_code, flags=re.MULTILINE):
+        series_name = match.group(1).strip()
+        if series_name and series_name not in series_names:
+            series_names.append(series_name)
+
+    axis_without_legend = re.sub(r'\n\\addlegendentry\{[^}]*\}\s*', '\n', axis_code)
+    return axis_without_legend, series_names
+
+
+def build_shared_legend(series_names: List[str]) -> str:
+    """Build one shared legend block for all subfigures in a multiplot."""
+    if not series_names:
+        return ''
+
+    legend_columns = min(3, len(series_names))
+    legend_lines = [
+        "\\vspace{0.3em}",
+        "\\begin{center}",
+        "\\begin{tikzpicture}",
+        f"\\begin{{axis}}[hide axis, xmin=0, xmax=1, ymin=0, ymax=1, legend columns={legend_columns}, legend style={{draw=none, font=\\small}}]",
+    ]
+
+    for series_name in series_names:
+        color = get_series_color(series_name)
+        legend_lines.append(f"\\addlegendimage{{color={color}, mark=*}}")
+        legend_lines.append(f"\\addlegendentry{{{escape_latex_text(series_name)}}}")
+
+    legend_lines.extend([
+        "\\end{axis}",
+        "\\end{tikzpicture}",
+        "\\end{center}",
+    ])
+
+    return "\n".join(legend_lines)
 
 
 def create_figure_from_template(data: List[Dict], x_col: str, y_col: str, 
@@ -710,10 +806,120 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
     return result_content
 
 
+def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str, 
+                                 filter_string: str, groupby_col: str,
+                                 title: str, caption: str, label: str,
+                                 figure_template_path: str = None,
+                                 cols_per_row: int = 3) -> str:
+    """
+    Create a multiplot figure with multiple subfigures, one for each filter.
+    
+    Args:
+        data (List[Dict]): Raw benchmark data
+        x_col (str): Column name for x-axis
+        y_col (str): Column name for y-axis (may include aggregation)
+        filter_string (str): Filters separated by | (e.g., 'filter1|filter2|filter3')
+        groupby_col (str): Column to group by
+        title (str): Main plot title
+        caption (str): Figure caption
+        label (str): Figure label
+        figure_template_path (str): Path to figure template (optional)
+        cols_per_row (int): Number of subfigures per row (default: 2)
+        
+    Returns:
+        str: LaTeX multiplot figure code with subfigures
+    """
+    # Parse individual filters separated by |
+    filters = [f.strip() for f in filter_string.split('|')]
+    
+    if not filters:
+        return f"% No filters provided for multiplot {title}"
+    
+    # Generate axis code for each filter
+    subfigures = []
+    shared_series_names = []
+    for filter_str in filters:
+        filter_conditions = parse_filter(filter_str)
+        
+        # Create figure for this filter (it will include the outer figure environment)
+        figure_content = create_figure_from_template(
+            data, x_col, y_col, filter_conditions, groupby_col,
+            "", "", "",  # Empty labels for subfigures
+            figure_template_path
+        )
+        
+        # Extract just the axis environment
+        axis_code = extract_axis_from_figure(figure_content)
+        axis_code, axis_series = extract_series_names_and_strip_legend(axis_code)
+        axis_code = compact_axis_for_subfigure(axis_code)
+        for series_name in axis_series:
+            if series_name not in shared_series_names:
+                shared_series_names.append(series_name)
+        
+        if axis_code and "% No data" not in axis_code:
+            subfigures.append(axis_code)
+    
+    if not subfigures:
+        return f"% No valid data for multiplot {title}"
+    
+    # Calculate subfigure width based on columns per row with layout margin.
+    if cols_per_row == 3:
+        subfig_width = "0.31\\textwidth"
+    else:
+        subfig_width = f"{0.94 / cols_per_row:.2f}\\textwidth"
+    
+    # Build multiplot LaTeX
+    latex_lines = [
+        "\\begin{figure}[H]",
+        "\\centering",
+    ]
+    
+    for i, axis_code in enumerate(subfigures):
+        # Add newline before starting new row (except first row)
+        if i > 0 and i % cols_per_row == 0:
+            latex_lines.append("")
+        
+        latex_lines.append(f"\\begin{{subfigure}}{{{subfig_width}}}")
+        latex_lines.append("\\centering")
+        latex_lines.append("\\begin{tikzpicture}")
+        latex_lines.append(axis_code)
+        latex_lines.append("\\end{tikzpicture}")
+        latex_lines.append("\\end{subfigure}")
+
+        is_end_of_row = (i + 1) % cols_per_row == 0
+        is_last = i == len(subfigures) - 1
+        if not is_last:
+            if is_end_of_row:
+                latex_lines.append("\\par\\medskip")
+            else:
+                latex_lines.append("\\hfill")
+
+    # Add one shared legend for all subfigures.
+    shared_legend = build_shared_legend(shared_series_names)
+    if shared_legend:
+        latex_lines.append("")
+        latex_lines.append(shared_legend)
+    
+    # Use the first filter as representative context for caption placeholders
+    # such as {dataset_display_name} in multiplot-level captions.
+    caption_filter_conditions = parse_filter(filters[0]) if filters else None
+
+    # Add caption and close figure
+    caption_text = substitute_caption_parameters(caption, caption_filter_conditions, data, x_col, y_col, groupby_col)
+    title_text = substitute_caption_parameters(title, caption_filter_conditions, data, x_col, y_col, groupby_col)
+    
+    latex_lines.append(f"\\caption{{{title_text}: {caption_text}}}")
+    latex_lines.append(f"\\label{{fig:{label}}}")
+    latex_lines.append("\\end{figure}")
+    
+    return "\n".join(latex_lines)
+
+
 def create_performance_plot(data: List[Dict], multiplot_template_path: str = None, 
                           figure_template_path: str = None) -> str:
     """
     Create a comprehensive performance plot comparing all indices using templates.
+    Handles both PLOT (single filter) and MULTIPLOT (multiple filters) directives.
     
     Args:
         data (List[Dict]): Benchmark data
@@ -736,17 +942,20 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
     except Exception as e:
         raise Exception(f"Error reading multiplot template file {multiplot_template_path}: {e}")
     
-    # Parse PLOT placeholders from template (looking for new 7-parameter format)
+    # Parse MULTIPLOT placeholders (filters separated by |)
+    multiplot_pattern = r'^%% \{\{MULTIPLOT:([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^}]+)\}\}$'
+    multiplot_matches = re.findall(multiplot_pattern, template_content, re.MULTILINE)
+    
+    # Parse PLOT placeholders (single filter)
     plot_pattern = r'^%% \{\{PLOT:([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^}]+)\}\}$'
     plot_matches = re.findall(plot_pattern, template_content, re.MULTILINE)
     
-    # Validate that there's at least one plot defined
-    if not plot_matches:
+    # Validate that at least one plot directive exists
+    if not plot_matches and not multiplot_matches:
         raise ValueError(f"No plots defined in template file {multiplot_template_path}. "
-                        f"Template must contain at least one %% {{{{PLOT:...}}}} directive with 7 parameters.")
+                        f"Template must contain at least one %% {{{{PLOT:...}}}} or %% {{{{MULTIPLOT:...}}}} directive.")
     
     # Initialize color mapping for consistent colors across all plots
-    # Always use 'index_name' as the basis for color consistency
     try:
         initialize_color_mapping(data, 'index_name')
     except Exception as e:
@@ -754,7 +963,61 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
     
     result_content = template_content
     
-    # Process each plot placeholder
+    # Process MULTIPLOT directives
+    for match in multiplot_matches:
+        x_col, y_col, filter_str, groupby_col, title, caption, label = match
+        
+        # Parse aggregation from y_col
+        agg_func, actual_y_col = parse_aggregation(y_col)
+        
+        # Parse groupby clause to get primary groupby column
+        primary_groupby, best_aggregation = parse_groupby_clause(groupby_col)
+        
+        # Validate that required columns exist
+        has_required_cols = any(
+            x_col in row and actual_y_col in row and primary_groupby in row 
+            for row in data
+        )
+        
+        if best_aggregation:
+            best_col = best_aggregation[1]
+            has_required_cols = has_required_cols and any(best_col in row for row in data)
+        
+        # Check if any filter in the multiplot can be applied
+        filter_list = [f.strip() for f in filter_str.split('|')]
+        filters_valid = True
+        for single_filter in filter_list:
+            filter_conditions = parse_filter(single_filter)
+            if filter_conditions:
+                for filter_key, _ in filter_conditions:
+                    if not any(filter_key in row for row in data):
+                        filters_valid = False
+                        break
+        
+        if has_required_cols and filters_valid:
+            # Generate the multiplot figure
+            figure = create_multiplot_from_filters(
+                data, x_col, y_col, filter_str, groupby_col,
+                title, caption, label, figure_template_path
+            )
+            
+            # Replace the placeholder
+            placeholder = f"%% {{{{MULTIPLOT:{x_col},{y_col},{filter_str},{groupby_col},{title},{caption},{label}}}}}"
+            result_content = result_content.replace(placeholder, figure)
+        else:
+            # Remove the placeholder if data unavailable
+            placeholder = f"%% {{{{MULTIPLOT:{x_col},{y_col},{filter_str},{groupby_col},{title},{caption},{label}}}}}"
+            missing_info = []
+            if not has_required_cols:
+                missing_info.append(f"missing columns")
+            if not filters_valid:
+                missing_info.append(f"filters not applicable")
+            
+            result_content = result_content.replace(placeholder, 
+                f"% Skipped multiplot {title} - {', '.join(missing_info)}")
+            print(f"Warning: Skipping multiplot {title} - {', '.join(missing_info)}")
+    
+    # Process PLOT directives
     for match in plot_matches:
         x_col, y_col, filter_str, groupby_col, title, caption, label = match
         
