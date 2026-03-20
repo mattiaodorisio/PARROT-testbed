@@ -97,44 +97,28 @@ The workloads are the same of Section \ref{sec:deliconfig}.
 %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=exponential_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION|dataset_name=exponential_50M_uint32;workload_type=LOOKUP_EXISTING|dataset_name=exponential_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION|dataset_name=exponential_50M_uint32;workload_type=DELETE_EXISTING|dataset_name=exponential_50M_uint32;workload_type=MIXED,index_name;BEST(index_variant),Time, {dataset_display_name} dataset,index_name}}
 
 % \subsection{Zipf distribution}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+% %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=zipf_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION|dataset_name=zipf_50M_uint32;workload_type=LOOKUP_EXISTING|dataset_name=zipf_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION|dataset_name=zipf_50M_uint32;workload_type=DELETE_EXISTING|dataset_name=zipf_50M_uint32;workload_type=MIXED,index_name;BEST(index_variant),Time,Zipf {dataset_display_name} dataset,index_name}}
 
 % \subsubsection{Books dataset}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+% %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_200M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION|dataset_name=books_200M_uint32;workload_type=LOOKUP_EXISTING|dataset_name=books_200M_uint32;workload_type=INSERT_IN_DISTRIBUTION|dataset_name=books_200M_uint32;workload_type=DELETE_EXISTING|dataset_name=books_200M_uint32;workload_type=MIXED,index_name;BEST(index_variant),Time,Books {dataset_display_name} dataset,index_name}}
 
 % \subsubsection{Books dataset with uint 64 keys}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+% %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=books_800M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION|dataset_name=books_800M_uint64;workload_type=LOOKUP_EXISTING|dataset_name=books_800M_uint64;workload_type=INSERT_IN_DISTRIBUTION|dataset_name=books_800M_uint64;workload_type=DELETE_EXISTING|dataset_name=books_800M_uint64;workload_type=MIXED,index_name;BEST(index_variant),Time,Books uint64 {dataset_display_name} dataset,index_name}}
 
 % \subsubsection{CompanyNet dataset}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+% %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=companynet_uint32;workload_type=LOOKUP_IN_DISTRIBUTION|dataset_name=companynet_uint32;workload_type=LOOKUP_EXISTING|dataset_name=companynet_uint32;workload_type=INSERT_IN_DISTRIBUTION|dataset_name=companynet_uint32;workload_type=DELETE_EXISTING|dataset_name=companynet_uint32;workload_type=MIXED,index_name;BEST(index_variant),Time,CompanyNet {dataset_display_name} dataset,index_name}}
 
 % \subsubsection{FB dataset with uint64 keys}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+% %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=fb_200M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION|dataset_name=fb_200M_uint64;workload_type=LOOKUP_EXISTING|dataset_name=fb_200M_uint64;workload_type=INSERT_IN_DISTRIBUTION|dataset_name=fb_200M_uint64;workload_type=DELETE_EXISTING|dataset_name=fb_200M_uint64;workload_type=MIXED,index_name;BEST(index_variant),Time,FB {dataset_display_name} dataset,index_name}}
 
 % \subsubsection{Friendster dataset}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+% %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=friendster_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION|dataset_name=friendster_50M_uint32;workload_type=LOOKUP_EXISTING|dataset_name=friendster_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION|dataset_name=friendster_50M_uint32;workload_type=DELETE_EXISTING|dataset_name=friendster_50M_uint32;workload_type=MIXED,index_name;BEST(index_variant),Time,Friendster {dataset_display_name} dataset,index_name}}
 
 % \subsubsection{OSM Cell IDs dataset with uint64 keys}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+% %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=osm_cellids_800M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION|dataset_name=osm_cellids_800M_uint64;workload_type=LOOKUP_EXISTING|dataset_name=osm_cellids_800M_uint64;workload_type=INSERT_IN_DISTRIBUTION|dataset_name=osm_cellids_800M_uint64;workload_type=DELETE_EXISTING|dataset_name=osm_cellids_800M_uint64;workload_type=MIXED,index_name;BEST(index_variant),Time,OSM Cell IDs {dataset_display_name} dataset,index_name}}
 
 % \subsubsection{Wiki dataset with uint64 keys}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=LOOKUP_EXISTING,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
-% %% {{PLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=INSERT_IN_DISTRIBUTION,index_name;BEST(index_variant),Time,{workload_display_name} performance on {dataset_display_name} dataset,index_name}}
+% %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION|dataset_name=wiki_ts_200M_uint64;workload_type=LOOKUP_EXISTING|dataset_name=wiki_ts_200M_uint64;workload_type=INSERT_IN_DISTRIBUTION|dataset_name=wiki_ts_200M_uint64;workload_type=DELETE_EXISTING|dataset_name=wiki_ts_200M_uint64;workload_type=MIXED,index_name;BEST(index_variant),Time,Wiki {dataset_display_name} dataset,index_name}}
 
 % \section{SIMD analysis}
 % The following plots depict a subset of the configurations shown in Section \ref{sec:deliconfig} to analyze the effect of SIMD optimizations. Something is going on here... apparently somtimes SIMD seems to cause performance degradation instead of improvements. Maybe this is expected for lookup of existing keys in the dataset.

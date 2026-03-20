@@ -651,7 +651,7 @@ def compact_axis_for_subfigure(axis_code: str) -> str:
     # Replace only dedicated axis option lines (not "line width" nor plot lines).
     compact_axis = re.sub(
         r'(^\s*)width\s*=\s*[^,\n]+,\s*$',
-        r'\1width=0.82\\linewidth,',
+        r'\1width=0.90\\linewidth,',
         compact_axis,
         flags=re.MULTILINE,
     )
@@ -670,6 +670,11 @@ def compact_axis_for_subfigure(axis_code: str) -> str:
     )
 
     return compact_axis
+
+
+def remove_y_label_from_axis(axis_code: str) -> str:
+    """Remove ylabel from an axis block (used for non-left subfigures)."""
+    return re.sub(r'^\s*ylabel\s*=\s*\{[^}]*\},\s*$\n?', '', axis_code, flags=re.MULTILINE)
 
 
 def extract_series_names_and_strip_legend(axis_code: str) -> Tuple[str, List[str]]:
@@ -795,7 +800,7 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
     
     # Special handling for certain column names
     if 'total_time' in actual_y_col:
-        y_label += ' (seconds)'
+        y_label += ' (s)'
     elif 'throughput' in actual_y_col:
         y_label += ' (ops/sec)'
     
@@ -882,7 +887,7 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
     
     # Calculate subfigure width based on columns per row with layout margin.
     if cols_per_row == 3:
-        subfig_width = "0.31\\textwidth"
+        subfig_width = "0.315\\textwidth"
     else:
         subfig_width = f"{0.94 / cols_per_row:.2f}\\textwidth"
     
@@ -901,11 +906,16 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
         # Add newline before starting new row (except first row)
         if i > 0 and i % cols_per_row == 0:
             latex_lines.append("")
+
+        # Keep y-axis label only on the leftmost subplot of each row.
+        axis_code_for_slot = axis_code
+        if i % cols_per_row != 0:
+            axis_code_for_slot = remove_y_label_from_axis(axis_code_for_slot)
         
         latex_lines.append(f"\\begin{{subfigure}}{{{subfig_width}}}")
         latex_lines.append("\\centering")
         latex_lines.append("\\begin{tikzpicture}")
-        latex_lines.append(axis_code)
+        latex_lines.append(axis_code_for_slot)
         latex_lines.append("\\end{tikzpicture}")
         if workload_caption:
             latex_lines.append(f"\\caption{{{escape_latex_text(workload_caption)}}}")
@@ -913,6 +923,7 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
 
         is_end_of_row = (i + 1) % cols_per_row == 0
         is_last = i == len(subfigures) - 1
+        position_in_row = i % cols_per_row
         in_last_row = i >= (total_subfigures - last_row_count)
         position_in_last_row = i - (total_subfigures - last_row_count)
         if not is_last:
@@ -922,6 +933,11 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
                 # Keep a natural left-to-right flow for incomplete final rows.
                 if in_last_row and last_row_count == 2 and position_in_last_row == 0:
                     latex_lines.append("\\hspace{0.035\\textwidth}")
+                elif cols_per_row == 3:
+                    # Add extra room after the leftmost plot (with y-label),
+                    # while keeping the 2nd-3rd spacing unchanged.
+                    if position_in_row == 0:
+                        latex_lines.append("\\hspace{0.03\\textwidth}")
                 else:
                     latex_lines.append("\\hfill")
 
