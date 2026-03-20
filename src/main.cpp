@@ -103,8 +103,8 @@ void execute(const bench_config& config) {
  * Required flags:
  * --keys_file              path to the file that contains keys
  * --batch_size             number of operations per batch
- * --num_batches            number of batches to run
  * --output_folder          folder path for benchmark output
+ * --max_batches            maximum number of measured batches before adaptive stop (default: 3)
  *
  * Optional flags:
  * --lookup_distribution    lookup keys distribution (options: uniform or zipf)
@@ -112,6 +112,8 @@ void execute(const bench_config& config) {
  * --print_batch_stats      whether to output stats for each batch
  * --clear_cache            whether to clear cache before each batch
  * --pareto                 whether to run the benchmark for all the parameters
+ * --min_batches            minimum number of measured batches before adaptive stop (default: 2)
+ * --rse_target             target relative standard error for early stop (default: 0.03)
  * --min_size               log of the minimum number of initial keys (default: 8 -> 2^8)
  * --max_size               log of the maximum number of initial keys (default: 20 -> 2^20)
  */
@@ -119,7 +121,10 @@ int main(int argc, char* argv[]) {
   auto flags = parse_flags(argc, argv);
   std::string keys_file_path = get_required(flags, "keys_file");
   auto batch_size = stoi(get_required(flags, "batch_size"));
-  auto num_batches = stoi(get_required(flags, "num_batches"));
+  auto num_batches = get_with_default(flags, "num_batches", "");
+  auto min_batches = stoi(get_with_default(flags, "min_batches", "2"));
+  auto max_batches = stoi(get_with_default(flags, "max_batches", "3"));
+  auto rse_target = stod(get_with_default(flags, "rse_target", "0.05"));
   std::string output_folder = get_required(flags, "output_folder");
   std::string lookup_distribution = get_with_default(flags, "lookup_distribution", "uniform");
   auto time_limit = stod(get_with_default(flags, "time_limit", "0.5"));
@@ -128,6 +133,19 @@ int main(int argc, char* argv[]) {
   bool pareto = get_boolean_flag(flags, "pareto");
   auto min_size = stoi(get_with_default(flags, "min_size", "8"));
   auto max_size = stoi(get_with_default(flags, "max_size", "20"));
+
+  if (min_batches < 1) {
+    throw std::runtime_error("--min_batches must be >= 1");
+  }
+  if (max_batches < min_batches) {
+    throw std::runtime_error("--max_batches must be >= --min_batches");
+  }
+  if (rse_target <= 0.0) {
+    throw std::runtime_error("--rse_target must be > 0");
+  }
+  if (!num_batches.empty()) {
+    throw std::runtime_error("--num_batches is deprecated. Please use --min_batches and --max_batches instead.");
+  }
 
   // Check if input file does exist
   {
@@ -176,7 +194,9 @@ int main(int argc, char* argv[]) {
       lookup_distribution: lookup_distribution,
       time_limit: time_limit,
       batch_size: batch_size,
-      max_batches: num_batches,
+      min_batches: min_batches,
+      max_batches: max_batches,
+      rse_target: rse_target,
       print_batch_stats: print_batch_stats,
       clear_cache: clear_cache,
       pareto: pareto,

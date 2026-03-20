@@ -16,7 +16,9 @@ struct bench_config {
   const std::string& lookup_distribution;
   double time_limit;
   int batch_size;
+  int min_batches;
   int max_batches;
+  double rse_target;
   bool print_batch_stats;
   bool clear_cache;
   bool pareto;

@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <queue>
 #include <numeric>
+#include <cmath>
 
 #include "utils.h"
 
@@ -73,7 +74,11 @@ class Benchmark {
                    const std::string& workload_name,
                    int batch_no, size_t init_num_keys, size_t batch_operations,
                    const std::string& lookup_distribution, double batch_time,
-                   std::ofstream& out_file) {
+                   std::ofstream& out_file,
+                   size_t convergence_samples,
+                   double convergence_mean_throughput,
+                   double convergence_rse,
+                   bool adaptive_stop_triggered) {
     
     bool error = (batch_time == std::numeric_limits<uint64_t>::max());
     double batch_overall_throughput = (batch_time > 0) ? (batch_operations / batch_time * 1e9) : 0.0;
@@ -88,7 +93,12 @@ class Benchmark {
             << "batch_operations=" << batch_operations << " "
             << "lookup_distribution=" << lookup_distribution << " "
             << std::fixed << std::setprecision(2) << "throughput=" << (!error ? std::to_string(batch_overall_throughput) : "error") << " "
-            << std::fixed << std::setprecision(6) << "total_time=" << (!error ? std::to_string(1.0 * batch_time / 1e9) : "error") << std::endl;
+            << std::fixed << std::setprecision(6) << "total_time=" << (!error ? std::to_string(1.0 * batch_time / 1e9) : "error") << " "
+            << "conv_samples=" << convergence_samples << " "
+            << std::fixed << std::setprecision(2) << "conv_mean_throughput=" << (convergence_samples > 0 ? std::to_string(convergence_mean_throughput) : "na") << " "
+            << std::fixed << std::setprecision(6) << "conv_rse=" << (std::isfinite(convergence_rse) ? std::to_string(convergence_rse) : "na") << " "
+            << "adaptive_stop=" << (adaptive_stop_triggered ? "1" : "0")
+            << std::endl;
   }
 
   template <Workload W, class Index>
@@ -579,8 +589,11 @@ void run_benchmark(const bench_config& config,
 
     // Run workload
     auto batch_start_time = std::chrono::high_resolution_clock::now();
+    std::vector<double> measured_throughputs;
+    measured_throughputs.reserve(static_cast<size_t>(config.max_batches));
 
-    for (int batch_no = 0; batch_no < config.max_batches; ++batch_no) {
+    // First run is treated as warm-up and discarded from reporting/statistics.
+    for (int run_no = 0; run_no < config.max_batches + 1; ++run_no) {
       uint64_t batch_time;
       switch (workload) {
         case LOOKUP_EXISTING: 
@@ -605,17 +618,64 @@ void run_benchmark(const bench_config& config,
           throw std::runtime_error("Workload not implemented");
       }
 
+        const bool is_warmup_run = (run_no == 0);
+        if (is_warmup_run) {
+          continue;
+        }
+
+        const int measured_batch_no = run_no - 1;
+        const bool run_error = (batch_time == std::numeric_limits<uint64_t>::max());
+        if (!run_error && batch_time > 0) {
+          measured_throughputs.push_back(1. * config.batch_size / batch_time * 1e9);
+        }
+
+        double running_mean = 0.0;
+        double running_rse = std::numeric_limits<double>::quiet_NaN();
+        bool adaptive_stop_triggered = false;
+
+        if (!measured_throughputs.empty()) {
+          const double sum = std::accumulate(measured_throughputs.begin(), measured_throughputs.end(), 0.0);
+          const double n = static_cast<double>(measured_throughputs.size());
+          running_mean = sum / n;
+
+          if (measured_throughputs.size() >= 2 && running_mean > 0.0) {
+            double sq_sum = 0.0;
+            for (const double x : measured_throughputs) {
+              const double d = x - running_mean;
+              sq_sum += d * d;
+            }
+            const double sample_stddev = std::sqrt(sq_sum / (n - 1.0));
+            const double standard_error = sample_stddev / std::sqrt(n);
+            running_rse = standard_error / running_mean;
+          }
+        }
+
+        if (measured_batch_no + 1 >= config.min_batches && std::isfinite(running_rse) &&
+            running_rse <= config.rse_target) {
+          adaptive_stop_triggered = true;
+        }
+
         if (config.print_batch_stats) {
           std::cout << std::scientific << std::setprecision(3);
           std::cout << index.name() << " " << workload_name(workload) << ": " << config.batch_size << " operations completed\n";
           std::cout << "Total time: " << batch_time / 1e9 << " seconds\n";
           double batch_overall_throughput = (batch_time > 0) ? (1. * config.batch_size / batch_time * 1e9) : 0.0;
           std::cout << "Throughput: " << batch_overall_throughput << " ops/sec\n";
+          std::cout << "Convergence: n=" << measured_throughputs.size()
+                    << ", mean=" << running_mean
+                    << ", rse=" << (std::isfinite(running_rse) ? running_rse : -1.0)
+                    << "\n";
         }
 
         // Use the benchmark's print method for consistent formatting
-        benchmark.PrintResult(IndexWrapper::name(), IndexWrapper::variant(), workload_name(workload), batch_no, key_values.size(), 
-                              config.batch_size, config.lookup_distribution, batch_time, config.out_file);
+        benchmark.PrintResult(IndexWrapper::name(), IndexWrapper::variant(), workload_name(workload), measured_batch_no, key_values.size(), 
+                              config.batch_size, config.lookup_distribution, batch_time, config.out_file,
+                              measured_throughputs.size(), running_mean, running_rse, adaptive_stop_triggered);
+
+        // Adaptive stop based on relative standard error (RSE) of throughput.
+        if (adaptive_stop_triggered) {
+          break;
+        }
 
         // Check time limit
         double workload_elapsed_time =

@@ -338,6 +338,11 @@ void print_stats(std::vector<T> data) {
 }
 
 int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cout << "Usage: " << argv[0] << " --data_dir=<path> [--print_stats] [--unique_mode=<adjust|rejection>]" << std::endl;
+        return 1;
+    }
+    
     auto flags = parse_flags(argc, argv);
     get_required(flags, "data_dir");
     bool print_stats_flag = get_boolean_flag(flags, "print_stats");
