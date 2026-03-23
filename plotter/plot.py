@@ -694,7 +694,11 @@ def build_shared_legend(series_names: List[str]) -> str:
     if not series_names:
         return ''
 
-    legend_columns = min(3, len(series_names))
+    max_legend_entries = 30
+    legend_series_names = series_names[:max_legend_entries]
+    omitted_count = len(series_names) - len(legend_series_names)
+
+    legend_columns = min(3, len(legend_series_names))
     legend_lines = [
         "\\vspace{0.3em}",
         "\\begin{center}",
@@ -702,8 +706,9 @@ def build_shared_legend(series_names: List[str]) -> str:
         f"\\begin{{axis}}[hide axis, xmin=0, xmax=1, ymin=0, ymax=1, legend columns={legend_columns}, legend style={{draw=none, font=\\small}}]",
     ]
 
-    for series_name in series_names:
-        color = get_series_color(series_name)
+    for series_name in legend_series_names:
+        color_key = resolve_series_color_key(series_name)
+        color = get_series_color(color_key)
         legend_lines.append(f"\\addlegendimage{{color={color}, mark=*}}")
         legend_lines.append(f"\\addlegendentry{{{escape_latex_text(series_name)}}}")
 
@@ -713,7 +718,29 @@ def build_shared_legend(series_names: List[str]) -> str:
         "\\end{center}",
     ])
 
+    if omitted_count > 0:
+        legend_lines.append(f"\\begin{{center}}\\footnotesize ({omitted_count} additional legend entries omitted)\\end{{center}}")
+
     return "\n".join(legend_lines)
+
+
+def resolve_series_color_key(series_name: str) -> str:
+    """Map legend labels to the same color key used by plotted series."""
+    name = str(series_name).strip()
+
+    # If this exact name already has a color assignment, keep it.
+    if name in _SERIES_COLOR_MAP:
+        return name
+
+    # BEST(...) labels append a variant as "<index_name> (<variant>)".
+    # If stripping the last parenthesized suffix matches a known series, use it.
+    match = re.match(r'^(.*)\s\([^()]*\)$', name)
+    if match:
+        base_name = match.group(1).strip()
+        if base_name in _SERIES_COLOR_MAP:
+            return base_name
+
+    return name
 
 
 def get_workload_display_name(filter_conditions: Optional[List[Tuple[str, str]]]) -> str:
