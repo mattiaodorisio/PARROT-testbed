@@ -38,8 +38,6 @@
 
 %% IMPORT-DATA stats combined_bench.txt
 
-%% SQL DELETE FROM stats WHERE index_name != 'DeLI-Static' AND index_name != 'DeLI-Dynamic';
-
 %% SQL CREATE TABLE stats_reduced AS SELECT index_name, index_variant, workload_type, init_num_keys, lookup_distribution, dataset_name, MEDIAN(total_time) AS total_time, MEDIAN(throughput) AS throughput FROM stats GROUP BY index_name, index_variant, workload_type, init_num_keys, lookup_distribution, dataset_name;
 %% SQL DROP TABLE stats;
 %% SQL ALTER TABLE stats_reduced RENAME TO stats;
@@ -72,8 +70,11 @@
 
 %% SQL UPDATE stats SET Highbits = substr(index_variant, 0, instr(index_variant, ';'));
 
+%% SQL CREATE TABLE stats_best AS SELECT s.* FROM stats s JOIN (SELECT index_name, index_variant FROM (SELECT index_name, index_variant, ROW_NUMBER() OVER (PARTITION BY index_name ORDER BY SUM(total_time), index_variant) AS rn FROM stats GROUP BY index_name, index_variant) WHERE rn = 1) b ON s.index_name = b.index_name AND s.index_variant = b.index_variant;
+
 %% SQL ALTER TABLE stats DROP COLUMN index_variant;
 
+% TODO: delete the next line:
 %% SQL DELETE FROM stats WHERE RHTLoad = 80;
 
 \section{DeLI Static Performance}\label{sec:deliconfig}
@@ -184,6 +185,53 @@
 \hfill
 %% END FOREACH 
 \caption{Performance plots for DeLI-Dynamic index on all workloads and distributions (init key size 1048576).}
+\end{figure}
+
+\section{Best Variants Performance}\label{sec:best}
+
+\subsection{Performance plot (best variant per index)}
+
+\begin{figure}[H]
+\small
+\centering
+\begin{tikzpicture}
+  \begin{axis}[
+    title={Best variants},
+    xlabel={Time (seconds)},
+    ylabel={Fraction of instances},
+    xmode=log,
+    log basis x={2},
+    width=150mm,
+    height=100mm,
+    grid=major,
+    legend pos=south east,
+    mark=*,
+    mark size=0pt,
+    line width=0.5pt
+    ]
+    %% MULTIPLOT(index_name)
+    %% SELECT x, y, MULTIPLOT FROM (
+    %%   SELECT
+    %%     total_time AS x,
+    %%     (rn - 1) * 1.0 / total_count AS y,
+    %%     MULTIPLOT,
+    %%     ROW_NUMBER() OVER (PARTITION BY MULTIPLOT, bucket ORDER BY total_time) as row_in_bucket
+    %%   FROM (
+    %%     SELECT
+    %%       total_time,
+    %%       RANK() OVER (PARTITION BY MULTIPLOT ORDER BY total_time) as rn,
+    %%       COUNT(*) OVER (PARTITION BY MULTIPLOT) as total_count,
+    %%       NTILE(1000) OVER (PARTITION BY MULTIPLOT ORDER BY total_time) AS bucket,
+    %%       MULTIPLOT
+    %%     FROM stats_best
+    %%     WHERE init_num_keys = 1048576
+    %%   )
+    %% )
+    %% WHERE row_in_bucket = 1
+    %% ORDER BY MULTIPLOT, x
+  \end{axis}
+\end{tikzpicture}
+\caption{Performance plots for best index variants (init key size 1048576).}
 \end{figure}
 
 \end{document}
