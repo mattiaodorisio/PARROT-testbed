@@ -46,7 +46,7 @@ Some of the optimizations are not possible in the dynamic DeLI. The last paramet
 \subsubsection{Static}
 %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;index_name=DeLI-Static;workload_type=LOOKUP_EXISTING|dataset_name=uniform_50M_uint32;index_name=DeLI-Static;workload_type=LOOKUP_IN_DISTRIBUTION,index_variant,Time,Uniform Static Workloads,index_name}}
 
-\subsubsection{Dynamic}
+% \subsubsection{Dynamic}
 % %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;index_name=DeLI-Dynamic;workload_type=LOOKUP_EXISTING|dataset_name=uniform_50M_uint32;index_name=DeLI-Dynamic;workload_type=LOOKUP_IN_DISTRIBUTION|dataset_name=uniform_50M_uint32;index_name=DeLI-Dynamic;workload_type=INSERT_IN_DISTRIBUTION|dataset_name=uniform_50M_uint32;index_name=DeLI-Dynamic;workload_type=DELETE_EXISTING|dataset_name=uniform_50M_uint32;index_name=DeLI-Dynamic;workload_type=MIXED,index_variant,Time,Uniform Dynamic Workloads,index_name}}
 
 % \subsection{Normal distribution}
@@ -90,18 +90,18 @@ The workloads are the same of Section \ref{sec:deliconfig}.
 
 \paragraph*{Notes}
 \begin{itemize}
-  \item Dynamic learned index ALEX, LIPP and PGM-dynamic are designed to support key-value mapping.
-  \item LIPP library doesn't support search of non-existing keys. I would say its whole purpose is pointless as a hash table would be faster.
-  \item ALEX and PGM support predecessor and successor, however they do not have a simple interface to store keys only.
+  \item Dynamic learned index ALEX, LIPP and PGM-dynamic are requires to store key-value pairs.
+  \item LIPP library doesn't support search of non-existing keys. Not clear the advantage compared to a hash table.
+  \item ALEX and PGM support predecessor and successor, but they have not a direct interface for keys only.
   \item keys-only competitors are static.
-  \item All competitors allow for duplicates, we are not.
+  \item All competitors, but LIPP, allow for duplicates, we are not.
 \end{itemize}
 
 \paragraph*{Datasets}
 \begin{itemize}
 \item 32 bit integer.
 \item According to the distribution: scaled and rounded to the closer integer in $[2^{32}]$
-\item Without duplicates: reject duplicates (is this ok? The density is the same?)
+\item Without duplicates: reject duplicates (is this ok? The density is the same?) \note{Bug fixed: double insertions (bug present in this document)}
 \end{itemize}
 
 \subsection{Uniform distribution}
@@ -141,7 +141,7 @@ The workloads are the same of Section \ref{sec:deliconfig}.
 % %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=wiki_ts_200M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION|dataset_name=wiki_ts_200M_uint64;workload_type=LOOKUP_EXISTING|dataset_name=wiki_ts_200M_uint64;workload_type=INSERT_IN_DISTRIBUTION|dataset_name=wiki_ts_200M_uint64;workload_type=DELETE_EXISTING|dataset_name=wiki_ts_200M_uint64;workload_type=MIXED,index_name;BEST(index_variant),Time,Wiki {dataset_display_name} dataset,index_name}}
 
 \section{SIMD analysis}
-The following plots depict a subset of the configurations shown in Section \ref{sec:deliconfig} to analyze the effect of SIMD optimizations. Something is going on here... apparently somtimes SIMD seems to cause performance degradation instead of improvements. Maybe this is expected for lookup of existing keys in the dataset.
+The following plots depict a subset of the configurations shown in Section \ref{sec:deliconfig} to analyze the effect of SIMD optimizations.
 
 \subsection{Uniform distribution}
 %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),dataset_name=uniform_50M_uint32;workload_type=LOOKUP_EXISTING;index_name=DeLI-Static;index_variant=*20\;N\;16*;index_variant=*GFS*|dataset_name=uniform_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;index_name=DeLI-Static;index_variant=*20\;N\;16*;index_variant=*GFS*,index_variant,Time,SIMD Uniform Static Workloads,index_name}}

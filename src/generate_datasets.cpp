@@ -298,6 +298,89 @@ std::vector<uint32_t> generate_chisquared_distr(size_t size, UniqueMode unique_m
     return data;
 }
 
+
+std::vector<uint32_t> generate_mix_of_gauss_distr(size_t size, UniqueMode unique_mode, size_t num_gauss = 5) {
+    const uint32_t max_allowed = UINT32_MAX >> 1;
+    std::default_random_engine generator(5);
+    
+    // Generate means concentrated around the center of the domain.
+    const double domain_center = max_allowed / 2.0;
+    const double mean_spread = max_allowed / 10.0;
+    std::normal_distribution<double> mean_dist(domain_center, mean_spread);
+    std::vector<double> means(num_gauss);
+    for (size_t i = 0; i < num_gauss; ++i) {
+        double mean_sample;
+        do {
+            mean_sample = mean_dist(generator);
+        } while (mean_sample < 0.0 || mean_sample > max_allowed);
+        means[i] = mean_sample;
+    }
+    
+    // Use domain-scaled standard deviations to avoid over-concentrated outputs.
+    std::uniform_real_distribution<double> stddev_dist(max_allowed / 200.0, max_allowed / 20.0);
+    std::vector<double> stdevs(num_gauss);
+    for (size_t i = 0; i < num_gauss; ++i) {
+        stdevs[i] = stddev_dist(generator);
+    }
+    
+    // Generate weights (uniform between 0 and 1)
+    std::uniform_real_distribution<double> weight_dist(0.0, 1.0);
+    std::vector<double> weights(num_gauss);
+    for (size_t i = 0; i < num_gauss; ++i) {
+        weights[i] = weight_dist(generator);
+    }
+    
+    // Normalize the weights
+    double sum_of_weights = std::accumulate(weights.begin(), weights.end(), 0.0);
+    std::for_each(weights.begin(), weights.end(),
+                  [sum_of_weights](double& w) { w /= sum_of_weights; });
+    
+    std::vector<uint32_t> data;
+    data.reserve(size);
+    
+    // Initialize random distribution selector
+    std::discrete_distribution<int> index_selector(weights.begin(), weights.end());
+    
+    if (unique_mode == UniqueMode::Rejection) {
+        std::unordered_set<uint32_t> seen;
+        seen.reserve(size * 2);
+        while (data.size() < size) {
+            auto random_idx = index_selector(generator);
+            std::normal_distribution<double> distribution(means[random_idx], stdevs[random_idx]);
+            
+            double sample;
+            do {
+                sample = distribution(generator);
+            } while (sample < 0 || sample > max_allowed);
+            
+            uint32_t value = static_cast<uint32_t>(sample);
+            if (seen.insert(value).second) {
+                data.push_back(value);
+            }
+        }
+        // Check unique constraint
+        std::unordered_set<uint32_t> check_unique(data.begin(), data.end());
+        if (check_unique.size() != data.size()) {
+            throw std::logic_error("Duplicate values found in mixture of gaussians distribution with rejection sampling");
+        }
+        return data;
+    }
+    
+    data.resize(size);
+    for (size_t i = 0; i < size; ++i) {
+        auto random_idx = index_selector(generator);
+        std::normal_distribution<double> distribution(means[random_idx], stdevs[random_idx]);
+        
+        double sample;
+        do {
+            sample = distribution(generator);
+        } while (sample < 0 || sample > max_allowed);
+        data[i] = static_cast<uint32_t>(sample);
+    }
+    make_unique_adjusted_samples(data, max_allowed, 105);
+    return data;
+}
+
 std::vector<uint32_t> generate_zipf_distr(size_t size) {
     std::vector<uint32_t> data(size);
     ScrambledZipfianGenerator zipf_gen(size);
@@ -366,6 +449,11 @@ int main(int argc, char* argv[]) {
     data = generate_lognormal_distr(M50, unique_mode);
     write_bin32_file("../data/lognormal_50M_uint32", data);
     std::cout << "lognormal_50M_uint32" << std::endl;
+    if (print_stats_flag) print_stats(data);
+
+    data = generate_mix_of_gauss_distr(M50, unique_mode);
+    write_bin32_file("../data/mix_gauss_50M_uint32", data);
+    std::cout << "mix_gauss_50M_uint32" << std::endl;
     if (print_stats_flag) print_stats(data);
 
     data = generate_zipf_distr(M50);

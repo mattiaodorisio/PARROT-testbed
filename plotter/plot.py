@@ -830,6 +830,8 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
         y_label += ' (s)'
     elif 'throughput' in actual_y_col:
         y_label += ' (ops/sec)'
+        
+    y_label = y_label.replace('Total', 'Batch')
     
     # Substitute parameters in caption and title
     caption = substitute_caption_parameters(caption, filter_conditions, data, x_col, y_col, groupby_col)
