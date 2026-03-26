@@ -98,7 +98,8 @@ class BenchmarkDeLI {
 
 template <typename KeyType, typename PayloadType>
 void benchmark_deli_dynamic(const bench_config& config,
-                    std::vector<std::pair<KeyType, PayloadType>>& key_values) {
+                    std::vector<std::pair<KeyType, PayloadType>>& key_values,
+                    const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values) {
   // Check if there are duplicates
   for (size_t i = 1; i < key_values.size(); ++i) {
     if (key_values[i].first == key_values[i - 1].first) {
@@ -106,9 +107,9 @@ void benchmark_deli_dynamic(const bench_config& config,
     }
   }
   
-  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED };
+  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED, SHIFTING };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, KeyType, 10>>(config, key_values, wl);
+    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, KeyType, 10>>(config, key_values, wl, shifting_insert_key_values);
 
     // Define high_bits
     /////////// This works with one parameter
@@ -126,7 +127,7 @@ void benchmark_deli_dynamic(const bench_config& config,
     if (config.pareto) {
 
       #ifdef DELI_FAST_CONFIG
-        constexpr auto high_bits = std::integer_sequence<unsigned int, 4, 8, 12, 16>{};
+        constexpr auto high_bits = std::integer_sequence<unsigned int, 0, 4, 8, 12, 16>{};
       #else
         constexpr auto high_bits = std::make_integer_sequence<unsigned int, 11>{};
       #endif
@@ -144,7 +145,8 @@ void benchmark_deli_dynamic(const bench_config& config,
           std::integer_sequence<int, top_optimizations...>,
           const bench_config& cfg, 
           std::vector<std::pair<KeyType, PayloadType>>& kv, 
-          Workload workload) {
+          Workload workload,
+          const std::vector<std::pair<KeyType, PayloadType>>& shifting_kv) {
         
         // 5-level nested cartesian product
         auto run_for_bits = [&]<unsigned int B>() {
@@ -158,7 +160,7 @@ void benchmark_deli_dynamic(const bench_config& config,
 
                   // Check constraint: slot_index optimization (1) cannot be used with SIMD (S > 0)
                   if constexpr (rht_opt != DeLI::RhtOptimization::slot_index || S == 0) {
-                    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, rht_opt, S, L, top_opt, KeyType, B>>(cfg, kv, workload);
+                    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, rht_opt, S, L, top_opt, KeyType, B>>(cfg, kv, workload, shifting_kv);
                   }
                   
                 };
@@ -172,7 +174,7 @@ void benchmark_deli_dynamic(const bench_config& config,
         };
         (run_for_bits.template operator()<bits>(), ...);
       };
-      run_pareto(high_bits, load_balance, rht_simd_unrolled, rht_opts, top_opts, config, key_values, wl);
+      run_pareto(high_bits, load_balance, rht_simd_unrolled, rht_opts, top_opts, config, key_values, wl, shifting_insert_key_values);
     }
 #endif // FAST_COMPILE
 }
@@ -180,7 +182,8 @@ void benchmark_deli_dynamic(const bench_config& config,
 
 template <typename KeyType, typename PayloadType>
 void benchmark_deli_static(const bench_config& config,
-                    std::vector<std::pair<KeyType, PayloadType>>& key_values) {
+                    std::vector<std::pair<KeyType, PayloadType>>& key_values,
+                    const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values = {}) {
   // Check if there are duplicates
   for (size_t i = 1; i < key_values.size(); ++i) {
     if (key_values[i].first == key_values[i - 1].first) {
@@ -190,7 +193,7 @@ void benchmark_deli_static(const bench_config& config,
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, KeyType, 10>>(config, key_values, wl);
+    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, KeyType, 10>>(config, key_values, wl, shifting_insert_key_values);
 
     // Define high_bits
     /////////// This works with one parameter
@@ -208,7 +211,7 @@ void benchmark_deli_static(const bench_config& config,
     if (config.pareto) {
 
       #ifdef DELI_FAST_CONFIG
-        constexpr auto high_bits = std::integer_sequence<unsigned int, 4, 8, 12, 16>{};
+        constexpr auto high_bits = std::integer_sequence<unsigned int, 0, 4, 8, 12, 16>{};
       #else
         constexpr auto high_bits = std::make_integer_sequence<unsigned int, 11>{};
       #endif
@@ -226,7 +229,8 @@ void benchmark_deli_static(const bench_config& config,
           std::integer_sequence<int, top_optimizations...>,
           const bench_config& cfg, 
           std::vector<std::pair<KeyType, PayloadType>>& kv, 
-          Workload workload) {
+          Workload workload,
+          const std::vector<std::pair<KeyType, PayloadType>>& shifting_kv) {
         
         // 5-level nested cartesian product
         auto run_for_bits = [&]<unsigned int B>() {
@@ -240,7 +244,7 @@ void benchmark_deli_static(const bench_config& config,
 
                   // Check constraint: slot_index optimization (1) cannot be used with SIMD (S > 0)
                   if constexpr (rht_opt != DeLI::RhtOptimization::slot_index || S == 0) {
-                    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, false, rht_opt, S, L, top_opt, KeyType, B>>(cfg, kv, workload);
+                    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, false, rht_opt, S, L, top_opt, KeyType, B>>(cfg, kv, workload, shifting_kv);
                   }
                   
                 };
@@ -254,7 +258,7 @@ void benchmark_deli_static(const bench_config& config,
         };
         (run_for_bits.template operator()<bits>(), ...);
       };
-      run_pareto(high_bits, load_balance, rht_simd_unrolled, rht_opts, top_opts, config, key_values, wl);
+      run_pareto(high_bits, load_balance, rht_simd_unrolled, rht_opts, top_opts, config, key_values, wl, shifting_insert_key_values);
     }
 #endif // FAST_COMPILE
 }

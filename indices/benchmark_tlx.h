@@ -61,17 +61,19 @@ class BenchmarkTLX {
 
 template <typename KeyType, typename PayloadType>
 void benchmark_tlx(const bench_config& config,
-                   std::vector<std::pair<KeyType, PayloadType>>& key_values) {
+                   std::vector<std::pair<KeyType, PayloadType>>& key_values,
+                   const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values) {
   constexpr Workload supported_workloads[] = {
       LOOKUP_EXISTING,
       LOOKUP_IN_DISTRIBUTION,
       INSERT_IN_DISTRIBUTION,
       DELETE_EXISTING,
       MIXED,
+      SHIFTING,
   };
 
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkTLX<KeyType, PayloadType>>(config, key_values, wl);
+    deli_testbed::run_benchmark<BenchmarkTLX<KeyType, PayloadType>>(config, key_values, wl, shifting_insert_key_values);
   }
 }
 }  // namespace deli_testbed

@@ -58,7 +58,8 @@ class BenchmarkDynamicPGM {
 
 template <typename KeyType, typename PayloadType>
 void benchmark_pgm_dynamic(const bench_config& config, 
-                           std::vector<std::pair<KeyType, PayloadType>>& key_values) {
+                           std::vector<std::pair<KeyType, PayloadType>>& key_values,
+                           const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values) {
 
   // Check for sentinel value
   constexpr KeyType sentinel = std::numeric_limits<KeyType>::has_infinity ? std::numeric_limits<KeyType>::infinity()
@@ -67,19 +68,19 @@ void benchmark_pgm_dynamic(const bench_config& config,
     return;
   }
 
-  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED };
+  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED, SHIFTING };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 16>>(config, key_values, wl);
+    deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 16>>(config, key_values, wl, shifting_insert_key_values);
 
 #ifndef FAST_COMPILE
     if (config.pareto) {
-      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 8>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 32>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 64>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 128>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 256>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 512>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 1024>>(config, key_values, wl);
+      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 8>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 32>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 64>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 128>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 256>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 512>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 1024>>(config, key_values, wl, shifting_insert_key_values);
     }
 #endif // FAST_COMPILE
   }

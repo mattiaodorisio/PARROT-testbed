@@ -157,23 +157,24 @@ class BenchmarkRS {
 
 template <typename KeyType, typename PayloadType>
 void benchmark_rs(const bench_config& config,
-                             std::vector<std::pair<KeyType, PayloadType>>& key_values) {
+                             std::vector<std::pair<KeyType, PayloadType>>& key_values,
+                             const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values) {
 
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 10>>(config, key_values, wl);
+    deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 10>>(config, key_values, wl, shifting_insert_key_values);
 
 #ifndef FAST_COMPILE
     if (config.pareto) {
-      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 1>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 2>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 3>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 4>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 5>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 6>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 7>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 8>>(config, key_values, wl);
-      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 9>>(config, key_values, wl);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 1>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 2>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 3>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 4>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 5>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 6>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 7>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 8>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 9>>(config, key_values, wl, shifting_insert_key_values);
     }
 #endif // FAST_COMPILE
   }
