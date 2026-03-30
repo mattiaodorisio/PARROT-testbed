@@ -190,11 +190,9 @@ class Benchmark {
 private:
   bool CheckResults(PayloadType actual, PayloadType expected, KeyType lookup_key) {
     if (actual != expected) {
-       // TODO: Check if further cheks are needed here
-
-      std::cerr << "equality lookup returned wrong result:" << std::endl;
-      std::cerr << "lookup key: " << lookup_key << std::endl;
-      std::cerr << "actual: " << actual << ", expected: " << expected
+      std::cerr << "Equality lookup returned wrong result:\n" 
+                << "Lookup key: " << lookup_key << "\n"
+                << "Actual: " << actual << ", expected: " << expected
                 << std::endl;
 
       return false;

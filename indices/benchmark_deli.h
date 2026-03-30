@@ -9,58 +9,80 @@
 // Wrapper object
 
 namespace deli_testbed {
-template <typename KEY_TYPE, typename PAYLOAD_TYPE,
+template <bool has_payload,
+          typename KEY_TYPE, typename PAYLOAD_TYPE,
           bool dynamic,
           DeLI::RhtOptimization rht_opt,
           size_t rht_simd_unrolled,
           size_t rht_max_load_perc,
           DeLI::TopLevelOptimization opt,
-          typename T,
           unsigned int high_bits>
 class BenchmarkDeLI {
   public:
-    using index_t = DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, T, high_bits>;
     using KeyType = KEY_TYPE;
     using PayloadType = PAYLOAD_TYPE;
+    using index_t_payload = DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, KeyType, high_bits, PayloadType>;
+    using index_t_no_payload = DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, KeyType, high_bits, DeLI::NoPayload>;
+    using index_t = std::conditional_t<has_payload, index_t_payload, index_t_no_payload>;
 
     BenchmarkDeLI() {}
   
     template<typename Iterator>
     void bulk_load(const Iterator begin, const Iterator end) {
-      // Unlike dynamic indexes (ALEX, LIPP, Dynamic-PGM) DeLI does not have payloads
-      auto keys = std::ranges::subrange(begin, end) | std::ranges::views::transform([](auto const& p) { return p.first; });
-
       // Retain a copy of the data
       data.assign(begin, end);
-      index.bulk_load(keys.begin(), keys.end());
+
+      if constexpr (has_payload) {
+        index.bulk_load(begin, end);
+      } else {
+        auto keys = std::ranges::subrange(begin, end) | std::ranges::views::transform([](auto const& p) { return p.first; });
+        index.bulk_load(keys.begin(), keys.end());
+      }
     }
   
-    PAYLOAD_TYPE lower_bound(const KEY_TYPE key) {
-      auto res = index.find_next(key);
-      return res ? res.value() : PAYLOAD_TYPE{};
+    PayloadType lower_bound(const KeyType key) {
+      if constexpr (has_payload) {
+        auto res = index.find_next_iter(key);
+        return res != index.end() ? res.payload() : PayloadType{};
+      } else {
+        auto res = index.find_next(key);
+        return res ? res.value() : PayloadType{};
+      }
     }
   
-    void insert(const KEY_TYPE& key, const PAYLOAD_TYPE& payload) requires(dynamic) {
-      index.insert(key);
+    void insert(const KeyType& key, const PayloadType& payload) requires(dynamic) {
+      if constexpr (has_payload) {
+        index.insert(key, payload);
+      } else {
+        index.insert(key);
+      }
     }
 
-    void insert(const KEY_TYPE& key, const PAYLOAD_TYPE& payload) requires(!dynamic) {
+    void insert(const KeyType& key, const PayloadType& payload) requires(!dynamic) {
       throw std::logic_error("Insert not supported for static DeLI");
     }
 
-    void erase(const KEY_TYPE& key) requires (dynamic) {
+    void erase(const KeyType& key) requires (dynamic) {
       index.remove(key);
     }
 
-    void erase(const KEY_TYPE& key) requires (!dynamic) {
+    void erase(const KeyType& key) requires (!dynamic) {
       throw std::logic_error("Erase not supported for static DeLI");
     }
 
     static std::string name() {
       if constexpr (dynamic) {
-        return "DeLI-Dynamic";
+        if constexpr (has_payload) {
+          return "DeLI-Dynamic-Payload";
+        } else {
+          return "DeLI-Dynamic";
+        }
       } else {
-        return "DeLI-Static";
+        if constexpr (has_payload) {
+          return "DeLI-Static-Payload";
+        } else {
+          return "DeLI-Static";
+        }
       }
     }
 
@@ -92,11 +114,11 @@ class BenchmarkDeLI {
     }
 
   private:
-    std::vector<std::pair<KEY_TYPE, PAYLOAD_TYPE>> data;
+    std::vector<std::pair<KeyType, PayloadType>> data;
     index_t index;
 };
 
-template <typename KeyType, typename PayloadType>
+template <bool has_payload, typename KeyType, typename PayloadType>
 void benchmark_deli_dynamic(const bench_config& config,
                     std::vector<std::pair<KeyType, PayloadType>>& key_values,
                     const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values) {
@@ -109,7 +131,7 @@ void benchmark_deli_dynamic(const bench_config& config,
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED, SHIFTING };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, KeyType, 10>>(config, key_values, wl, shifting_insert_key_values);
+    deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10>>(config, key_values, wl, shifting_insert_key_values);
 
     // Define high_bits
     /////////// This works with one parameter
@@ -117,7 +139,7 @@ void benchmark_deli_dynamic(const bench_config& config,
 
     // if (config.pareto) {
     //   auto run_pareto = []<unsigned int... bits>(std::integer_sequence<unsigned int, bits...>, const bench_config& cfg, const std::vector<std::pair<KeyType, PayloadType>>& kv, Workload workload) {
-    //     (deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, KeyType, bits>>(cfg, kv, workload), ...);
+    //     (deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, bits>>(cfg, kv, workload), ...);
     //   };
     //   run_pareto(high_bits, config, key_values, wl);
     // }
@@ -160,7 +182,7 @@ void benchmark_deli_dynamic(const bench_config& config,
 
                   // Check constraint: slot_index optimization (1) cannot be used with SIMD (S > 0)
                   if constexpr (rht_opt != DeLI::RhtOptimization::slot_index || S == 0) {
-                    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, true, rht_opt, S, L, top_opt, KeyType, B>>(cfg, kv, workload, shifting_kv);
+                    deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
                   }
                   
                 };
@@ -180,7 +202,7 @@ void benchmark_deli_dynamic(const bench_config& config,
 }
 }
 
-template <typename KeyType, typename PayloadType>
+template <bool has_payload, typename KeyType, typename PayloadType>
 void benchmark_deli_static(const bench_config& config,
                     std::vector<std::pair<KeyType, PayloadType>>& key_values,
                     const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values = {}) {
@@ -193,7 +215,7 @@ void benchmark_deli_static(const bench_config& config,
   
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, KeyType, 10>>(config, key_values, wl, shifting_insert_key_values);
+    deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10>>(config, key_values, wl, shifting_insert_key_values);
 
     // Define high_bits
     /////////// This works with one parameter
@@ -201,7 +223,7 @@ void benchmark_deli_static(const bench_config& config,
 
     // if (config.pareto) {
     //   auto run_pareto = []<unsigned int... bits>(std::integer_sequence<unsigned int, bits...>, const bench_config& cfg, const std::vector<std::pair<KeyType, PayloadType>>& kv, Workload workload) {
-    //     (deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, KeyType, bits>>(cfg, kv, workload), ...);
+    //     (deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, bits>>(cfg, kv, workload), ...);
     //   };
     //   run_pareto(high_bits, config, key_values, wl);
     // }
@@ -244,7 +266,7 @@ void benchmark_deli_static(const bench_config& config,
 
                   // Check constraint: slot_index optimization (1) cannot be used with SIMD (S > 0)
                   if constexpr (rht_opt != DeLI::RhtOptimization::slot_index || S == 0) {
-                    deli_testbed::run_benchmark<BenchmarkDeLI<KeyType, PayloadType, false, rht_opt, S, L, top_opt, KeyType, B>>(cfg, kv, workload, shifting_kv);
+                    deli_testbed::run_benchmark<BenchmarkDeLI<payload, KeyType, PayloadType, false, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
                   }
                   
                 };

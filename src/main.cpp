@@ -108,10 +108,16 @@ void execute(const bench_config& config) {
         deli_testbed::benchmark_rs<KeyType, PayloadType>(config, key_keys, shifting_key_keys);
       }
       else if (index_name == "DeLI-Dynamic") {
-        deli_testbed::benchmark_deli_dynamic<KeyType, PayloadType>(config, key_keys, shifting_key_keys);
+        deli_testbed::benchmark_deli_dynamic<false, KeyType, PayloadType>(config, key_keys, shifting_key_keys);
       }
       else if (index_name == "DeLI-Static") {
-        deli_testbed::benchmark_deli_static<KeyType, PayloadType>(config, key_keys, shifting_key_keys);
+        deli_testbed::benchmark_deli_static<false, KeyType, PayloadType>(config, key_keys, shifting_key_keys);
+      }
+      else if (index_name == "DeLI-Dynamic-Payload") {
+        deli_testbed::benchmark_deli_dynamic<true, KeyType, PayloadType>(config, key_values, shifting_key_values);
+      }
+      else if (index_name == "DeLI-Static-Payload") {
+        deli_testbed::benchmark_deli_static<true, KeyType, PayloadType>(config, key_values, shifting_key_values);
       }
       else if (index_name == "PGM-Static") {
         deli_testbed::benchmark_pgm_static<KeyType, PayloadType>(config, key_keys, shifting_key_keys);
