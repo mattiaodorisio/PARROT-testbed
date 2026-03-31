@@ -51,21 +51,28 @@ static std::vector<T> load_binary_data(const std::string& filename, size_t lengt
   return data;
 }
 
-template <class T>
-bool load_text_data(T array[], int length, const std::string& file_path) {
+template <typename KeyType>
+std::vector<KeyType> load_text_data(const std::string& file_path, size_t length = std::numeric_limits<size_t>::max()) {
+  if constexpr (!std::is_same_v<KeyType, uint64_t>) {
+    throw std::runtime_error("Text data loading supports only uint64_t key type.");
+  }
+  std::vector<KeyType> data;
   std::ifstream is(file_path.c_str());
   if (!is.is_open()) {
-    return false;
+    return data;
   }
-  int i = 0;
+  size_t i = 0;
   std::string str;
-  while (std::getline(is, str) && i < length) {
+  while (std::getline(is, str) && i++ < length) {
     std::istringstream ss(str);
-    ss >> array[i];
-    i++;
+    int64_t value;
+    ss >> value;
+    // shift values to positive range
+    const uint64_t value_shifted = std::numeric_limits<uint64_t>::max() / 2 + value;
+    data.push_back(value_shifted);
   }
   is.close();
-  return true;
+  return data;
 }
 
 template <class RandomIt>

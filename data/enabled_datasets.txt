@@ -11,3 +11,4 @@ zipf_50M_uint32
 #friendster_50M_uint32
 #osm_cellids_800M_uint64
 #wiki_ts_200M_uint64
+USA-road-d.USA.co.txt

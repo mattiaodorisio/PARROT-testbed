@@ -31,7 +31,17 @@ template <typename KeyType, typename PayloadType>
 void execute(const bench_config& config) {
 
   // Read keys from file
-  std::vector<KeyType> keys = utils::load_binary_data<KeyType>(config.data_filename);
+  std::vector<KeyType> keys;
+  if (config.data_filename.ends_with(".txt")) {
+    keys = utils::load_text_data<KeyType>(config.data_filename);
+  } else {
+    keys = utils::load_binary_data<KeyType>(config.data_filename);
+  }
+
+  if (keys.empty()) {
+    std::cerr << "Error: No keys loaded from file: " << config.data_filename << std::endl;
+    return;
+  }
 
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
@@ -245,8 +255,10 @@ int main(int argc, char* argv[]) {
     execute<uint32_t, uint32_t>(config);
   } else if (keys_file_path.ends_with("_uint64")) {
     execute<uint64_t, uint64_t>(config);
+  } else if (keys_file_path.ends_with(".txt")) {
+    execute<uint64_t, uint64_t>(config); // For text files, we assume uint64 keys
   } else {
-    throw std::runtime_error("Unsupported key type in filename. Expected suffixes: _uint32 or _uint64");
+    throw std::runtime_error("Unsupported key type in filename. Expected suffixes: _uint32, _uint64, or .txt");
   }
 
   std::cout << "\nBenchmark results saved to: " << out_filename << std::endl;

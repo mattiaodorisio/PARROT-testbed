@@ -38,6 +38,26 @@ function download_file_zst() {
    fi
 }
 
+function download_coordinate_file() {
+   FILE_OUTPUT=$1
+   FILE_COMPRESSED=$2
+   URL=$3
+
+   # Download if not already present
+   if [ ! -f "$FILE_COMPRESSED" ]; then
+      echo "Downloading file..."
+      wget -O "$FILE_COMPRESSED" "$URL"
+   else
+      echo "File already exists, skipping download."
+   fi
+
+   gunzip -c "$FILE_COMPRESSED" > extracted_file
+   
+   echo "Processing file..."
+   tail -n +8 extracted_file | cut -d ' ' -f3 > "$FILE_OUTPUT"
+   rm extracted_file "$FILE_COMPRESSED"
+}
+
 function main() {
    echo "downloading data ..."
    mkdir -p data
@@ -70,6 +90,11 @@ function main() {
    fi
    if [ ! -f friendster_50M_uint32 ]; then
       wget -O friendster_50M_uint32 https://www.dropbox.com/scl/fi/tuesjan0qikkewij9i8vi/friendster_50M_uint32?rlkey=uqj459q30v2ipcidzjp3293pa&st=2jmcygqf&dl=0
+   fi
+
+   # download coordinate files
+   if [ ! -f USA-road-d.USA.co.txt ]; then
+      download_coordinate_file "USA-road-d.USA.co.txt" "USA-road-d.USA.co.gz" "https://www.diag.uniroma1.it/~challenge9/data/USA-road-d/USA-road-d.USA.co.gz"
    fi
 
    echo "done"
