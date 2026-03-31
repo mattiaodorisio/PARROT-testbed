@@ -266,7 +266,7 @@ void benchmark_deli_static(const bench_config& config,
 
                   // Check constraint: slot_index optimization (1) cannot be used with SIMD (S > 0)
                   if constexpr (rht_opt != DeLI::RhtOptimization::slot_index || S == 0) {
-                    deli_testbed::run_benchmark<BenchmarkDeLI<payload, KeyType, PayloadType, false, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
+                    deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
                   }
                   
                 };
