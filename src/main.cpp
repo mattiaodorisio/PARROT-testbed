@@ -46,7 +46,17 @@ void execute(const bench_config& config) {
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
   // Define index types and names
-  const std::vector<std::string> index_names = {"ALEX", "LIPP", "RS", "DeLI-Static", "DeLI-Dynamic", "PGM-Static", "PGM-Dynamic", "TLX"};
+  const std::vector<std::string> index_names = {"ALEX",
+                                                "LIPP",
+                                                "RS",
+                                                "DeLI-Static",
+                                                "DeLI-Dynamic",
+                                                "DeLI-Static-Payload",
+                                                "DeLI-Dynamic-Payload",
+                                                "PGM-Static",
+                                                "PGM-Dynamic",
+                                                "TLX"
+                                              };
 
   for (size_t current_init_key_size = (1 << config.min_size); current_init_key_size <= (1 << config.max_size); current_init_key_size *= 2) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
