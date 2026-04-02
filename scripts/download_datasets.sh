@@ -56,6 +56,9 @@ function download_coordinate_file() {
    echo "Processing file..."
    tail -n +8 extracted_file | cut -d ' ' -f3 > "$FILE_OUTPUT"
    rm extracted_file "$FILE_COMPRESSED"
+
+   # Remove duplicates without sorting
+   awk '!seen[$0]++' "$FILE_OUTPUT" > "${FILE_OUTPUT}.tmp" && mv "${FILE_OUTPUT}.tmp" "$FILE_OUTPUT"
 }
 
 function main() {
