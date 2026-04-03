@@ -16,3 +16,6 @@
 [submodule "indices/tlx"]
 	path = indices/tlx
 	url = https://github.com/tlx/tlx.git
+[submodule "indices/unordered_dense"]
+	path = indices/unordered_dense
+	url = https://github.com/martinus/unordered_dense.git

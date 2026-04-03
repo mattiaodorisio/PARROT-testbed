@@ -3,6 +3,7 @@
 #include <string_view>
 
 #include "DeLI/include/DeLI/deli.h"
+#include "unordered_dense/include/ankerl/unordered_dense.h"
 #include "../src/benchmark.h"
 #include "../src/utils.h"
 
@@ -21,17 +22,16 @@ class BenchmarkDeLI {
   public:
     using KeyType = KEY_TYPE;
     using PayloadType = PAYLOAD_TYPE;
-    using index_t_payload = DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, KeyType, high_bits, PayloadType>;
-    using index_t_no_payload = DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, KeyType, high_bits, DeLI::NoPayload>;
+    using index_t_payload = DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, KeyType, high_bits, PayloadType, sizeof(KeyType) * CHAR_BIT, ankerl::unordered_dense::map>;
+    using index_t_no_payload = DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, KeyType, high_bits, DeLI::NoPayload, sizeof(KeyType) * CHAR_BIT, ankerl::unordered_dense::map>;
     using index_t = std::conditional_t<has_payload, index_t_payload, index_t_no_payload>;
 
     BenchmarkDeLI() {}
-  
+
     template<typename Iterator>
     void bulk_load(const Iterator begin, const Iterator end) {
       // Retain a copy of the data
       data.assign(begin, end);
-
       if constexpr (has_payload) {
         index.bulk_load(begin, end);
       } else {
@@ -39,7 +39,7 @@ class BenchmarkDeLI {
         index.bulk_load(keys.begin(), keys.end());
       }
     }
-  
+
     PayloadType lower_bound(const KeyType key) {
       if constexpr (has_payload) {
         auto res = index.find_next_iter(key);
@@ -49,7 +49,7 @@ class BenchmarkDeLI {
         return res ? res.value() : PayloadType{};
       }
     }
-  
+
     void insert(const KeyType& key, const PayloadType& payload) requires(dynamic) {
       if constexpr (has_payload) {
         index.insert(key, payload);
@@ -95,7 +95,7 @@ class BenchmarkDeLI {
           rht_opt == DeLI::RhtOptimization::gap_fill_both ? "GFB" : "unknown";
       constexpr std::string_view opt_str =
           opt == DeLI::TopLevelOptimization::none ? "N" :
-          opt == DeLI::TopLevelOptimization::precompute ? "P" :
+          //opt == DeLI::TopLevelOptimization::precompute ? "P" :
           opt == DeLI::TopLevelOptimization::bucket_index ? "BI" : "unknown";
 
       std::stringstream ss;
@@ -128,7 +128,7 @@ void benchmark_deli_dynamic(const bench_config& config,
       return;
     }
   }
-  
+
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED, SHIFTING };
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10>>(config, key_values, wl, shifting_insert_key_values);
@@ -153,23 +153,23 @@ void benchmark_deli_dynamic(const bench_config& config,
       #else
         constexpr auto high_bits = std::make_integer_sequence<unsigned int, 11>{};
       #endif
-      
+
       constexpr auto load_balance = std::integer_sequence<size_t, 20, 40, 60>{};
       constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2, 4>{};
       constexpr auto rht_opts = std::integer_sequence<int, 0, 1>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
       constexpr auto top_opts = std::integer_sequence<int, 0, 2>{}; // Top optimization 1 unsupported with dynamic
-    
+
       auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
-          std::integer_sequence<unsigned int, bits...>, 
-          std::integer_sequence<size_t, loads...>, 
+          std::integer_sequence<unsigned int, bits...>,
+          std::integer_sequence<size_t, loads...>,
           std::integer_sequence<size_t, simd_unrolled...>,
           std::integer_sequence<int, rht_optimizations...>,
           std::integer_sequence<int, top_optimizations...>,
-          const bench_config& cfg, 
-          std::vector<std::pair<KeyType, PayloadType>>& kv, 
+          const bench_config& cfg,
+          std::vector<std::pair<KeyType, PayloadType>>& kv,
           Workload workload,
           const std::vector<std::pair<KeyType, PayloadType>>& shifting_kv) {
-        
+
         // 5-level nested cartesian product
         auto run_for_bits = [&]<unsigned int B>() {
           auto run_for_loads = [&]<size_t L>() {
@@ -184,7 +184,7 @@ void benchmark_deli_dynamic(const bench_config& config,
                   if constexpr (rht_opt != DeLI::RhtOptimization::slot_index || S == 0) {
                     deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
                   }
-                  
+
                 };
                 (run_for_top.template operator()<top_optimizations>(), ...);
               };
@@ -212,7 +212,7 @@ void benchmark_deli_static(const bench_config& config,
       return;
     }
   }
-  
+
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10>>(config, key_values, wl, shifting_insert_key_values);
@@ -237,23 +237,23 @@ void benchmark_deli_static(const bench_config& config,
       #else
         constexpr auto high_bits = std::make_integer_sequence<unsigned int, 11>{};
       #endif
-      
+
       constexpr auto load_balance = std::integer_sequence<size_t, 20, 40, 60>{};
       constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2, 4>{};
       constexpr auto rht_opts = std::integer_sequence<int, 0, 1, 2, 3, 4>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
       constexpr auto top_opts = std::integer_sequence<int, 0, 1, 2>{}; // Top optimization 1 unsupported with dynamic
-    
+
       auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
-          std::integer_sequence<unsigned int, bits...>, 
-          std::integer_sequence<size_t, loads...>, 
+          std::integer_sequence<unsigned int, bits...>,
+          std::integer_sequence<size_t, loads...>,
           std::integer_sequence<size_t, simd_unrolled...>,
           std::integer_sequence<int, rht_optimizations...>,
           std::integer_sequence<int, top_optimizations...>,
-          const bench_config& cfg, 
-          std::vector<std::pair<KeyType, PayloadType>>& kv, 
+          const bench_config& cfg,
+          std::vector<std::pair<KeyType, PayloadType>>& kv,
           Workload workload,
           const std::vector<std::pair<KeyType, PayloadType>>& shifting_kv) {
-        
+
         // 5-level nested cartesian product
         auto run_for_bits = [&]<unsigned int B>() {
           auto run_for_loads = [&]<size_t L>() {
@@ -268,7 +268,7 @@ void benchmark_deli_static(const bench_config& config,
                   if constexpr (rht_opt != DeLI::RhtOptimization::slot_index || S == 0) {
                     deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
                   }
-                  
+
                 };
                 (run_for_top.template operator()<top_optimizations>(), ...);
               };
