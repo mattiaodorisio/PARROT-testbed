@@ -27,5 +27,5 @@ target_link_libraries(deLi_testbed PRIVATE butree_func)
 target_link_libraries(deLi_testbed PRIVATE global_func)
 target_link_libraries(deLi_testbed PRIVATE utils_func)
 
-find_package(unordered_dense CONFIG REQUIRED)
+add_subdirectory(indices/unordered_dense)
 target_link_libraries(deLi_testbed PRIVATE unordered_dense::unordered_dense)

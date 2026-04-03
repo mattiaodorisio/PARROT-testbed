@@ -15,6 +15,7 @@ A first draft of the code in this file has been generated with the help of an AI
 import re
 import os
 import sys
+import math
 from typing import Dict, List, Tuple, Optional
 import argparse
 import statistics
@@ -459,7 +460,14 @@ def parse_benchmark_log(log_file_path: str) -> List[Dict]:
     
     return data_rows
 
-def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col: str = None) -> str:
+def generate_pgfplot_data(
+    data: List[Dict],
+    x_col: str,
+    y_col: str,
+    groupby_col: str = None,
+    y_soft_max: Optional[float] = None,
+    y_soft_max_ratio: float = 1.25,
+) -> str:
     """
     Generate pgfplot data section for a given x and y column combination.
     
@@ -469,6 +477,9 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
         y_col (str): Column name for y-axis  
         groupby_col (str): Column used for grouping (for legend, may include BEST aggregation)
         
+        y_soft_max (float or None): Optional axis ymax used for soft clipping.
+        y_soft_max_ratio (float): Keep points up to y_soft_max * ratio.
+
     Returns:
         str: Formatted data for pgfplot
     """
@@ -496,6 +507,11 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
                 if x_col in row and y_col in row 
                 and is_valid_plot_value(row[x_col]) and is_valid_plot_value(row[y_col])
             ]
+            if y_soft_max is not None and y_soft_max > 0:
+                # Keep slightly out-of-range values, but drop extreme overshoots
+                # that can trigger TeX "Dimension too large" in pgfplots.
+                soft_cap = y_soft_max * y_soft_max_ratio
+                valid_data = [row for row in valid_data if float(row[y_col]) <= soft_cap]
             if not valid_data:
                 continue
                 
@@ -542,6 +558,9 @@ def generate_pgfplot_data(data: List[Dict], x_col: str, y_col: str, groupby_col:
             if x_col in row and y_col in row 
             and is_valid_plot_value(row[x_col]) and is_valid_plot_value(row[y_col])
         ]
+        if y_soft_max is not None and y_soft_max > 0:
+            soft_cap = y_soft_max * y_soft_max_ratio
+            valid_data = [row for row in valid_data if float(row[y_col]) <= soft_cap]
         if valid_data:
             valid_data.sort(key=lambda row: row[x_col])
             
@@ -814,9 +833,22 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
     
     # Determine the actual y column name after aggregation
     actual_y_col_name = f'{agg_func.lower()}_{actual_y_col}' if agg_func != 'NONE' else actual_y_col
+
+    y_values = [
+        row[actual_y_col_name]
+        for row in processed_data
+        if actual_y_col_name in row and is_valid_plot_value(row[actual_y_col_name])
+    ]
+    y_max = compute_robust_ymax(y_values)
     
     # Generate plot data (pass original groupby_col to preserve BEST aggregation info)
-    plot_data = generate_pgfplot_data(processed_data, x_col, actual_y_col_name, groupby_col)
+    plot_data = generate_pgfplot_data(
+        processed_data,
+        x_col,
+        actual_y_col_name,
+        groupby_col,
+        y_soft_max=y_max,
+    )
     
     # Prepare better labels
     x_label = x_col.replace('_', ' ').title()
@@ -845,6 +877,7 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
         '{{PLOT_DATA}}': plot_data,
         '{{X_LABEL}}': x_label,
         '{{Y_LABEL}}': y_label,
+        '{{Y_MAX}}': f"{y_max:.10g}",
         '{{TITLE}}': title,
         '{{CAPTION}}': caption,
         '{{LABEL}}': label
@@ -1266,6 +1299,65 @@ def is_valid_plot_value(value) -> bool:
         return True
     except (ValueError, TypeError):
         return False
+
+
+def _quantile(sorted_values: List[float], q: float) -> float:
+    """Compute quantile with linear interpolation on sorted data."""
+    if not sorted_values:
+        raise ValueError("Cannot compute quantile of empty data")
+    if q <= 0:
+        return sorted_values[0]
+    if q >= 1:
+        return sorted_values[-1]
+
+    n = len(sorted_values)
+    pos = (n - 1) * q
+    low_idx = int(math.floor(pos))
+    high_idx = int(math.ceil(pos))
+
+    if low_idx == high_idx:
+        return sorted_values[low_idx]
+
+    low_val = sorted_values[low_idx]
+    high_val = sorted_values[high_idx]
+    weight = pos - low_idx
+    return low_val + (high_val - low_val) * weight
+
+
+def compute_robust_ymax(y_values: List[float], padding_ratio: float = 0.1) -> float:
+    """
+    Compute a per-axis ymax that excludes upper outliers using Tukey's rule.
+    """
+    finite_values = []
+    for value in y_values:
+        try:
+            num = float(value)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(num):
+            finite_values.append(num)
+
+    if not finite_values:
+        return 1.0
+
+    finite_values.sort()
+    data_max = finite_values[-1]
+
+    if len(finite_values) >= 4:
+        q1 = _quantile(finite_values, 0.25)
+        q3 = _quantile(finite_values, 0.75)
+        iqr = q3 - q1
+        outlier_cutoff = q3 + 1.5 * iqr if iqr > 0 else q3
+        non_outliers = [v for v in finite_values if v <= outlier_cutoff]
+        base_max = max(non_outliers) if non_outliers else data_max
+    else:
+        base_max = data_max
+
+    if base_max > 0:
+        return base_max * (1.0 + padding_ratio)
+    if base_max < 0:
+        return base_max * (1.0 - padding_ratio)
+    return 1.0
 
 
 def main():
