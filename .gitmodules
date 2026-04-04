@@ -19,3 +19,7 @@
 [submodule "indices/unordered_dense"]
 	path = indices/unordered_dense
 	url = https://github.com/martinus/unordered_dense.git
+[submodule "indices/sea21-predecessor"]
+	path = indices/sea21-predecessor
+	url = https://github.com/pdinklag/tdc.git
+	branch = sea21-predecessor

@@ -29,3 +29,15 @@ target_link_libraries(deLi_testbed PRIVATE utils_func)
 
 add_subdirectory(indices/unordered_dense)
 target_link_libraries(deLi_testbed PRIVATE unordered_dense::unordered_dense)
+
+# sea21-predecessor: include paths + compile only the sources needed by DynIndex/bucket_bv/bucket_hybrid
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/indices/sea21-predecessor/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/indices/sea21-predecessor/extlib/robin-hood-hashing/src/include)
+target_sources(deLi_testbed PRIVATE
+  indices/sea21-predecessor/src/vec/fixed_width_int_vector.cpp
+  indices/sea21-predecessor/src/vec/int_vector.cpp
+  indices/sea21-predecessor/src/vec/bit_vector.cpp
+  indices/sea21-predecessor/src/vec/bit_rank.cpp
+  indices/sea21-predecessor/src/vec/allocate.cpp
+  indices/sea21-predecessor/src/intrisics/intrisics.cpp
+)

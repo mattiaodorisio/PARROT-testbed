@@ -108,6 +108,10 @@ class Benchmark {
     return 0;
   }
 
+  size_t current_num_keys_() const {
+    return key_values_.size();
+  }
+
   private:
   template <class Index>
   uint64_t DoLookupExisting(Index& index, const bench_config& config) {
@@ -172,19 +176,34 @@ class Benchmark {
   template <class Index>
   uint64_t DoDeleteExisting(Index& index, const bench_config& config) {
     // Get existing keys from the dataset (opposite of insert workload which gets non-existing keys)
-    std::vector<std::pair<KeyType, PayloadType>> delete_pairs = 
-        utils::get_existing_keys(key_values_.begin(), key_values_.end(), config.batch_size);
+    std::vector<std::pair<KeyType, PayloadType>> delete_pairs =
+        utils::get_existing_keys(key_values_.begin(), key_values_.end(), config.batch_size, false);
 
+    uint64_t result;
     if (config.clear_cache)
-      return DoCoreLoop<Index, false, true>(index, delete_pairs, 
+      result = DoCoreLoop<Index, false, true>(index, delete_pairs,
         [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
           DoDeletesCoreLoop<Index, false, true>(idx, failed, pairs);
         });
     else
-      return DoCoreLoop<Index, false, false>(index, delete_pairs, 
+      result = DoCoreLoop<Index, false, false>(index, delete_pairs,
         [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
           DoDeletesCoreLoop<Index, false, false>(idx, failed, pairs);
         });
+
+    // Remove deleted keys from key_values_ so that subsequent batches do not
+    // attempt to re-delete the same keys (symmetric to DoInsertInDistribution).
+    std::sort(delete_pairs.begin(), delete_pairs.end(),
+              [](const auto& a, const auto& b) { return a.first < b.first; });
+    std::vector<std::pair<KeyType, PayloadType>> remaining;
+    remaining.reserve(key_values_.size());
+    std::set_difference(key_values_.begin(), key_values_.end(),
+                        delete_pairs.begin(), delete_pairs.end(),
+                        std::back_inserter(remaining),
+                        [](const auto& a, const auto& b) { return a.first < b.first; });
+    key_values_ = std::move(remaining);
+
+    return result;
   }
 
 private:
@@ -563,6 +582,11 @@ void run_benchmark(const bench_config& config,
   
     using KeyType = typename IndexWrapper::KeyType;
     using PayloadType = typename IndexWrapper::PayloadType;
+
+    // Check that there are enough keys for the delete workload
+    if (workload == Workload::DELETE_EXISTING && key_values.size() < static_cast<size_t>(config.batch_size * 2)) {
+      return;
+    }
     
     // Create the index and bulk load initial keys
     IndexWrapper index;
@@ -588,7 +612,8 @@ void run_benchmark(const bench_config& config,
     measured_throughputs.reserve(static_cast<size_t>(config.max_batches));
 
     // First run is treated as warm-up and discarded from reporting/statistics.
-    for (int run_no = 0; run_no < config.max_batches + 1; ++run_no) {
+    bool break_loop = false;
+    for (int run_no = 0; run_no < config.max_batches + 1 && !break_loop; ++run_no) {
       uint64_t batch_time;
       switch (workload) {
         case LOOKUP_EXISTING: 
@@ -600,9 +625,15 @@ void run_benchmark(const bench_config& config,
         case INSERT_IN_DISTRIBUTION: 
           batch_time = benchmark.template RunWorkload<INSERT_IN_DISTRIBUTION, IndexWrapper>(index, config); 
           break;
-        case DELETE_EXISTING: 
+        case DELETE_EXISTING:
+        {
+          if (benchmark.current_num_keys_() < static_cast<size_t>(config.batch_size)) {
+            break_loop = true;
+            continue;
+          }
           batch_time = benchmark.template RunWorkload<DELETE_EXISTING, IndexWrapper>(index, config); 
           break;
+        }
         case MIXED: 
           batch_time = benchmark.template RunWorkload<MIXED, IndexWrapper>(index, config); 
           break;

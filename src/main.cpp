@@ -13,6 +13,7 @@
 #include "../indices/benchmark_pgm_dynamic.h"
 #include "../indices/benchmark_rs.h"
 #include "../indices/benchmark_tlx.h"
+#include "../indices/benchmark_sea21.h"
 
 #include <iomanip>
 #include <fstream>
@@ -55,7 +56,8 @@ void execute(const bench_config& config) {
                                                 "DeLI-Dynamic-Payload",
                                                 "PGM-Static",
                                                 "PGM-Dynamic",
-                                                "TLX"
+                                                "TLX",
+                                                //"SEA21",
                                               };
 
   for (size_t current_init_key_size = (1 << config.min_size); current_init_key_size <= (1 << config.max_size); current_init_key_size *= 2) {
@@ -147,6 +149,9 @@ void execute(const bench_config& config) {
       }
       else if (index_name == "TLX") {
         deli_testbed::benchmark_tlx<KeyType, PayloadType>(config, key_keys, shifting_key_keys);
+      }
+      else if (index_name == "SEA21") {
+        deli_testbed::benchmark_sea21<KeyType, PayloadType>(config, key_keys, shifting_key_keys);
       }
       else {
         throw std::runtime_error("Unsupported index: " + index_name);
