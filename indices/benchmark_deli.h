@@ -22,6 +22,8 @@ class BenchmarkDeLI {
   public:
     using KeyType = KEY_TYPE;
     using PayloadType = PAYLOAD_TYPE;
+
+    static constexpr SearchSemantics search_semantics = SearchSemantics::SUCCESSOR;
     using index_t_payload = DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, KeyType, high_bits, PayloadType, sizeof(KeyType) * CHAR_BIT, ankerl::unordered_dense::map>;
     using index_t_no_payload = DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, KeyType, high_bits, DeLI::NoPayload, sizeof(KeyType) * CHAR_BIT, ankerl::unordered_dense::map>;
     using index_t = std::conditional_t<has_payload, index_t_payload, index_t_no_payload>;

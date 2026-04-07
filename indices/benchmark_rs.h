@@ -9,43 +9,32 @@
 
 namespace deli_testbed {
 template <typename KEY_TYPE, typename PAYLOAD_TYPE, int size_scale>
-class BenchmarkRS {
+class BenchmarkRS : public PredecessorSearchBase<KEY_TYPE> {
   public:
     using KeyType = KEY_TYPE;
     using PayloadType = PAYLOAD_TYPE;
+    static constexpr SearchSemantics search_semantics = SearchSemantics::SUCCESSOR;
 
     BenchmarkRS() {}
-  
+
     template<typename Iterator>
     void bulk_load(const Iterator begin, const Iterator end) {
-      auto keys_iter = std::ranges::subrange(begin, end) | std::ranges::views::transform([](auto const& p) { return p.first; });
+      this->ps_init(begin, end);
 
-      auto min = std::numeric_limits<KeyType>::min();
-      auto max = std::numeric_limits<KeyType>::max();
-      if (keys_iter.size() > 0) {
-        min = keys_iter.front();
-        max = keys_iter.back();
-      }
-      rs::Builder<KeyType> rsb(min, max, num_radix_bits_, max_error_);
-      for (const auto& key : keys_iter) rsb.AddKey(key);
+      const auto& keys = this->sorted_keys_;
+      auto min_key = keys.empty() ? std::numeric_limits<KeyType>::min() : keys.front();
+      auto max_key = keys.empty() ? std::numeric_limits<KeyType>::max() : keys.back();
+
+      rs::Builder<KeyType> rsb(min_key, max_key, num_radix_bits_, max_error_);
+      for (const auto& key : keys) rsb.AddKey(key);
       rs_ = rsb.Finalize();
-
-      // Unlike dynamic indexes (ALEX, LIPP, Dynamic-PGM) RS does not have payloads
-      keys.assign(keys_iter.begin(), keys_iter.end());
     }
-  
+
     PAYLOAD_TYPE lower_bound(const KEY_TYPE key) const {
       const rs::SearchBound sb = rs_.GetSearchBound(key);
-
-      auto it = std::lower_bound(keys.begin() + sb.begin, keys.begin() + sb.end, key);
-      if (it != keys.begin() + sb.end) {
-        size_t index = std::distance(keys.begin(), it);
-        return keys[index];
-      } else {
-        return PAYLOAD_TYPE{};
-      }
+      return static_cast<PAYLOAD_TYPE>(this->find_successor_in_range(key, sb.begin, sb.end));
     }
-  
+
     void insert(const KEY_TYPE& key, const PAYLOAD_TYPE& payload) {
       throw std::runtime_error("Insert not supported on RadixSpline index");
     }
@@ -65,7 +54,6 @@ class BenchmarkRS {
     bool applicable(const std::string& data_filename) {
       // Get the file name from the path.
       std::string dataset = data_filename.substr(data_filename.find_last_of("/\\") + 1);
-
       // Set parameters based on the dataset.
       return SetParameters(dataset);
     }
@@ -148,7 +136,6 @@ class BenchmarkRS {
       return true;
     }
 
-    std::vector<KeyType> keys;
     rs::RadixSpline<KeyType> rs_;
     size_t num_radix_bits_;
     size_t max_error_;

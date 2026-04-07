@@ -12,6 +12,7 @@ class BenchmarkTLX {
   public:
     using KeyType = KEY_TYPE;
     using PayloadType = PAYLOAD_TYPE;
+    static constexpr SearchSemantics search_semantics = SearchSemantics::SUCCESSOR;
 
     BenchmarkTLX() : index() {}
 

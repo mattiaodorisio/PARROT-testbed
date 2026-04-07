@@ -131,9 +131,8 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existin
   int increases = 0;
   while (data_sample.size() < num_searches) {
     T key = dis(rand_gen);
-    if (existing_keys.find(key) == existing_keys.end()) {
+    if (existing_keys.insert(key).second) {
       data_sample.push_back(key);
-      existing_keys.insert(key);
     }
     if (++attempts > num_searches * 2) {
       if (++increases > 100) {
@@ -157,7 +156,7 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existin
   constexpr size_t interval_range = 100;
   const size_t size_ = std::distance(data_begin, data_end);
   std::uniform_int_distribution<size_t> dis(0, (size_ - 1) / interval_range);
-  std::unordered_set<T> existing_keys(data_begin, data_end);
+  std::unordered_set<T> added_keys;
   std::vector<T> data_sample;
   data_sample.reserve(num_searches);
   int attempts = 0;
@@ -166,9 +165,8 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existin
     const size_t index_end_range = std::min(index_start_range + interval_range - 1, size_ - 1);
     std::uniform_int_distribution<T> inner_dis(data_begin[index_start_range], data_begin[index_end_range]);
     T key = inner_dis(rand_gen);
-    if (existing_keys.find(key) == existing_keys.end()) {
+    if (!std::binary_search(data_begin, data_end, key) && added_keys.insert(key).second) {
       data_sample.push_back(key);
-      existing_keys.insert(key);
     }
     if (++attempts > num_searches * 8) {
       break;

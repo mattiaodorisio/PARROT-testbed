@@ -8,6 +8,7 @@
 #include <random>
 #include <stdint.h>
 #include <cmath>
+#include <limits>
 #include <unordered_set>
 #include "zipf.h"
 #include "flags.h"
@@ -71,7 +72,8 @@ enum class UniqueMode {
     Rejection
 };
 
-void make_unique_adjusted_samples(std::vector<uint32_t>& data, uint32_t max_allowed, uint32_t shuffle_seed) {
+template<typename T>
+void make_unique_adjusted_samples(std::vector<T>& data, T max_allowed, uint32_t shuffle_seed) {
     if (data.empty()) {
         return;
     }
@@ -97,26 +99,27 @@ void make_unique_adjusted_samples(std::vector<uint32_t>& data, uint32_t max_allo
     std::shuffle(data.begin(), data.end(), shuffler);
 }
 
-std::vector<uint32_t> generate_uniform_distr(size_t size, UniqueMode unique_mode) {
+template<typename T>
+std::vector<T> generate_uniform_distr(size_t size, UniqueMode unique_mode) {
     std::default_random_engine generator(0);
-    std::uniform_int_distribution<uint32_t> distribution(0, UINT32_MAX);
+    std::uniform_int_distribution<T> distribution(0, std::numeric_limits<T>::max());
 
-    std::vector<uint32_t> data;
+    std::vector<T> data;
     data.reserve(size);
 
     if (unique_mode == UniqueMode::Rejection) {
-        std::unordered_set<uint32_t> seen;
+        std::unordered_set<T> seen;
         seen.reserve(size * 2);
         while (data.size() < size) {
-            uint32_t value = distribution(generator);
+            T value = distribution(generator);
             if (seen.insert(value).second) {
                 data.push_back(value);
             }
         }
         // Check unique constraint
-        std::unordered_set<uint32_t> check_unique(data.begin(), data.end());
+        std::unordered_set<T> check_unique(data.begin(), data.end());
         if (check_unique.size() != data.size()) {
-            throw std::logic_error("Duplicate values found in lognormal distribution with rejection sampling"); 
+            throw std::logic_error("Duplicate values found in uniform distribution with rejection sampling");
         }
         return data;
     }
@@ -125,36 +128,38 @@ std::vector<uint32_t> generate_uniform_distr(size_t size, UniqueMode unique_mode
     for (size_t i = 0; i < size; ++i) {
         data[i] = distribution(generator);
     }
-    make_unique_adjusted_samples(data, UINT32_MAX, 100);
+    make_unique_adjusted_samples(data, std::numeric_limits<T>::max(), 100);
     return data;
 }
 
-std::vector<uint32_t> generate_normal_distr(size_t size, UniqueMode unique_mode) {
-    const uint32_t max_allowed = UINT32_MAX >> 1;
+template<typename T>
+std::vector<T> generate_normal_distr(size_t size, UniqueMode unique_mode) {
+    const T max_allowed = std::numeric_limits<T>::max() >> 1;
+    const double dmax = static_cast<double>(std::numeric_limits<T>::max());
     std::default_random_engine generator(1);
-    std::normal_distribution<double> distribution(UINT32_MAX / 2, UINT32_MAX / 4);
+    std::normal_distribution<double> distribution(dmax / 2, dmax / 4);
 
-    std::vector<uint32_t> data;
+    std::vector<T> data;
     data.reserve(size);
 
     if (unique_mode == UniqueMode::Rejection) {
-        std::unordered_set<uint32_t> seen;
+        std::unordered_set<T> seen;
         seen.reserve(size * 2);
         while (data.size() < size) {
             double sample;
             do {
                 sample = distribution(generator);
-            } while (sample < 0 || sample > max_allowed);
+            } while (sample < 0 || sample > static_cast<double>(max_allowed));
 
-            uint32_t value = static_cast<uint32_t>(sample);
+            T value = static_cast<T>(sample);
             if (seen.insert(value).second) {
                 data.push_back(value);
             }
         }
         // Check unique constraint
-        std::unordered_set<uint32_t> check_unique(data.begin(), data.end());
+        std::unordered_set<T> check_unique(data.begin(), data.end());
         if (check_unique.size() != data.size()) {
-            throw std::logic_error("Duplicate values found in lognormal distribution with rejection sampling"); 
+            throw std::logic_error("Duplicate values found in normal distribution with rejection sampling");
         }
         return data;
     }
@@ -164,39 +169,41 @@ std::vector<uint32_t> generate_normal_distr(size_t size, UniqueMode unique_mode)
         double sample;
         do {
             sample = distribution(generator);
-        } while (sample < 0 || sample > max_allowed);
-        data[i] = static_cast<uint32_t>(sample);
+        } while (sample < 0 || sample > static_cast<double>(max_allowed));
+        data[i] = static_cast<T>(sample);
     }
     make_unique_adjusted_samples(data, max_allowed, 101);
     return data;
 }
 
-std::vector<uint32_t> generate_lognormal_distr(size_t size, UniqueMode unique_mode) {
-    const uint32_t max_allowed = UINT32_MAX >> 1;
+template<typename T>
+std::vector<T> generate_lognormal_distr(size_t size, UniqueMode unique_mode) {
+    const T max_allowed = std::numeric_limits<T>::max() >> 1;
+    const double dmax = static_cast<double>(std::numeric_limits<T>::max());
     std::default_random_engine generator(2);
     std::lognormal_distribution<double> distribution(0, 0.5);
 
-    std::vector<uint32_t> data;
+    std::vector<T> data;
     data.reserve(size);
 
     if (unique_mode == UniqueMode::Rejection) {
-        std::unordered_set<uint32_t> seen;
+        std::unordered_set<T> seen;
         seen.reserve(size * 2);
         while (data.size() < size) {
             double sample;
             do {
-                sample = distribution(generator) * UINT32_MAX / 5;
-            } while (sample < 0 || sample > max_allowed);
+                sample = distribution(generator) * dmax / 5;
+            } while (sample < 0 || sample > static_cast<double>(max_allowed));
 
-            uint32_t value = static_cast<uint32_t>(sample);
+            T value = static_cast<T>(sample);
             if (seen.insert(value).second) {
                 data.push_back(value);
             }
         }
         // Check unique constraint
-        std::unordered_set<uint32_t> check_unique(data.begin(), data.end());
+        std::unordered_set<T> check_unique(data.begin(), data.end());
         if (check_unique.size() != data.size()) {
-            throw std::logic_error("Duplicate values found in lognormal distribution with rejection sampling"); 
+            throw std::logic_error("Duplicate values found in lognormal distribution with rejection sampling");
         }
 
         return data;
@@ -206,40 +213,42 @@ std::vector<uint32_t> generate_lognormal_distr(size_t size, UniqueMode unique_mo
     for (size_t i = 0; i < size; ++i) {
         double sample;
         do {
-            sample = distribution(generator) * UINT32_MAX / 5;
-        } while (sample < 0 || sample > max_allowed);
-        data[i] = static_cast<uint32_t>(sample);
+            sample = distribution(generator) * dmax / 5;
+        } while (sample < 0 || sample > static_cast<double>(max_allowed));
+        data[i] = static_cast<T>(sample);
     }
     make_unique_adjusted_samples(data, max_allowed, 102);
     return data;
 }
 
-std::vector<uint32_t> generate_exponential_distr(size_t size, UniqueMode unique_mode) {
-    const uint32_t max_allowed = UINT32_MAX >> 1;
+template<typename T>
+std::vector<T> generate_exponential_distr(size_t size, UniqueMode unique_mode) {
+    const T max_allowed = std::numeric_limits<T>::max() >> 1;
+    const double dmax = static_cast<double>(std::numeric_limits<T>::max());
     std::default_random_engine generator(3);
     std::exponential_distribution<double> distribution(2);
 
-    std::vector<uint32_t> data;
+    std::vector<T> data;
     data.reserve(size);
 
     if (unique_mode == UniqueMode::Rejection) {
-        std::unordered_set<uint32_t> seen;
+        std::unordered_set<T> seen;
         seen.reserve(size * 2);
         while (data.size() < size) {
             double sample;
             do {
-                sample = distribution(generator) * UINT32_MAX / 5;
-            } while (sample < 0 || sample > max_allowed);
+                sample = distribution(generator) * dmax / 5;
+            } while (sample < 0 || sample > static_cast<double>(max_allowed));
 
-            uint32_t value = static_cast<uint32_t>(sample);
+            T value = static_cast<T>(sample);
             if (seen.insert(value).second) {
                 data.push_back(value);
             }
         }
         // Check unique constraint
-        std::unordered_set<uint32_t> check_unique(data.begin(), data.end());
+        std::unordered_set<T> check_unique(data.begin(), data.end());
         if (check_unique.size() != data.size()) {
-            throw std::logic_error("Duplicate values found in lognormal distribution with rejection sampling"); 
+            throw std::logic_error("Duplicate values found in exponential distribution with rejection sampling");
         }
         return data;
     }
@@ -248,40 +257,42 @@ std::vector<uint32_t> generate_exponential_distr(size_t size, UniqueMode unique_
     for (size_t i = 0; i < size; ++i) {
         double sample;
         do {
-            sample = distribution(generator) * UINT32_MAX / 5;
-        } while (sample < 0 || sample > max_allowed);
-        data[i] = static_cast<uint32_t>(sample);
+            sample = distribution(generator) * dmax / 5;
+        } while (sample < 0 || sample > static_cast<double>(max_allowed));
+        data[i] = static_cast<T>(sample);
     }
     make_unique_adjusted_samples(data, max_allowed, 103);
     return data;
 }
 
-std::vector<uint32_t> generate_chisquared_distr(size_t size, UniqueMode unique_mode) {
-    const uint32_t max_allowed = UINT32_MAX >> 1;
+template<typename T>
+std::vector<T> generate_chisquared_distr(size_t size, UniqueMode unique_mode) {
+    const T max_allowed = std::numeric_limits<T>::max() >> 1;
+    const double dmax = static_cast<double>(std::numeric_limits<T>::max());
     std::default_random_engine generator(4);
     std::chi_squared_distribution<double> distribution(1);
 
-    std::vector<uint32_t> data;
+    std::vector<T> data;
     data.reserve(size);
 
     if (unique_mode == UniqueMode::Rejection) {
-        std::unordered_set<uint32_t> seen;
+        std::unordered_set<T> seen;
         seen.reserve(size * 2);
         while (data.size() < size) {
             double sample;
             do {
-                sample = distribution(generator) * UINT32_MAX / 10;
-            } while (sample < 0 || sample > max_allowed);
+                sample = distribution(generator) * dmax / 10;
+            } while (sample < 0 || sample > static_cast<double>(max_allowed));
 
-            uint32_t value = static_cast<uint32_t>(sample);
+            T value = static_cast<T>(sample);
             if (seen.insert(value).second) {
                 data.push_back(value);
             }
         }
         // Check unique constraint
-        std::unordered_set<uint32_t> check_unique(data.begin(), data.end());
+        std::unordered_set<T> check_unique(data.begin(), data.end());
         if (check_unique.size() != data.size()) {
-            throw std::logic_error("Duplicate values found in chi-squared distribution with rejection sampling"); 
+            throw std::logic_error("Duplicate values found in chi-squared distribution with rejection sampling");
         }
         return data;
     }
@@ -290,102 +301,105 @@ std::vector<uint32_t> generate_chisquared_distr(size_t size, UniqueMode unique_m
     for (size_t i = 0; i < size; ++i) {
         double sample;
         do {
-            sample = distribution(generator) * UINT32_MAX / 10;
-        } while (sample < 0 || sample > max_allowed);
-        data[i] = static_cast<uint32_t>(sample);
+            sample = distribution(generator) * dmax / 10;
+        } while (sample < 0 || sample > static_cast<double>(max_allowed));
+        data[i] = static_cast<T>(sample);
     }
     make_unique_adjusted_samples(data, max_allowed, 104);
     return data;
 }
 
 
-std::vector<uint32_t> generate_mix_of_gauss_distr(size_t size, UniqueMode unique_mode, size_t num_gauss = 5) {
-    const uint32_t max_allowed = UINT32_MAX >> 1;
+template<typename T>
+std::vector<T> generate_mix_of_gauss_distr(size_t size, UniqueMode unique_mode, size_t num_gauss = 5) {
+    const T max_allowed = std::numeric_limits<T>::max() >> 1;
     std::default_random_engine generator(5);
-    
+
     // Generate means concentrated around the center of the domain.
-    const double domain_center = max_allowed / 2.0;
-    const double mean_spread = max_allowed / 10.0;
+    const double domain_center = static_cast<double>(max_allowed) / 2.0;
+    const double mean_spread = static_cast<double>(max_allowed) / 10.0;
     std::normal_distribution<double> mean_dist(domain_center, mean_spread);
     std::vector<double> means(num_gauss);
     for (size_t i = 0; i < num_gauss; ++i) {
         double mean_sample;
         do {
             mean_sample = mean_dist(generator);
-        } while (mean_sample < 0.0 || mean_sample > max_allowed);
+        } while (mean_sample < 0.0 || mean_sample > static_cast<double>(max_allowed));
         means[i] = mean_sample;
     }
-    
+
     // Use domain-scaled standard deviations to avoid over-concentrated outputs.
-    std::uniform_real_distribution<double> stddev_dist(max_allowed / 200.0, max_allowed / 20.0);
+    std::uniform_real_distribution<double> stddev_dist(static_cast<double>(max_allowed) / 200.0,
+                                                       static_cast<double>(max_allowed) / 20.0);
     std::vector<double> stdevs(num_gauss);
     for (size_t i = 0; i < num_gauss; ++i) {
         stdevs[i] = stddev_dist(generator);
     }
-    
+
     // Generate weights (uniform between 0 and 1)
     std::uniform_real_distribution<double> weight_dist(0.0, 1.0);
     std::vector<double> weights(num_gauss);
     for (size_t i = 0; i < num_gauss; ++i) {
         weights[i] = weight_dist(generator);
     }
-    
+
     // Normalize the weights
     double sum_of_weights = std::accumulate(weights.begin(), weights.end(), 0.0);
     std::for_each(weights.begin(), weights.end(),
                   [sum_of_weights](double& w) { w /= sum_of_weights; });
-    
-    std::vector<uint32_t> data;
+
+    std::vector<T> data;
     data.reserve(size);
-    
+
     // Initialize random distribution selector
     std::discrete_distribution<int> index_selector(weights.begin(), weights.end());
-    
+
     if (unique_mode == UniqueMode::Rejection) {
-        std::unordered_set<uint32_t> seen;
+        std::unordered_set<T> seen;
         seen.reserve(size * 2);
         while (data.size() < size) {
             auto random_idx = index_selector(generator);
             std::normal_distribution<double> distribution(means[random_idx], stdevs[random_idx]);
-            
+
             double sample;
             do {
                 sample = distribution(generator);
-            } while (sample < 0 || sample > max_allowed);
-            
-            uint32_t value = static_cast<uint32_t>(sample);
+            } while (sample < 0 || sample > static_cast<double>(max_allowed));
+
+            T value = static_cast<T>(sample);
             if (seen.insert(value).second) {
                 data.push_back(value);
             }
         }
         // Check unique constraint
-        std::unordered_set<uint32_t> check_unique(data.begin(), data.end());
+        std::unordered_set<T> check_unique(data.begin(), data.end());
         if (check_unique.size() != data.size()) {
             throw std::logic_error("Duplicate values found in mixture of gaussians distribution with rejection sampling");
         }
         return data;
     }
-    
+
     data.resize(size);
     for (size_t i = 0; i < size; ++i) {
         auto random_idx = index_selector(generator);
         std::normal_distribution<double> distribution(means[random_idx], stdevs[random_idx]);
-        
+
         double sample;
         do {
             sample = distribution(generator);
-        } while (sample < 0 || sample > max_allowed);
-        data[i] = static_cast<uint32_t>(sample);
+        } while (sample < 0 || sample > static_cast<double>(max_allowed));
+        data[i] = static_cast<T>(sample);
     }
     make_unique_adjusted_samples(data, max_allowed, 105);
     return data;
 }
 
-std::vector<uint32_t> generate_zipf_distr(size_t size) {
-    std::vector<uint32_t> data(size);
+template<typename T>
+std::vector<T> generate_zipf_distr(size_t size) {
+    std::vector<T> data(size);
     ScrambledZipfianGenerator zipf_gen(size);
     for (size_t i = 0; i < size; ++i) {
-      data[i] = zipf_gen.nextValue();
+      data[i] = static_cast<T>(zipf_gen.nextValue());
     }
     return data;
 }
@@ -420,14 +434,39 @@ void print_stats(std::vector<T> data) {
     std::cout << "===========================================" << std::endl;
 }
 
+template<typename T>
+void generate_all_synthetic(const std::string& data_dir, UniqueMode unique_mode, bool print_stats_flag) {
+    constexpr const char* suffix = std::is_same_v<T, uint32_t> ? "uint32" : "uint64";
+    auto write_file = [&](const std::string& path, std::vector<T>& data) {
+        if constexpr (std::is_same_v<T, uint32_t>)
+            write_bin32_file(path, data);
+        else
+            write_bin64_file(path, data);
+    };
+
+    auto run = [&](const std::string& name, std::vector<T> data) {
+        std::string path = data_dir + "/" + name + "_50M_" + suffix;
+        write_file(path, data);
+        std::cout << name << "_50M_" << suffix << std::endl;
+        if (print_stats_flag) print_stats(data);
+    };
+
+    run("normal",      generate_normal_distr<T>(M50, unique_mode));
+    run("exponential", generate_exponential_distr<T>(M50, unique_mode));
+    run("lognormal",   generate_lognormal_distr<T>(M50, unique_mode));
+    run("mix_gauss",   generate_mix_of_gauss_distr<T>(M50, unique_mode));
+    run("zipf",        generate_zipf_distr<T>(M50));
+    run("uniform",     generate_uniform_distr<T>(M50, unique_mode));
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cout << "Usage: " << argv[0] << " --data_dir=<path> [--print_stats] [--unique_mode=<adjust|rejection>]" << std::endl;
         return 1;
     }
-    
+
     auto flags = parse_flags(argc, argv);
-    get_required(flags, "data_dir");
+    std::string data_dir = get_required(flags, "data_dir");
     bool print_stats_flag = get_boolean_flag(flags, "print_stats");
     std::string mode = get_with_default(flags, "unique_mode", "adjust");
     if (mode != "adjust" && mode != "rejection") {
@@ -435,38 +474,11 @@ int main(int argc, char* argv[]) {
     }
     UniqueMode unique_mode = mode == "rejection" ? UniqueMode::Rejection
                                                  : UniqueMode::Adjust;
-    
-    std::vector<uint32_t> data = generate_normal_distr(M50, unique_mode);
-    write_bin32_file("../data/normal_50M_uint32", data);
-    std::cout << "normal_50M_uint32" << std::endl;
-    if (print_stats_flag) print_stats(data);
 
-    data = generate_exponential_distr(M50, unique_mode);
-    write_bin32_file("../data/exponential_50M_uint32", data);
-    std::cout << "exponential_50M_uint32" << std::endl;
-    if (print_stats_flag) print_stats(data);
+    generate_all_synthetic<uint32_t>(data_dir, unique_mode, print_stats_flag);
+    generate_all_synthetic<uint64_t>(data_dir, unique_mode, print_stats_flag);
 
-    data = generate_lognormal_distr(M50, unique_mode);
-    write_bin32_file("../data/lognormal_50M_uint32", data);
-    std::cout << "lognormal_50M_uint32" << std::endl;
-    if (print_stats_flag) print_stats(data);
-
-    data = generate_mix_of_gauss_distr(M50, unique_mode);
-    write_bin32_file("../data/mix_gauss_50M_uint32", data);
-    std::cout << "mix_gauss_50M_uint32" << std::endl;
-    if (print_stats_flag) print_stats(data);
-
-    data = generate_zipf_distr(M50);
-    write_bin32_file("../data/zipf_50M_uint32", data);
-    std::cout << "zipf_50M_uint32" << std::endl;
-    if (print_stats_flag) print_stats(data);
-
-    data = generate_uniform_distr(M50, unique_mode);
-    write_bin32_file("../data/uniform_50M_uint32", data);
-    std::cout << "uniform_50M_uint32" << std::endl;
-    if (print_stats_flag) print_stats(data);
-
-    data = read_bin32_file("../data/books_200M_uint32");
+    std::vector<uint32_t> data = read_bin32_file(data_dir + "/books_200M_uint32");
     // REWRITING THE FILE ON DISK TO REPLACE UINT32_MAX with UINT32_MAX - 1 for safety for some libs
     for (size_t i = data.size() - 1; i >= 0; --i) {
         if (data[i] == UINT32_MAX)
@@ -474,7 +486,7 @@ int main(int argc, char* argv[]) {
         else
             break;
     }
-    write_bin32_file("../data/books_200M_uint32", data); 
+    write_bin32_file(data_dir + "/books_200M_uint32", data);
     std::cout << "books_200M_uint32" << std::endl;
     if (print_stats_flag) print_stats(data);
 

@@ -12,14 +12,12 @@ namespace deli_testbed {
 
 /// Template parameters:
 ///   KEY_TYPE      - key type used by the benchmark (uint32_t or uint64_t)
-///   PAYLOAD_TYPE  - payload type (key_keys mode: same as KEY_TYPE)
+///   PAYLOAD_TYPE  - payload type (key_pairs_ps mode: same as KEY_TYPE)
 ///   SAMPLING      - universe-sampling bits (bucket suffix width)
 ///   BUCKET_TMPL   - bucket template (bucket_bv or bucket_hybrid)
 ///
-/// NOTE: DynIndex provides predecessor(x) = largest key <= x.
-///   - LOOKUP_EXISTING:        correct  (predecessor of an existing key = the key itself)
-///   - LOOKUP_IN_DISTRIBUTION: incorrect (predecessor != lower_bound for non-existing keys)
-///                             → benchmark correctness check will log 'error'
+/// DynIndex provides predecessor(x) = largest key <= x (SearchSemantics::PREDECESSOR).
+/// Benchmark<> computes expected values using upper_bound-1 for this semantics.
 template <typename KEY_TYPE, typename PAYLOAD_TYPE, uint8_t SAMPLING = 16,
           template<typename, uint8_t> typename BUCKET_TMPL = tdc::pred::dynamic::bucket_bv>
 class BenchmarkSEA21 {
@@ -27,6 +25,9 @@ class BenchmarkSEA21 {
   using KeyType     = KEY_TYPE;
   using PayloadType = PAYLOAD_TYPE;
   using BucketType  = BUCKET_TMPL<uint64_t, SAMPLING>;
+
+  // SEA21 returns predecessor (largest key <= query), not lower_bound.
+  static constexpr SearchSemantics search_semantics = SearchSemantics::PREDECESSOR;
 
   BenchmarkSEA21() : index_() {}
 
@@ -72,7 +73,7 @@ void benchmark_sea21(const bench_config& config,
                      const std::vector<std::pair<KeyType, PayloadType>>& shifting_key_values) {
   constexpr Workload workloads[] = {
       LOOKUP_EXISTING,
-      // LOOKUP_IN_DISTRIBUTION,  // predecessor semantics — correctness check will log 'error'
+      LOOKUP_IN_DISTRIBUTION,  // predecessor semantics — Benchmark<> validates against actual predecessor
       INSERT_IN_DISTRIBUTION,
       DELETE_EXISTING,
       MIXED,

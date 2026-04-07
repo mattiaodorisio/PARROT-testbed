@@ -47,18 +47,25 @@ void execute(const bench_config& config) {
   std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
 
   // Define index types and names
-  const std::vector<std::string> index_names = {"ALEX",
-                                                "LIPP",
-                                                "RS",
-                                                "DeLI-Static",
-                                                "DeLI-Dynamic",
-                                                "DeLI-Static-Payload",
-                                                "DeLI-Dynamic-Payload",
-                                                "PGM-Static",
-                                                "PGM-Dynamic",
-                                                "TLX",
-                                                //"SEA21",
-                                              };
+  const std::vector<std::string> index_names = {
+      // ── KEY_VALUE mode ──────────────────────────────────────────────────────
+      // True key-value stores: return the payload associated with the successor key.
+      "ALEX",              // dynamic learned index (KEY_VALUE)
+      "LIPP",              // dynamic learned index (KEY_VALUE)
+      "DeLI-Static-Payload",
+      "DeLI-Dynamic-Payload",
+      "PGM-Dynamic",       // dynamic learned index (KEY_VALUE)
+      // ── PREDECESSOR_SEARCH mode ─────────────────────────────────────────────
+      // All return the successor/predecessor key itself (payload == key).
+      "DeLI-Static",       // exact successor, native
+      "DeLI-Dynamic",      // exact successor, native
+      "TLX",               // exact successor via B-tree lower_bound
+      "SEA21",             // exact predecessor via predecessor()
+      "RS",                // approximate position → shared range search
+      "PGM-Static",        // approximate position → shared range search
+      "ALEX-PS",           // approximate position via sampling → shared range search
+      "PGM-Dynamic-PS",    // approximate position via sampling → shared range search
+  };
 
   for (size_t current_init_key_size = (1 << config.min_size); current_init_key_size <= (1 << config.max_size); current_init_key_size *= 2) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
@@ -70,88 +77,98 @@ void execute(const bench_config& config) {
       continue;  // Skip this size and try the next one
     }
 
-    // Create values array for current init size
-    // Two vectors: key-value and key_key to be used depending on the index... TODO: improve this
-    std::vector<std::pair<KeyType, PayloadType>> key_values(current_init_key_size);
-    std::vector<std::pair<KeyType, PayloadType>> key_keys(current_init_key_size);
-    for (size_t i = 0; i < key_values.size(); ++i) {
-      key_values[i].first = keys[i];
-      key_values[i].second = static_cast<PayloadType>(rand_gen());
+    // key_pairs_kv: key → random payload  (KEY_VALUE mode: ALEX, LIPP, PGM-Dynamic, DeLI-Payload)
+    // key_pairs_ps: key → key             (PREDECESSOR_SEARCH mode: all others; payload==key so
+    //                                      the benchmark can validate returned successor against
+    //                                      the expected successor key stored as payload)
+    std::vector<std::pair<KeyType, PayloadType>> key_pairs_kv(current_init_key_size);
+    std::vector<std::pair<KeyType, PayloadType>> key_pairs_ps(current_init_key_size);
+    for (size_t i = 0; i < key_pairs_kv.size(); ++i) {
+      key_pairs_kv[i].first  = keys[i];
+      key_pairs_kv[i].second = static_cast<PayloadType>(rand_gen());
 
-      key_keys[i].first = key_keys[i].second = keys[i];
+      key_pairs_ps[i].first = key_pairs_ps[i].second = keys[i];
     }
 
     // Sort by key
-    std::sort(key_values.begin(), key_values.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
-    std::sort(key_keys.begin(), key_keys.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
+    std::sort(key_pairs_kv.begin(), key_pairs_kv.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
+    std::sort(key_pairs_ps.begin(), key_pairs_ps.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
 
     // Build a full sorted shifting stream: initial prefix + append suffix
-    std::vector<std::pair<KeyType, PayloadType>> shifting_key_values = key_values;
-    std::vector<std::pair<KeyType, PayloadType>> shifting_key_keys = key_keys;
+    std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_kv = key_pairs_kv;
+    std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_ps = key_pairs_ps;
     const size_t inserts_per_batch = static_cast<size_t>(config.batch_size / 2 + config.batch_size % 2);
     const size_t required_append_keys = inserts_per_batch * static_cast<size_t>(config.max_batches + 1);
-    shifting_key_values.reserve(current_init_key_size + required_append_keys);
-    shifting_key_keys.reserve(current_init_key_size + required_append_keys);
+    shifting_key_pairs_kv.reserve(current_init_key_size + required_append_keys);
+    shifting_key_pairs_ps.reserve(current_init_key_size + required_append_keys);
     if (keys.size() >= current_init_key_size && required_append_keys > 0) {
       std::unordered_set<KeyType> seen_shifting_keys;
       seen_shifting_keys.reserve(current_init_key_size + required_append_keys);
-      for (const auto& kv : key_values) {
+      for (const auto& kv : key_pairs_kv) {
         seen_shifting_keys.insert(kv.first);
       }
 
       for (size_t i = current_init_key_size; i < keys.size(); ++i) {
-        if (shifting_key_values.size() >= current_init_key_size + required_append_keys) {
+        if (shifting_key_pairs_kv.size() >= current_init_key_size + required_append_keys) {
           break;
         }
         const KeyType key = keys[i];
         if (!seen_shifting_keys.insert(key).second) {
           continue;
         }
-        shifting_key_values.emplace_back(key, static_cast<PayloadType>(rand_gen()));
-        shifting_key_keys.emplace_back(key, key);
+        shifting_key_pairs_kv.emplace_back(key, static_cast<PayloadType>(rand_gen()));
+        shifting_key_pairs_ps.emplace_back(key, key);
       }
     }
 
-    std::sort(shifting_key_values.begin(), shifting_key_values.end(),
+    std::sort(shifting_key_pairs_kv.begin(), shifting_key_pairs_kv.end(),
               [](auto const& a, auto const& b) { return a.first < b.first; });
-    std::sort(shifting_key_keys.begin(), shifting_key_keys.end(),
+    std::sort(shifting_key_pairs_ps.begin(), shifting_key_pairs_ps.end(),
               [](auto const& a, auto const& b) { return a.first < b.first; });
     
     for (const auto& index_name : index_names) {
       std::cout << "--- Running workloads for " << index_name << " (init_keys=" << current_init_key_size << ") ---" << std::endl;
       
+      // ── KEY_VALUE mode ──────────────────────────────────────────────────────
       if (index_name == "ALEX") {
-        deli_testbed::benchmark_alex<KeyType, PayloadType>(config, key_values, shifting_key_values);
+        deli_testbed::benchmark_alex<KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
       }
       else if (index_name == "LIPP") {
-        deli_testbed::benchmark_lipp<KeyType, PayloadType>(config, key_values, shifting_key_values);
-      }
-      else if (index_name == "RS") {
-        deli_testbed::benchmark_rs<KeyType, PayloadType>(config, key_keys, shifting_key_keys);
-      }
-      else if (index_name == "DeLI-Dynamic") {
-        deli_testbed::benchmark_deli_dynamic<false, KeyType, PayloadType>(config, key_keys, shifting_key_keys);
-      }
-      else if (index_name == "DeLI-Static") {
-        deli_testbed::benchmark_deli_static<false, KeyType, PayloadType>(config, key_keys, shifting_key_keys);
+        deli_testbed::benchmark_lipp<KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
       }
       else if (index_name == "DeLI-Dynamic-Payload") {
-        deli_testbed::benchmark_deli_dynamic<true, KeyType, PayloadType>(config, key_values, shifting_key_values);
+        deli_testbed::benchmark_deli_dynamic<true, KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
       }
       else if (index_name == "DeLI-Static-Payload") {
-        deli_testbed::benchmark_deli_static<true, KeyType, PayloadType>(config, key_values, shifting_key_values);
-      }
-      else if (index_name == "PGM-Static") {
-        deli_testbed::benchmark_pgm_static<KeyType, PayloadType>(config, key_keys, shifting_key_keys);
+        deli_testbed::benchmark_deli_static<true, KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
       }
       else if (index_name == "PGM-Dynamic") {
-        deli_testbed::benchmark_pgm_dynamic<KeyType, PayloadType>(config, key_values, shifting_key_values);
+        deli_testbed::benchmark_pgm_dynamic<KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
+      }
+      // ── PREDECESSOR_SEARCH mode ─────────────────────────────────────────────
+      else if (index_name == "DeLI-Dynamic") {
+        deli_testbed::benchmark_deli_dynamic<false, KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+      }
+      else if (index_name == "DeLI-Static") {
+        deli_testbed::benchmark_deli_static<false, KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
       }
       else if (index_name == "TLX") {
-        deli_testbed::benchmark_tlx<KeyType, PayloadType>(config, key_keys, shifting_key_keys);
+        deli_testbed::benchmark_tlx<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
       }
       else if (index_name == "SEA21") {
-        deli_testbed::benchmark_sea21<KeyType, PayloadType>(config, key_keys, shifting_key_keys);
+        deli_testbed::benchmark_sea21<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+      }
+      else if (index_name == "RS") {
+        deli_testbed::benchmark_rs<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+      }
+      else if (index_name == "PGM-Static") {
+        deli_testbed::benchmark_pgm_static<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+      }
+      else if (index_name == "ALEX-PS") {
+        deli_testbed::benchmark_alex_ps<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+      }
+      else if (index_name == "PGM-Dynamic-PS") {
+        deli_testbed::benchmark_pgm_dynamic_ps<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
       }
       else {
         throw std::runtime_error("Unsupported index: " + index_name);

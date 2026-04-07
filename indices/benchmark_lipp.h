@@ -11,6 +11,9 @@ class BenchmarkLIPP {
   public:
     using KeyType = KEY_TYPE;
     using PayloadType = PAYLOAD_TYPE;
+    // LIPP only supports exact-match (at()), not lower_bound; KEY_VALUE mode only.
+    // So LIPP doesn't support PREDECESSOR_SEARCH mode
+    static constexpr SearchSemantics search_semantics = SearchSemantics::SUCCESSOR;
 
     BenchmarkLIPP() : index() {}
   

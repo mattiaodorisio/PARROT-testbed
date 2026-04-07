@@ -17,6 +17,49 @@
 #include "utils.h"
 
 namespace deli_testbed {
+
+/// How a wrapper is used in the benchmark.
+enum class SearchMode {
+  PREDECESSOR_SEARCH,  // find predecessor/successor in the original sorted array
+  KEY_VALUE,           // true key-value store (payload detached from key order)
+};
+
+/// What a wrapper's lower_bound() semantically returns.
+enum class SearchSemantics {
+  SUCCESSOR,    // smallest key >= query
+  PREDECESSOR,  // largest  key <= query (predecessor - used by SEA21)
+};
+
+// Empty base (used for conditional inheritance)
+struct EmptyBase {};
+
+// PredecessorSearchBase
+template <typename KeyType>
+class PredecessorSearchBase {
+protected:
+  std::vector<KeyType> sorted_keys_;
+
+  /// Populate sorted_keys_ from an iterator range of (key, payload) pairs.
+  /// Assumes the range is already sorted by key (same invariant as bulk_load).
+  template <typename Iterator>
+  void ps_init(Iterator begin, Iterator end) {
+    sorted_keys_.clear();
+    sorted_keys_.reserve(static_cast<size_t>(std::distance(begin, end)));
+    for (auto it = begin; it != end; ++it)
+      sorted_keys_.push_back(it->first);
+  }
+
+  /// Return the smallest key in sorted_keys_[lo, hi) that is >= query,
+  /// or KeyType{} if no such key exists.
+  KeyType find_successor_in_range(KeyType query, size_t lo, size_t hi) const {
+    hi = std::min(hi, sorted_keys_.size());
+    auto it = std::lower_bound(sorted_keys_.begin() + lo,
+                               sorted_keys_.begin() + hi, query);
+    return (it != sorted_keys_.begin() + hi) ? *it : KeyType{};
+  }
+};
+
+// ── Workload enum ─────────────────────────────────────────────────────────────
 enum Workload : int {
   LOOKUP_EXISTING,
   LOOKUP_IN_DISTRIBUTION,
@@ -38,7 +81,8 @@ std::string workload_name(Workload workload) {
   }
 }
 
-template <typename KeyType, typename PayloadType>
+template <typename KeyType, typename PayloadType,
+          SearchSemantics semantics = SearchSemantics::SUCCESSOR>
 class Benchmark {
  public:
   Benchmark(const std::vector<std::pair<KeyType, PayloadType>>& shifting_keys) : 
@@ -95,13 +139,32 @@ class Benchmark {
     } else if constexpr (W == LOOKUP_IN_DISTRIBUTION) {
       return DoLookupInDistribution(index, config);
     } else if constexpr (W == INSERT_IN_DISTRIBUTION) {
-      return DoInsertInDistribution(index, config);
+      if constexpr (requires(Index& i, typename Index::KeyType k, typename Index::PayloadType p) {i.insert(k, p); }) {
+        return DoInsertInDistribution(index, config);
+      } else {
+        throw std::runtime_error("INSERT_IN_DISTRIBUTION not supported by this index");
+      }
     } else if constexpr (W == DELETE_EXISTING) {
-      return DoDeleteExisting(index, config);
+      if constexpr (requires(Index& i, typename Index::KeyType k) { i.erase(k); }) {
+        return DoDeleteExisting(index, config);
+      } else {
+        throw std::runtime_error("DELETE_EXISTING not supported by this index");
+      }
     } else if constexpr (W == MIXED) {
-      return DoMixed(index, config);
+      if constexpr (requires(Index& i, typename Index::KeyType k, typename Index::PayloadType p) {
+                      i.insert(k, p); }) {
+        return DoMixed(index, config);
+      } else {
+        throw std::runtime_error("MIXED not supported by this index");
+      }
     } else if constexpr (W == SHIFTING) {
-      return DoShifting(index, config);
+      if constexpr (requires(Index& i, typename Index::KeyType k, typename Index::PayloadType p) {
+                      i.insert(k, p); }
+                   && requires(Index& i, typename Index::KeyType k) { i.erase(k); }) {
+        return DoShifting(index, config);
+      } else {
+        throw std::runtime_error("SHIFTING not supported by this index");
+      }
     } else {
       throw std::runtime_error("Workload not implemented");
     }
@@ -154,9 +217,18 @@ class Benchmark {
 
       lookup_pairs.reserve(lookup_keys.size());
       for (const auto& key : lookup_keys) {
-        auto expected_payload_it = std::lower_bound(key_values_.begin(), key_values_.end(), key,
-          [](const auto& pair, const KeyType& k) { return pair.first < k; });
-        PayloadType expected_payload = (expected_payload_it != key_values_.end()) ? expected_payload_it->second : PayloadType{};
+        PayloadType expected_payload;
+        if constexpr (semantics == SearchSemantics::PREDECESSOR) {
+          // Predecessor: largest key <= query
+          auto it = std::upper_bound(key_values_.begin(), key_values_.end(), key,
+            [](const KeyType& k, const auto& pair) { return k < pair.first; });
+          expected_payload = (it != key_values_.begin()) ? std::prev(it)->second : PayloadType{};
+        } else {
+          // Successor / lower_bound: smallest key >= query
+          auto it = std::lower_bound(key_values_.begin(), key_values_.end(), key,
+            [](const auto& pair, const KeyType& k) { return pair.first < k; });
+          expected_payload = (it != key_values_.end()) ? it->second : PayloadType{};
+        }
         lookup_pairs.emplace_back(key, expected_payload);
       }
     }
@@ -582,12 +654,13 @@ void run_benchmark(const bench_config& config,
   
     using KeyType = typename IndexWrapper::KeyType;
     using PayloadType = typename IndexWrapper::PayloadType;
+    constexpr SearchSemantics semantics = IndexWrapper::search_semantics;
 
     // Check that there are enough keys for the delete workload
     if (workload == Workload::DELETE_EXISTING && key_values.size() < static_cast<size_t>(config.batch_size * 2)) {
       return;
     }
-    
+
     // Create the index and bulk load initial keys
     IndexWrapper index;
 
@@ -596,7 +669,7 @@ void run_benchmark(const bench_config& config,
     }
 
     // Create the benchmark instance
-    deli_testbed::Benchmark<KeyType, PayloadType> benchmark(shifting_insert_key_values);
+    deli_testbed::Benchmark<KeyType, PayloadType, semantics> benchmark(shifting_insert_key_values);
 
     if (workload == Workload::SHIFTING) {
       benchmark.init(shifting_insert_key_values, key_values.size());
