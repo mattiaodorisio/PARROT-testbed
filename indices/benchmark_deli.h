@@ -150,16 +150,15 @@ void benchmark_deli_dynamic(const bench_config& config,
 #ifndef FAST_COMPILE
     if (config.pareto) {
 
-      #ifdef DELI_FAST_CONFIG
-        constexpr auto high_bits = std::integer_sequence<unsigned int, 0, 4, 8, 12, 16>{};
-      #else
-        constexpr auto high_bits = std::make_integer_sequence<unsigned int, 11>{};
-      #endif
+      static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
+      constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
+                                 std::integer_sequence<unsigned int, 0, 8, 16>,
+                                 std::integer_sequence<unsigned int, 0, 8, 16, 24, 32, 40>>{};
 
-      constexpr auto load_balance = std::integer_sequence<size_t, 20, 40, 60>{};
-      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2, 4>{};
+      constexpr auto load_balance = std::integer_sequence<size_t, 40, 60>{};
+      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2>{};
       constexpr auto rht_opts = std::integer_sequence<int, 0, 1>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
-      constexpr auto top_opts = std::integer_sequence<int, 0, 2>{}; // Top optimization 1 unsupported with dynamic
+      constexpr auto top_opts = std::integer_sequence<int, 0, 1>{};
 
       auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
           std::integer_sequence<unsigned int, bits...>,
@@ -234,16 +233,15 @@ void benchmark_deli_static(const bench_config& config,
 #ifndef FAST_COMPILE
     if (config.pareto) {
 
-      #ifdef DELI_FAST_CONFIG
-        constexpr auto high_bits = std::integer_sequence<unsigned int, 0, 4, 8, 12, 16>{};
-      #else
-        constexpr auto high_bits = std::make_integer_sequence<unsigned int, 11>{};
-      #endif
+      static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
+      constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
+                                 std::integer_sequence<unsigned int, 0, 8, 16>,
+                                 std::integer_sequence<unsigned int, 0, 8, 16, 24, 32, 40>>{};
 
-      constexpr auto load_balance = std::integer_sequence<size_t, 20, 40, 60>{};
-      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2, 4>{};
-      constexpr auto rht_opts = std::integer_sequence<int, 0, 1, 2, 3, 4>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
-      constexpr auto top_opts = std::integer_sequence<int, 0, 1, 2>{}; // Top optimization 1 unsupported with dynamic
+      constexpr auto load_balance = std::integer_sequence<size_t, 40, 60>{};
+      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2>{};
+      constexpr auto rht_opts = std::integer_sequence<int, 0, 1, 4>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
+      constexpr auto top_opts = std::integer_sequence<int, 0, 1>{};
 
       auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
           std::integer_sequence<unsigned int, bits...>,

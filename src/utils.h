@@ -29,7 +29,6 @@ struct bench_config {
 namespace utils {
 
 #define FAST_COMPILE
-#define DELI_FAST_CONFIG
 
 // Loads values from binary file into vector.
 template <typename T>
