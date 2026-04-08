@@ -44,6 +44,45 @@ _AVAILABLE_COLORS = [
 ]
 _COLOR_INDEX = 0
 
+# Global marker scheme for consistent variant marking
+_SERIES_MARKER_MAP = {}
+_AVAILABLE_MARKERS = [
+    '*',         # filled circle
+    'square*',   # filled square
+    'triangle*', # filled triangle
+    'diamond*',  # filled diamond
+    'pentagon*', # filled pentagon
+    '+',         # plus
+    'x',         # cross
+    'o',         # hollow circle
+    'square',    # hollow square
+    'triangle',  # hollow triangle
+    'diamond',   # hollow diamond
+    'pentagon',  # hollow pentagon
+]
+_MARKER_INDEX = 0
+
+
+def get_series_marker(variant_name: str) -> str:
+    """
+    Get a consistent marker for an index variant.
+    Same variant will always get the same marker across all plots.
+
+    Args:
+        variant_name (str): Name of the variant (e.g., index_variant value)
+
+    Returns:
+        str: Marker name for pgfplots
+    """
+    global _SERIES_MARKER_MAP, _MARKER_INDEX
+
+    if variant_name not in _SERIES_MARKER_MAP:
+        _SERIES_MARKER_MAP[variant_name] = _AVAILABLE_MARKERS[_MARKER_INDEX % len(_AVAILABLE_MARKERS)]
+        _MARKER_INDEX += 1
+
+    return _SERIES_MARKER_MAP[variant_name]
+
+
 def get_series_color(series_name: str) -> str:
     """
     Get a consistent color for a data series (e.g., index name).
@@ -70,10 +109,12 @@ def get_series_color(series_name: str) -> str:
 
 
 def reset_color_mapping():
-    """Reset the color mapping - useful for testing or when starting a new document."""
-    global _SERIES_COLOR_MAP, _COLOR_INDEX
+    """Reset the color and marker mappings - useful for testing or when starting a new document."""
+    global _SERIES_COLOR_MAP, _COLOR_INDEX, _SERIES_MARKER_MAP, _MARKER_INDEX
     _SERIES_COLOR_MAP = {}
     _COLOR_INDEX = 0
+    _SERIES_MARKER_MAP = {}
+    _MARKER_INDEX = 0
 
 
 def escape_latex_text(value) -> str:
@@ -536,9 +577,22 @@ def generate_pgfplot_data(
             # Get consistent color for the series based on index_name only
             series_color = get_series_color(str(group_value))
 
+            # Get consistent marker based on the index variant:
+            # - BEST case: use the selected variant value as the marker key
+            # - otherwise: use the group value itself (works when grouping by index_variant)
+            if best_aggregation and best_aggregation[0] == 'BEST':
+                variant_col = best_aggregation[1]
+                if valid_data and variant_col in valid_data[0]:
+                    marker_key = str(valid_data[0][variant_col])
+                else:
+                    marker_key = str(group_value)
+            else:
+                marker_key = str(group_value)
+            series_marker = get_series_marker(marker_key)
+
             data_lines.append(f"% Data for {legend_entry}")
-            data_lines.append(f"\\addplot[color={series_color}, mark=*, mark size=0.7pt] coordinates {{")
-            
+            data_lines.append(f"\\addplot[color={series_color}, mark={series_marker}, mark size=1.1pt] coordinates {{")
+
             for row in valid_data:
                 x_val = row[x_col]
                 y_val = row[y_col]
@@ -728,7 +782,9 @@ def build_shared_legend(series_names: List[str]) -> str:
     for series_name in legend_series_names:
         color_key = resolve_series_color_key(series_name)
         color = get_series_color(color_key)
-        legend_lines.append(f"\\addlegendimage{{color={color}, mark=*}}")
+        marker_key = resolve_series_marker_key(series_name)
+        marker = get_series_marker(marker_key)
+        legend_lines.append(f"\\addlegendimage{{color={color}, mark={marker}}}")
         legend_lines.append(f"\\addlegendentry{{{escape_latex_text(series_name)}}}")
 
     legend_lines.extend([
@@ -758,6 +814,29 @@ def resolve_series_color_key(series_name: str) -> str:
         base_name = match.group(1).strip()
         if base_name in _SERIES_COLOR_MAP:
             return base_name
+
+    return name
+
+
+def resolve_series_marker_key(series_name: str) -> str:
+    """Map legend labels to the same marker key used by plotted series.
+
+    For BEST(...) labels of the form "<index_name> (<variant>)", extract the
+    variant part so the marker matches what was assigned in generate_pgfplot_data.
+    For plain labels (e.g., a bare index_variant name), use the label directly.
+    """
+    name = str(series_name).strip()
+
+    # If the exact label already has a marker assignment, use it directly.
+    if name in _SERIES_MARKER_MAP:
+        return name
+
+    # Try to extract the variant from "<index_name> (<variant>)" form.
+    match = re.match(r'^.*\s\(([^()]*)\)$', name)
+    if match:
+        variant = match.group(1).strip()
+        if variant in _SERIES_MARKER_MAP:
+            return variant
 
     return name
 

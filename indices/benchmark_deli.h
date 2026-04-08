@@ -133,7 +133,10 @@ void benchmark_deli_dynamic(const bench_config& config,
 
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED, SHIFTING };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10>>(config, key_values, wl, shifting_insert_key_values);
+    using bench_t = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 64,
+                                      BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::bucket_index, 48>,
+                                      BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10>>;
+    deli_testbed::run_benchmark<bench_t>(config, key_values, wl, shifting_insert_key_values);
 
     // Define high_bits
     /////////// This works with one parameter

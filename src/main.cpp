@@ -16,6 +16,7 @@
 #include "../indices/benchmark_sea21.h"
 
 #include <iomanip>
+#include <sstream>
 #include <fstream>
 #include <chrono>
 #include <ctime>
@@ -29,7 +30,7 @@
 #include "benchmark.h"
 
 template <typename KeyType, typename PayloadType>
-void execute(const bench_config& config) {
+void execute(const bench_config& config, const std::unordered_set<std::string>& allowed_indices) {
 
   // Read keys from file
   std::vector<KeyType> keys;
@@ -50,8 +51,8 @@ void execute(const bench_config& config) {
   const std::vector<std::string> index_names = {
       // ── KEY_VALUE mode ──────────────────────────────────────────────────────
       // True key-value stores: return the payload associated with the successor key.
-      "ALEX",              // dynamic learned index (KEY_VALUE)
-      "LIPP",              // dynamic learned index (KEY_VALUE)
+      // "ALEX",              // dynamic learned index (KEY_VALUE)
+      // "LIPP",              // dynamic learned index (KEY_VALUE)
       "DeLI-Static-Payload",
       "DeLI-Dynamic-Payload",
       "PGM-Dynamic",       // dynamic learned index (KEY_VALUE)
@@ -60,7 +61,7 @@ void execute(const bench_config& config) {
       "DeLI-Static",       // exact successor, native
       "DeLI-Dynamic",      // exact successor, native
       "TLX",               // exact successor via B-tree lower_bound
-      "SEA21",             // exact predecessor via predecessor()
+      // "SEA21",             // exact predecessor via predecessor()
       "RS",                // approximate position → shared range search
       "PGM-Static",        // approximate position → shared range search
       "ALEX-PS",           // approximate position via sampling → shared range search
@@ -127,6 +128,7 @@ void execute(const bench_config& config) {
               [](auto const& a, auto const& b) { return a.first < b.first; });
     
     for (const auto& index_name : index_names) {
+      if (!allowed_indices.empty() && !allowed_indices.count(index_name)) continue;
       std::cout << "--- Running workloads for " << index_name << " (init_keys=" << current_init_key_size << ") ---" << std::endl;
       
       // ── KEY_VALUE mode ──────────────────────────────────────────────────────
@@ -194,6 +196,7 @@ void execute(const bench_config& config) {
  * --rse_target             target relative standard error for early stop (default: 0.03)
  * --min_size               log of the minimum number of initial keys (default: 8 -> 2^8)
  * --max_size               log of the maximum number of initial keys (default: 20 -> 2^20)
+ * --indices                comma-separated list of index names to run (default: all)
  */
 int main(int argc, char* argv[]) {
   auto flags = parse_flags(argc, argv);
@@ -211,6 +214,15 @@ int main(int argc, char* argv[]) {
   bool pareto = get_boolean_flag(flags, "pareto");
   auto min_size = stoi(get_with_default(flags, "min_size", "8"));
   auto max_size = stoi(get_with_default(flags, "max_size", "20"));
+  std::string indices_str = get_with_default(flags, "indices", "");
+  std::unordered_set<std::string> allowed_indices;
+  if (!indices_str.empty()) {
+    std::istringstream ss_idx(indices_str);
+    std::string token;
+    while (std::getline(ss_idx, token, ',')) {
+      if (!token.empty()) allowed_indices.insert(token);
+    }
+  }
 
   if (min_batches < 1) {
     throw std::runtime_error("--min_batches must be >= 1");
@@ -284,11 +296,11 @@ int main(int argc, char* argv[]) {
 
   // Call execute with appropriate key type based on filename suffix
   if (keys_file_path.ends_with("_uint32")) {
-    execute<uint32_t, uint32_t>(config);
+    execute<uint32_t, uint32_t>(config, allowed_indices);
   } else if (keys_file_path.ends_with("_uint64")) {
-    execute<uint64_t, uint64_t>(config);
+    execute<uint64_t, uint64_t>(config, allowed_indices);
   } else if (keys_file_path.ends_with(".txt")) {
-    execute<uint64_t, uint64_t>(config); // For text files, we assume uint64 keys
+    execute<uint64_t, uint64_t>(config, allowed_indices); // For text files, we assume uint64 keys
   } else {
     throw std::runtime_error("Unsupported key type in filename. Expected suffixes: _uint32, _uint64, or .txt");
   }

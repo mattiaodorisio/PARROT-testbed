@@ -54,7 +54,7 @@ function download_coordinate_file() {
    gunzip -c "$FILE_COMPRESSED" > extracted_file
    
    echo "Processing file..."
-   tail -n +8 extracted_file | cut -d ' ' -f3 > "$FILE_OUTPUT"
+   tail -n +8 extracted_file | sort -k3,3n | awk '{print $4}' > "$FILE_OUTPUT"
    rm extracted_file "$FILE_COMPRESSED"
 
    # Remove duplicates without sorting
