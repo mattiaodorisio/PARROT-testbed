@@ -156,7 +156,7 @@ void benchmark_deli_dynamic(const bench_config& config,
       static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
       constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
                                  std::integer_sequence<unsigned int, 0, 8, 16>,
-                                 std::integer_sequence<unsigned int, 0, 8, 16, 24, 32, 40>>{};
+                                 std::integer_sequence<unsigned int, 24, 32, 40, 48, 52>>{};
 
       constexpr auto load_balance = std::integer_sequence<size_t, 40, 60>{};
       constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2>{};
@@ -184,8 +184,10 @@ void benchmark_deli_dynamic(const bench_config& config,
                   constexpr DeLI::RhtOptimization rht_opt = static_cast<DeLI::RhtOptimization>(R);
                   constexpr DeLI::TopLevelOptimization top_opt = static_cast<DeLI::TopLevelOptimization>(T);
 
-                  // Check constraint: slot_index optimization (1) cannot be used with SIMD (S > 0)
-                  if constexpr (rht_opt != DeLI::RhtOptimization::slot_index || S == 0) {
+                  // Check constraint: slot_index optimization cannot be used with SIMD (S > 0)
+                  if constexpr ((rht_opt != DeLI::RhtOptimization::slot_index || S == 0) &&
+                  // Check constraint: high_bits > 24 requires bucket_index top-level optimization
+                                (B <= 24 || top_opt == DeLI::TopLevelOptimization::bucket_index)) {
                     deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
                   }
 
@@ -239,7 +241,7 @@ void benchmark_deli_static(const bench_config& config,
       static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
       constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
                                  std::integer_sequence<unsigned int, 0, 8, 16>,
-                                 std::integer_sequence<unsigned int, 0, 8, 16, 24, 32, 40>>{};
+                                 std::integer_sequence<unsigned int, 24, 32, 40, 48, 52>>{};
 
       constexpr auto load_balance = std::integer_sequence<size_t, 40, 60>{};
       constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2>{};
@@ -267,8 +269,10 @@ void benchmark_deli_static(const bench_config& config,
                   constexpr DeLI::RhtOptimization rht_opt = static_cast<DeLI::RhtOptimization>(R);
                   constexpr DeLI::TopLevelOptimization top_opt = static_cast<DeLI::TopLevelOptimization>(T);
 
-                  // Check constraint: slot_index optimization (1) cannot be used with SIMD (S > 0)
-                  if constexpr (rht_opt != DeLI::RhtOptimization::slot_index || S == 0) {
+                  // Check constraint: slot_index optimization cannot be used with SIMD (S > 0)
+                  if constexpr ((rht_opt != DeLI::RhtOptimization::slot_index || S == 0) &&
+                  // Check constraint: high_bits > 24 requires bucket_index top-level optimization
+                                (B <= 24 || top_opt == DeLI::TopLevelOptimization::bucket_index)) {
                     deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
                   }
 
