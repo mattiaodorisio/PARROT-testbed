@@ -103,7 +103,7 @@ void benchmark_alex(const bench_config& config,
                     std::vector<std::pair<KeyType, PayloadType>>& key_values,
                     const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values) {
   constexpr Workload supported_workloads[] = {
-      LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION,
+      LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, LOOKUP_UNIFORM,
       INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED, SHIFTING};
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkALEX<KeyType, PayloadType, SearchMode::KEY_VALUE>>(
@@ -117,7 +117,7 @@ template <typename KeyType, typename PayloadType>
 void benchmark_alex_ps(const bench_config& config,
                        std::vector<std::pair<KeyType, PayloadType>>& key_pairs_ps,
                        const std::vector<std::pair<KeyType, PayloadType>>& /* shifting unused */) {
-  constexpr Workload supported_workloads[] = {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION};
+  constexpr Workload supported_workloads[] = {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, LOOKUP_UNIFORM};
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkALEX<KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 16>>(
         config, key_pairs_ps, wl, {});

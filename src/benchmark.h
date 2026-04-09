@@ -63,6 +63,7 @@ protected:
 enum Workload : int {
   LOOKUP_EXISTING,
   LOOKUP_IN_DISTRIBUTION,
+  LOOKUP_UNIFORM,
   INSERT_IN_DISTRIBUTION,
   DELETE_EXISTING,
   MIXED,
@@ -73,6 +74,7 @@ std::string workload_name(Workload workload) {
   switch (workload) {
     case LOOKUP_EXISTING: return "LOOKUP_EXISTING";
     case LOOKUP_IN_DISTRIBUTION: return "LOOKUP_IN_DISTRIBUTION";
+    case LOOKUP_UNIFORM: return "LOOKUP_UNIFORM";
     case INSERT_IN_DISTRIBUTION: return "INSERT_IN_DISTRIBUTION";
     case DELETE_EXISTING: return "DELETE_EXISTING";
     case MIXED: return "MIXED";
@@ -104,7 +106,7 @@ class Benchmark {
                    const std::string& index_variant,
                    const std::string& workload_name,
                    int batch_no, size_t init_num_keys, size_t batch_operations,
-                   const std::string& lookup_distribution, double batch_time,
+                   double batch_time,
                    std::ofstream& out_file,
                    size_t convergence_samples,
                    double convergence_mean_throughput,
@@ -122,7 +124,6 @@ class Benchmark {
             << "workload_type=" << workload_name << " "
             << "init_num_keys=" << init_num_keys << " "
             << "batch_operations=" << batch_operations << " "
-            << "lookup_distribution=" << lookup_distribution << " "
             << std::fixed << std::setprecision(2) << "throughput=" << (!error ? std::to_string(batch_overall_throughput) : "error") << " "
             << std::fixed << std::setprecision(6) << "total_time=" << (!error ? std::to_string(1.0 * batch_time / 1e9) : "error") << " "
             << "conv_samples=" << convergence_samples << " "
@@ -138,6 +139,8 @@ class Benchmark {
       return DoLookupExisting(index, config);
     } else if constexpr (W == LOOKUP_IN_DISTRIBUTION) {
       return DoLookupInDistribution(index, config);
+    } else if constexpr (W == LOOKUP_UNIFORM) {
+      return DoLookupUniform(index, config);
     } else if constexpr (W == INSERT_IN_DISTRIBUTION) {
       if constexpr (requires(Index& i, typename Index::KeyType k, typename Index::PayloadType p) {i.insert(k, p); }) {
         return DoInsertInDistribution(index, config);
@@ -234,12 +237,48 @@ class Benchmark {
     }
 
     if (config.clear_cache)
-      return DoCoreLoop<Index, true, true>(index, lookup_pairs, 
+      return DoCoreLoop<Index, true, true>(index, lookup_pairs,
         [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
           DoEqualityLookupsCoreLoop<Index, true, true>(idx, failed, pairs);
         });
     else
-      return DoCoreLoop<Index, false, false>(index, lookup_pairs, 
+      return DoCoreLoop<Index, false, false>(index, lookup_pairs,
+        [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoEqualityLookupsCoreLoop<Index, false, false>(idx, failed, pairs);
+        });
+  }
+
+  template <class Index>
+  uint64_t DoLookupUniform(Index& index, const bench_config& config) {
+    std::vector<std::pair<KeyType, PayloadType>> lookup_pairs;
+
+    {
+      auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
+      std::vector<KeyType> lookup_keys = utils::get_non_existing_keys(keys.begin(), keys.end(), config.batch_size);
+
+      lookup_pairs.reserve(lookup_keys.size());
+      for (const auto& key : lookup_keys) {
+        PayloadType expected_payload;
+        if constexpr (semantics == SearchSemantics::PREDECESSOR) {
+          auto it = std::upper_bound(key_values_.begin(), key_values_.end(), key,
+            [](const KeyType& k, const auto& pair) { return k < pair.first; });
+          expected_payload = (it != key_values_.begin()) ? std::prev(it)->second : PayloadType{};
+        } else {
+          auto it = std::lower_bound(key_values_.begin(), key_values_.end(), key,
+            [](const auto& pair, const KeyType& k) { return pair.first < k; });
+          expected_payload = (it != key_values_.end()) ? it->second : PayloadType{};
+        }
+        lookup_pairs.emplace_back(key, expected_payload);
+      }
+    }
+
+    if (config.clear_cache)
+      return DoCoreLoop<Index, true, true>(index, lookup_pairs,
+        [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
+          DoEqualityLookupsCoreLoop<Index, true, true>(idx, failed, pairs);
+        });
+    else
+      return DoCoreLoop<Index, false, false>(index, lookup_pairs,
         [this](Index& idx, bool& failed, std::vector<std::pair<KeyType, PayloadType>>& pairs) {
           DoEqualityLookupsCoreLoop<Index, false, false>(idx, failed, pairs);
         });
@@ -592,37 +631,35 @@ private:
   uint64_t DoShifting(Index& index, const bench_config& config) {
     assert(!shifting_insert_key_values_.empty());
     assert(std::is_sorted(key_values_.begin(), key_values_.end(), [](auto const& a, auto const& b) { return a.first < b.first; }));
-    assert(std::is_sorted(shifting_insert_key_values_.begin(), shifting_insert_key_values_.end(), [](auto const& a, auto const& b) { return a.first < b.first; }));
     assert(shifting_insert_cursor_ + config.batch_size / 2 + config.batch_size % 2 <= shifting_insert_key_values_.size());
     
     // Generate batch operations: alternating insert/delete
     std::vector<std::pair<KeyType, PayloadType>> shifting_pairs;
-    std::queue<std::pair<KeyType, PayloadType>> current_keys_;
-    for (const auto& kv : key_values_) {
-      current_keys_.push(kv);
-    }
-    
+    size_t delete_index = 0;
+    const size_t init_keys_size = key_values_.size();
+
     for (size_t i = 0; i < config.batch_size; ++i) {
       if (i % 2 == 0) {  // Insert operation
         const auto& [new_key, payload] = shifting_insert_key_values_[shifting_insert_cursor_++];
-        assert(new_key > current_keys_.back().first);
         shifting_pairs.emplace_back(new_key, payload);
-        current_keys_.push({new_key, payload});  // Track for future deletions
+        key_values_.push_back({new_key, payload});  // Track for future deletions
       } else {  // Delete operation
-        if (!current_keys_.empty()) {
-          KeyType key_to_delete = current_keys_.front().first;
-          PayloadType payload_to_delete = current_keys_.front().second;
-          current_keys_.pop();
-          shifting_pairs.emplace_back(key_to_delete, payload_to_delete);
-        }
+        KeyType key_to_delete = key_values_[delete_index].first;
+        PayloadType payload_to_delete = key_values_[delete_index].second;
+        shifting_pairs.emplace_back(key_to_delete, payload_to_delete);
       }
     }
 
-    // Update key_values_ to the current keys (it is already sorted)
-    key_values_.clear();
-    while (!current_keys_.empty()) {
-      key_values_.push_back(current_keys_.front());
-      current_keys_.pop();
+    // Update key_values_ to the current keys
+    if (delete_index < init_keys_size) {
+      // Sort newly inserted keys (same as sorting key_values_, but more efficient)
+      std::sort(key_values_.begin() + init_keys_size, key_values_.end());
+      std::inplace_merge(key_values_.begin() + delete_index, key_values_.begin() + init_keys_size, key_values_.end());
+      key_values_.erase(key_values_.begin(), key_values_.begin() + delete_index);
+      assert(std::is_sorted(key_values_.begin(), key_values_.end()));
+    } else {
+      key_values_.erase(key_values_.begin(), key_values_.begin() + delete_index);
+      std::sort(key_values_.begin(), key_values_.end());
     }
 
     if (config.clear_cache)
@@ -692,10 +729,13 @@ void run_benchmark(const bench_config& config,
         case LOOKUP_EXISTING: 
           batch_time = benchmark.template RunWorkload<LOOKUP_EXISTING, IndexWrapper>(index, config); 
           break;
-        case LOOKUP_IN_DISTRIBUTION: 
-          batch_time = benchmark.template RunWorkload<LOOKUP_IN_DISTRIBUTION, IndexWrapper>(index, config); 
+        case LOOKUP_IN_DISTRIBUTION:
+          batch_time = benchmark.template RunWorkload<LOOKUP_IN_DISTRIBUTION, IndexWrapper>(index, config);
           break;
-        case INSERT_IN_DISTRIBUTION: 
+        case LOOKUP_UNIFORM:
+          batch_time = benchmark.template RunWorkload<LOOKUP_UNIFORM, IndexWrapper>(index, config);
+          break;
+        case INSERT_IN_DISTRIBUTION:
           batch_time = benchmark.template RunWorkload<INSERT_IN_DISTRIBUTION, IndexWrapper>(index, config); 
           break;
         case DELETE_EXISTING:
@@ -768,7 +808,7 @@ void run_benchmark(const bench_config& config,
 
         // Use the benchmark's print method for consistent formatting
         benchmark.PrintResult(IndexWrapper::name(), IndexWrapper::variant(), workload_name(workload), measured_batch_no, key_values.size(), 
-                              config.batch_size, config.lookup_distribution, batch_time, config.out_file,
+                              config.batch_size, batch_time, config.out_file,
                               measured_throughputs.size(), running_mean, running_rse, adaptive_stop_triggered);
 
         // Adaptive stop based on relative standard error (RSE) of throughput.

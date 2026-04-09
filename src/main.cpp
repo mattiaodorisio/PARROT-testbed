@@ -121,11 +121,10 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       }
     }
 
-    std::sort(shifting_key_pairs_kv.begin(), shifting_key_pairs_kv.end(),
-              [](auto const& a, auto const& b) { return a.first < b.first; });
-    std::sort(shifting_key_pairs_ps.begin(), shifting_key_pairs_ps.end(),
-              [](auto const& a, auto const& b) { return a.first < b.first; });
-    
+    // Do NOT sort shifting_key_pairs_kv and shifting_key_pairs_ps
+    // The first init_key_size are already sorted (they are bulk loaded)
+    // The rest is as it appears in the file as expected
+
     for (const auto& index_name : index_names) {
       if (!allowed_indices.empty() && !allowed_indices.count(index_name)) continue;
       std::cout << "--- Running workloads for " << index_name << " (init_keys=" << current_init_key_size << ") ---" << std::endl;
@@ -189,7 +188,6 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
  * --max_batches            maximum number of measured batches before adaptive stop (default: 3)
  *
  * Optional flags:
- * --lookup_distribution    lookup keys distribution (options: uniform or zipf)
  * --time_limit             time limit, in minutes
  * --print_batch_stats      whether to output stats for each batch
  * --clear_cache            whether to clear cache before each batch
@@ -209,7 +207,6 @@ int main(int argc, char* argv[]) {
   auto max_batches = stoi(get_with_default(flags, "max_batches", "3"));
   auto rse_target = stod(get_with_default(flags, "rse_target", "0.05"));
   std::string output_folder = get_required(flags, "output_folder");
-  std::string lookup_distribution = get_with_default(flags, "lookup_distribution", "uniform");
   auto time_limit = stod(get_with_default(flags, "time_limit", "0.5"));
   bool print_batch_stats = get_boolean_flag(flags, "print_batch_stats");
   bool clear_cache = get_boolean_flag(flags, "clear_cache");
@@ -283,7 +280,6 @@ int main(int argc, char* argv[]) {
   bench_config config {
       out_file: out_file,
       data_filename: keys_file_path,
-      lookup_distribution: lookup_distribution,
       time_limit: time_limit,
       batch_size: batch_size,
       min_batches: min_batches,

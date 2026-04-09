@@ -67,6 +67,7 @@ void benchmark_tlx(const bench_config& config,
   constexpr Workload supported_workloads[] = {
       LOOKUP_EXISTING,
       LOOKUP_IN_DISTRIBUTION,
+      LOOKUP_UNIFORM,
       INSERT_IN_DISTRIBUTION,
       DELETE_EXISTING,
       MIXED,

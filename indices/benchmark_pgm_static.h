@@ -68,7 +68,7 @@ void benchmark_pgm_static(const bench_config& config,
     return;
   }
 
-  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
+  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, LOOKUP_UNIFORM };
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType, 64>>(config, key_values, wl, shifting_insert_key_values);
 

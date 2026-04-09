@@ -87,14 +87,6 @@ function main() {
       download_file_zst fb_200M_uint64 3b0f820caa0d62150e87ce94ec989978 https://dataverse.harvard.edu/api/access/datafile/:persistentId?persistentId=doi:10.7910/DVN/JGVF9A/EATHF7 
    fi
 
-   # downloading now NON SOSD datasets
-   if [ ! -f companynet_uint32 ]; then
-      wget -O companynet_uint32 https://www.dropbox.com/scl/fi/pmrx9xwl6qchd0rm11x90/companynet_uint32?rlkey=mvnyl5cicjuu6htjywslwx7wa&st=c17j7k89&dl=0
-   fi
-   if [ ! -f friendster_50M_uint32 ]; then
-      wget -O friendster_50M_uint32 https://www.dropbox.com/scl/fi/tuesjan0qikkewij9i8vi/friendster_50M_uint32?rlkey=uqj459q30v2ipcidzjp3293pa&st=2jmcygqf&dl=0
-   fi
-
    # download coordinate files
    if [ ! -f USA-road-d.USA.co.txt ]; then
       download_coordinate_file "USA-road-d.USA.co.txt" "USA-road-d.USA.co.gz" "https://www.diag.uniroma1.it/~challenge9/data/USA-road-d/USA-road-d.USA.co.gz"

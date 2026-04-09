@@ -110,7 +110,7 @@ void benchmark_pgm_dynamic(const bench_config& config,
   }
 
   constexpr Workload supported_workloads[] = {
-      LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION,
+      LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, LOOKUP_UNIFORM,
       INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED, SHIFTING};
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 16>>(
@@ -144,7 +144,7 @@ void benchmark_pgm_dynamic_ps(const bench_config& config,
     return;
   }
 
-  constexpr Workload supported_workloads[] = {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION};
+  constexpr Workload supported_workloads[] = {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, LOOKUP_UNIFORM};
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<
         BenchmarkDynamicPGM<KeyType, PayloadType, 16, SearchMode::PREDECESSOR_SEARCH, 16>>(

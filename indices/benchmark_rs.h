@@ -147,7 +147,7 @@ void benchmark_rs(const bench_config& config,
                              std::vector<std::pair<KeyType, PayloadType>>& key_values,
                              const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values) {
 
-  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION };
+  constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, LOOKUP_UNIFORM };
   for (const auto& wl : supported_workloads) {
     deli_testbed::run_benchmark<BenchmarkRS<KeyType, PayloadType, 10>>(config, key_values, wl, shifting_insert_key_values);
 
