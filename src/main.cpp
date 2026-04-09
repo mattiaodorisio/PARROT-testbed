@@ -7,7 +7,6 @@
 
 #include "../indices/benchmark_alex.h"
 #include "../indices/benchmark_lipp.h"
-// #include "../indices/benchmark_dili.h"
 #include "../indices/benchmark_deli.h"
 #include "../indices/benchmark_pgm_static.h"
 #include "../indices/benchmark_pgm_dynamic.h"
@@ -138,6 +137,9 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       else if (index_name == "LIPP") {
         deli_testbed::benchmark_lipp<KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
       }
+      // else if (index_name == "DILI") {
+      //   deli_testbed::benchmark_dili<KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
+      // }
       else if (index_name == "DeLI-Dynamic-Payload") {
         deli_testbed::benchmark_deli_dynamic<true, KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
       }
