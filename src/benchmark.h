@@ -512,18 +512,20 @@ private:
     for (unsigned int idx = 0; idx < shifting_pairs_.size(); ++idx) {
       const KeyType key = shifting_pairs_[idx].first;
       const PayloadType payload = shifting_pairs_[idx].second;
-      const bool is_insert = idx % 2 == 0;
+      const int op = idx % 3;  // 0=insert, 1=lookup, 2=delete
 
       if constexpr (clear_cache) {
-        // Cache clearing logic
         for (uint64_t& iter : memory_) {
           random_sum_ += iter;
         }
         _mm_mfence();
 
         const auto timing = utils::timing([&] {
-          if (is_insert) {
+          if (op == 0) {
             index.insert(key, payload);
+          } else if (op == 1) {
+            volatile auto dummy = index.lower_bound(key);
+            (void)dummy;
           } else {
             index.erase(key);
           }
@@ -531,8 +533,11 @@ private:
 
         individual_ns_sum_ += timing;
       } else {
-        if (is_insert) {
+        if (op == 0) {
           index.insert(key, payload);
+        } else if (op == 1) {
+          volatile auto dummy = index.lower_bound(key);
+          (void)dummy;
         } else {
           index.erase(key);
         }
@@ -631,22 +636,40 @@ private:
   uint64_t DoShifting(Index& index, const bench_config& config) {
     assert(!shifting_insert_key_values_.empty());
     assert(std::is_sorted(key_values_.begin(), key_values_.end(), [](auto const& a, auto const& b) { return a.first < b.first; }));
-    assert(shifting_insert_cursor_ + config.batch_size / 2 + config.batch_size % 2 <= shifting_insert_key_values_.size());
+    const size_t n_inserts = (config.batch_size + 2) / 3;
+    assert(shifting_insert_cursor_ + n_inserts <= shifting_insert_key_values_.size());
     
-    // Generate batch operations: alternating insert/delete
+    // Pre-generate non-existing in-distribution keys for the lookup slots.
+    const size_t n_lookups = (config.batch_size + 1) / 3;
+    auto keys_view = key_values_ | std::views::transform([](auto const& p) { return p.first; });
+    std::vector<KeyType> lookup_keys = utils::get_non_existing_keys_in_distribution(
+        keys_view.begin(), keys_view.end(), static_cast<int>(n_lookups));
+    if (lookup_keys.size() < n_lookups) {
+      std::vector<KeyType> existing_keys(keys_view.begin(), keys_view.end());
+      existing_keys.insert(existing_keys.end(), lookup_keys.begin(), lookup_keys.end());
+      auto extra = utils::get_non_existing_keys(
+          existing_keys.begin(), existing_keys.end(),
+          static_cast<int>(n_lookups - lookup_keys.size()));
+      lookup_keys.insert(lookup_keys.end(), extra.begin(), extra.end());
+    }
+
+    // Generate batch operations: triplets of (insert, lookup, delete)
     std::vector<std::pair<KeyType, PayloadType>> shifting_pairs;
+    shifting_pairs.reserve(config.batch_size);
     size_t delete_index = 0;
+    size_t lookup_cursor = 0;
     const size_t init_keys_size = key_values_.size();
 
     for (size_t i = 0; i < config.batch_size; ++i) {
-      if (i % 2 == 0) {  // Insert operation
+      if (i % 3 == 0) {  // Insert
         const auto& [new_key, payload] = shifting_insert_key_values_[shifting_insert_cursor_++];
         shifting_pairs.emplace_back(new_key, payload);
-        key_values_.push_back({new_key, payload});  // Track for future deletions
-      } else {  // Delete operation
-        KeyType key_to_delete = key_values_[delete_index].first;
-        PayloadType payload_to_delete = key_values_[delete_index].second;
-        shifting_pairs.emplace_back(key_to_delete, payload_to_delete);
+        key_values_.push_back({new_key, payload});
+      } else if (i % 3 == 1) {  // Lookup (non-existing, in-distribution)
+        shifting_pairs.emplace_back(lookup_keys[lookup_cursor++], PayloadType{});
+      } else {  // Delete
+        shifting_pairs.emplace_back(key_values_[delete_index].first, key_values_[delete_index].second);
+        ++delete_index;
       }
     }
 

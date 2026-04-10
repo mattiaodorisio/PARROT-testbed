@@ -20,7 +20,7 @@
 % Add the plots here
 % %% {{PLOT:x_col,y_col,filter,groupby,Title,Caption,Label}}
 
-The following figures shows the performance of DeLI index under different configurations. The benchmark has been executued as follows: for each dataset, we run three workloads: existing lookup, in-distribution lookup, in-distribution insertion, deletions, and mixed insertions and lookups on a batch of $k = 8192$ operations \note{there is no particular reason for this value, we can discuss a better choice}. The plots below show the total time to execute the batch of $k$ operations.
+The following figures shows the performance of DeLI index under different configurations. The benchmark has been executed as follows: for each dataset, we run the workloads: existing lookup, in-distribution lookup, in-distribution insertion, deletions, and mixed insertions and lookups on a batch of $k = 8192$ operations \note{there is no particular reason for this value, we can discuss a better choice}. The plots below show the total time to execute the batch of $k$ operations.
 \paragraph*{Workloads}
 \begin{itemize}
   \item Existing Lookup: searching for $k$ keys already present within the dataset.
@@ -28,6 +28,7 @@ The following figures shows the performance of DeLI index under different config
   \item In-distribution Insertion: inserting $k$ keys drawn from the same distribution of the dataset.
   \item Deletion: deleting $k$ keys already present within the dataset.
   \item Mixed: a mix of 50\% lookups and 50\% insertions, all drawn from the same distribution of the dataset.
+  \item Shifting window:
 \end{itemize}
 
 The following plots compare the many possible configuartions of the DeLI index. Each configuration is defined by the following parameters:
