@@ -175,18 +175,61 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existin
   return data_sample;
 }
 
+#if 0 // Unused
+// Memory-efficient alternative to get_non_existing_keys for sorted ranges.
+// Uses std::binary_search (O(log N)) instead of materializing an unordered_set
+// of all N existing keys. Only allocates O(num_searches) memory.
+// Requires: [data_begin, data_end) is sorted.
+// already_found: keys already generated in a prior partial call; they are excluded.
+template <class SortedIt>
+std::vector<typename std::iterator_traits<SortedIt>::value_type>
+get_non_existing_keys_sorted_range(
+    const SortedIt data_begin, const SortedIt data_end, int num_searches,
+    const std::unordered_set<typename std::iterator_traits<SortedIt>::value_type>& already_found = {})
+{
+  using T = typename std::iterator_traits<SortedIt>::value_type;
+  if (data_begin == data_end || num_searches <= 0) return {};
+  T min_ = *data_begin;
+  T max_ = *std::prev(data_end);
+  std::uniform_int_distribution<T> dis(min_, max_);
+  // added_keys tracks uniqueness among the newly generated keys and already_found
+  std::unordered_set<T> added_keys(already_found);
+  std::vector<T> data_sample;
+  data_sample.reserve(num_searches);
+  int attempts = 0;
+  int increases = 0;
+  while ((int)data_sample.size() < num_searches) {
+    T key = dis(rand_gen);
+    if (!std::binary_search(data_begin, data_end, key) && added_keys.insert(key).second) {
+      data_sample.push_back(key);
+    }
+    if (++attempts > num_searches * 2) {
+      if (++increases > 100) {
+        throw std::runtime_error("Unable to find enough non-existing keys.");
+      }
+      T half_domain = (max_ - min_) / 2;
+      min_ = std::numeric_limits<T>::min() + half_domain < min_ ? min_ - half_domain : std::numeric_limits<T>::min();
+      max_ = std::numeric_limits<T>::max() - half_domain > max_ ? max_ + half_domain : std::numeric_limits<T>::max();
+      dis = std::uniform_int_distribution<T>(min_, max_);
+      attempts = 0;
+    }
+  }
+  return data_sample;
+}
+
 template <class RandomIt>
 std::vector<typename std::iterator_traits<RandomIt>::value_type> get_existing_keys_zipf(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
   using T = typename std::iterator_traits<RandomIt>::value_type;
   std::vector<T> data_sample;
   data_sample.reserve(num_searches);
-  ScrambledZipfianGenerator zipf_gen(std::distance(data_begin, data_end));
+  ScrambledZipfianGenerator zipf_gen(std::distance(data_begin, data_end), seed);
   for (int i = 0; i < num_searches; i++) {
     int pos = zipf_gen.nextValue();
     data_sample.push_back(data_begin[pos]);
   }
   return data_sample;
 }
+#endif
 
 uint64_t timing(std::function<void()> fn) {
   const auto start = std::chrono::high_resolution_clock::now();

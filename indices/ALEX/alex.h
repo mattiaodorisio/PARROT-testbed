@@ -1161,7 +1161,20 @@ class Alex {
       get_leaf(key, &traversal_path);
       model_node_type* parent = traversal_path.back().node;
 
+      [[maybe_unused]] size_t dbg_loop_count = 0;
       while (fail) {
+        if constexpr (false) {
+          std::cerr << "[DBG while(fail)] key=" << key
+            << " loop_iter=" << dbg_loop_count
+            << " fail=" << fail
+            << " parent_is_superroot=" << (parent == superroot_)
+            << " parent_num_children=" << parent->num_children_
+            << " leaf_num_keys=" << leaf->num_keys_
+            << " leaf_model.a=" << leaf->model_.a_
+            << " leaf_expected_avg_shifts=" << leaf->expected_avg_shifts_ << "\n";
+          ++dbg_loop_count;
+        }
+
         auto start_time = std::chrono::high_resolution_clock::now();
         stats_.num_expand_and_scales += leaf->num_resizes_;
 

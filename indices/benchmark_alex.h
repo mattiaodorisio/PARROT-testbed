@@ -92,7 +92,12 @@ class BenchmarkALEX
       return "none";
     }
 
-    bool applicable(const std::string&) { return true; }
+    bool applicable(const std::string&) {
+      // Found infinite loops with OOM for uint64_t keys, but not for smaller key types.
+      // This is due to memory precision issues when casting values to double for ALEX's linear regression models.
+      // We conservatively disable ALEX for uint64_t keys.
+      return std::is_same_v<uint32_t, KeyType>;
+    }
 };
 
 // ── Benchmark driver functions ────────────────────────────────────────────────

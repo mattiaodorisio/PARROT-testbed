@@ -16,8 +16,8 @@ class ScrambledZipfianGenerator {
   std::mt19937_64 gen_;
   std::uniform_real_distribution<double> dis_;
 
-  explicit ScrambledZipfianGenerator(int num_keys)
-      : num_keys_(num_keys), gen_(std::random_device{}()), dis_(0, 1) {
+  explicit ScrambledZipfianGenerator(int num_keys, uint64_t rng_seed = std::random_device{}())
+      : num_keys_(num_keys), gen_(rng_seed), dis_(0, 1) {
     double zeta2theta = zeta(2);
     alpha_ = 1. / (1. - ZIPFIAN_CONSTANT);
     eta_ = (1 - std::pow(2. / num_keys_, 1 - ZIPFIAN_CONSTANT)) /
