@@ -13,7 +13,9 @@
 #include "../indices/benchmark_rs.h"
 #include "../indices/benchmark_tlx.h"
 #include "../indices/benchmark_sea21.h"
+#ifdef ENABLE_SWIX
 #include "../indices/benchmark_swix.h"
+#endif
 
 #include <iomanip>
 #include <sstream>
@@ -61,13 +63,15 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       "DeLI-Static",       // exact successor, native
       "DeLI-Dynamic",      // exact successor, native
       "TLX",               // exact successor via B-tree lower_bound
-      // "SEA21",             // exact predecessor via predecessor()
+      "SEA21",             // exact predecessor, vector top-level (uint32_t only)
       "RS",                // approximate position → shared range search
       "PGM-Static",        // approximate position → shared range search
       "ALEX-PS",           // approximate position via sampling → shared range search
       "PGM-Dynamic-PS",    // approximate position via sampling → shared range search
+#ifdef ENABLE_SWIX
       // ── SWIX (sliding-window temporal index) ──────────────────────────────
       "SWIX",              // sliding window — SHIFTING only
+#endif
   };
 
   for (size_t current_init_key_size = (1 << config.min_size); current_init_key_size <= (1 << config.max_size); current_init_key_size *= 2) {
@@ -176,9 +180,11 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       else if (index_name == "PGM-Dynamic-PS") {
         deli_testbed::benchmark_pgm_dynamic_ps<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
       }
+#ifdef ENABLE_SWIX
       else if (index_name == "SWIX") {
         deli_testbed::benchmark_swix<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
       }
+#endif
       else {
         throw std::runtime_error("Unsupported index: " + index_name);
       }
