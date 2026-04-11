@@ -13,6 +13,7 @@
 #include "../indices/benchmark_rs.h"
 #include "../indices/benchmark_tlx.h"
 #include "../indices/benchmark_sea21.h"
+#include "../indices/benchmark_swix.h"
 
 #include <iomanip>
 #include <sstream>
@@ -65,6 +66,8 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       "PGM-Static",        // approximate position → shared range search
       "ALEX-PS",           // approximate position via sampling → shared range search
       "PGM-Dynamic-PS",    // approximate position via sampling → shared range search
+      // ── SWIX (sliding-window temporal index) ──────────────────────────────
+      "SWIX",              // sliding window — SHIFTING only
   };
 
   for (size_t current_init_key_size = (1 << config.min_size); current_init_key_size <= (1 << config.max_size); current_init_key_size *= 2) {
@@ -97,7 +100,7 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
     // Build a full sorted shifting stream: initial prefix + append suffix
     std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_kv = key_pairs_kv;
     std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_ps = key_pairs_ps;
-    const size_t inserts_per_batch = static_cast<size_t>(config.batch_size / 2 + config.batch_size % 2);
+    const size_t inserts_per_batch = static_cast<size_t>((config.batch_size + 2) / 3);
     const size_t required_append_keys = inserts_per_batch * static_cast<size_t>(config.max_batches + 1);
     shifting_key_pairs_kv.reserve(current_init_key_size + required_append_keys);
     shifting_key_pairs_ps.reserve(current_init_key_size + required_append_keys);
@@ -172,6 +175,9 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       }
       else if (index_name == "PGM-Dynamic-PS") {
         deli_testbed::benchmark_pgm_dynamic_ps<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+      }
+      else if (index_name == "SWIX") {
+        deli_testbed::benchmark_swix<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
       }
       else {
         throw std::runtime_error("Unsupported index: " + index_name);
