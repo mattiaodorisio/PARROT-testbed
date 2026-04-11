@@ -108,6 +108,7 @@ void benchmark_swix(const bench_config& config,
     } else if (window == (1 << 10)) {
         deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 10)>>(
             config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+#ifndef FAST_COMPILE
     } else if (window == (1 << 11)) {
     deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 11)>>(
         config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
@@ -168,8 +169,10 @@ void benchmark_swix(const bench_config& config,
     } else if (window == (1 << 30)) {
     deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 30)>>(
         config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+#endif
     } else {
-        throw std::runtime_error("SWIX benchmark: unsupported window size = number of initial keys = " + std::to_string(window));
+        // No benchmark available
+        return;
     }
 }
 
