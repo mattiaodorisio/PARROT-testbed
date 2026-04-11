@@ -311,82 +311,49 @@ std::vector<T> generate_chisquared_distr(size_t size, UniqueMode unique_mode) {
 
 
 template<typename T>
-std::vector<T> generate_mix_of_gauss_distr(size_t size, UniqueMode unique_mode, size_t num_gauss = 5) {
-    const T max_allowed = std::numeric_limits<T>::max() >> 1;
+std::vector<T> generate_mix_of_gauss_distr(size_t size, UniqueMode unique_mode) {
+    const double dmax       = static_cast<double>(std::numeric_limits<T>::max() >> 1);
+    const T      max_allowed = static_cast<T>(dmax);
     std::default_random_engine generator(5);
 
-    // Generate means concentrated around the center of the domain.
-    const double domain_center = static_cast<double>(max_allowed) / 2.0;
-    const double mean_spread = static_cast<double>(max_allowed) / 10.0;
-    std::normal_distribution<double> mean_dist(domain_center, mean_spread);
-    std::vector<double> means(num_gauss);
-    for (size_t i = 0; i < num_gauss; ++i) {
-        double mean_sample;
-        do {
-            mean_sample = mean_dist(generator);
-        } while (mean_sample < 0.0 || mean_sample > static_cast<double>(max_allowed));
-        means[i] = mean_sample;
-    }
+    // Two narrow, well-separated Gaussians:
+    //   Component 0 (70%): mean = dmax/4,  sigma = dmax/50
+    //   Component 1 (30%): mean = 3*dmax/4, sigma = dmax/100
+    // The gap between the 3-sigma extents of the two peaks is ~40% of the domain.
+    std::normal_distribution<double> dist0(dmax * 0.25, dmax / 50.0);
+    std::normal_distribution<double> dist1(dmax * 0.75, dmax / 100.0);
+    std::bernoulli_distribution coin(0.70);  // true → component 0 (70%)
 
-    // Use domain-scaled standard deviations to avoid over-concentrated outputs.
-    std::uniform_real_distribution<double> stddev_dist(static_cast<double>(max_allowed) / 200.0,
-                                                       static_cast<double>(max_allowed) / 20.0);
-    std::vector<double> stdevs(num_gauss);
-    for (size_t i = 0; i < num_gauss; ++i) {
-        stdevs[i] = stddev_dist(generator);
-    }
-
-    // Generate weights (uniform between 0 and 1)
-    std::uniform_real_distribution<double> weight_dist(0.0, 1.0);
-    std::vector<double> weights(num_gauss);
-    for (size_t i = 0; i < num_gauss; ++i) {
-        weights[i] = weight_dist(generator);
-    }
-
-    // Normalize the weights
-    double sum_of_weights = std::accumulate(weights.begin(), weights.end(), 0.0);
-    std::for_each(weights.begin(), weights.end(),
-                  [sum_of_weights](double& w) { w /= sum_of_weights; });
+    auto sample_one = [&]() -> double {
+        return coin(generator) ? dist0(generator) : dist1(generator);
+    };
 
     std::vector<T> data;
     data.reserve(size);
-
-    // Initialize random distribution selector
-    std::discrete_distribution<int> index_selector(weights.begin(), weights.end());
 
     if (unique_mode == UniqueMode::Rejection) {
         std::unordered_set<T> seen;
         seen.reserve(size * 2);
         while (data.size() < size) {
-            auto random_idx = index_selector(generator);
-            std::normal_distribution<double> distribution(means[random_idx], stdevs[random_idx]);
-
             double sample;
             do {
-                sample = distribution(generator);
+                sample = sample_one();
             } while (sample < 0 || sample > static_cast<double>(max_allowed));
-
             T value = static_cast<T>(sample);
-            if (seen.insert(value).second) {
+            if (seen.insert(value).second)
                 data.push_back(value);
-            }
         }
-        // Check unique constraint
-        std::unordered_set<T> check_unique(data.begin(), data.end());
-        if (check_unique.size() != data.size()) {
-            throw std::logic_error("Duplicate values found in mixture of gaussians distribution with rejection sampling");
-        }
+        std::unordered_set<T> check(data.begin(), data.end());
+        if (check.size() != data.size())
+            throw std::logic_error("Duplicate values found in mix_gauss distribution with rejection sampling");
         return data;
     }
 
     data.resize(size);
     for (size_t i = 0; i < size; ++i) {
-        auto random_idx = index_selector(generator);
-        std::normal_distribution<double> distribution(means[random_idx], stdevs[random_idx]);
-
         double sample;
         do {
-            sample = distribution(generator);
+            sample = sample_one();
         } while (sample < 0 || sample > static_cast<double>(max_allowed));
         data[i] = static_cast<T>(sample);
     }

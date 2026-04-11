@@ -15,3 +15,26 @@ make -j$(nproc) generate_datasets
 ./generate_datasets --data_dir=../data
 
 cd ..
+
+# Plot CDFs for all generated binary datasets.
+set +e
+trap 'echo "Error while plotting the distributions, but the datasets have been generated correctly!"; exit 0' ERR
+set -e
+echo "Plotting CDFs..."
+for f in \
+    data/normal_50M_uint32      data/normal_50M_uint64      \
+    data/exponential_50M_uint32 data/exponential_50M_uint64 \
+    data/lognormal_50M_uint32   data/lognormal_50M_uint64   \
+    data/mix_gauss_50M_uint32   data/mix_gauss_50M_uint64   \
+    data/zipf_50M_uint32        data/zipf_50M_uint64        \
+    data/uniform_50M_uint32     data/uniform_50M_uint64     \
+    data/books_200M_uint32 \
+    data/USA-road-d.USA.co.txt
+do
+    if [ -f "$f" ]; then
+        python3 plotter/plot_cdf.py "$f"
+    else
+        echo "  Skipping missing file: $f"
+    fi
+done
+echo "CDFs saved in data/."
