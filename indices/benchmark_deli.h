@@ -172,7 +172,7 @@ void benchmark_deli_dynamic(const bench_config& config,
           : static_cast<size_t>(__builtin_clzll(static_cast<unsigned long long>(lcp_xor))
                                 - (sizeof(unsigned long long) - sizeof(KeyType)) * CHAR_BIT);
 
-      auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
+      auto run_pareto = [high_bits_th]<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
           std::integer_sequence<unsigned int, bits...>,
           std::integer_sequence<size_t, loads...>,
           std::integer_sequence<size_t, simd_unrolled...>,
@@ -272,7 +272,7 @@ void benchmark_deli_static(const bench_config& config,
           : static_cast<size_t>(__builtin_clzll(static_cast<unsigned long long>(lcp_xor))
                                 - (sizeof(unsigned long long) - sizeof(KeyType)) * CHAR_BIT);
 
-      auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
+      auto run_pareto = [high_bits_th]<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
           std::integer_sequence<unsigned int, bits...>,
           std::integer_sequence<size_t, loads...>,
           std::integer_sequence<size_t, simd_unrolled...>,
