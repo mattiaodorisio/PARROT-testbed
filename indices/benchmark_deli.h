@@ -133,10 +133,12 @@ void benchmark_deli_dynamic(const bench_config& config,
 
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, LOOKUP_UNIFORM, INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED, SHIFTING };
   for (const auto& wl : supported_workloads) {
+#ifdef FAST_COMPILE
     using bench_t = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 64,
                                       BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::bucket_index, 48>,
                                       BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10>>;
     deli_testbed::run_benchmark<bench_t>(config, key_values, wl, shifting_insert_key_values);
+#endif
 
     // Define high_bits
     /////////// This works with one parameter
@@ -163,6 +165,13 @@ void benchmark_deli_dynamic(const bench_config& config,
       constexpr auto rht_opts = std::integer_sequence<int, 0, 1>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
       constexpr auto top_opts = std::integer_sequence<int, 0, 1>{};
 
+      // Check the high_bits threshold to avoid to test slow configurations (surely not in pareto).
+      const KeyType lcp_xor = key_values.front().first ^ key_values.back().first;
+      const size_t high_bits_th = lcp_xor == 0
+          ? sizeof(KeyType) * CHAR_BIT
+          : static_cast<size_t>(__builtin_clzll(static_cast<unsigned long long>(lcp_xor))
+                                - (sizeof(unsigned long long) - sizeof(KeyType)) * CHAR_BIT);
+
       auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
           std::integer_sequence<unsigned int, bits...>,
           std::integer_sequence<size_t, loads...>,
@@ -188,7 +197,9 @@ void benchmark_deli_dynamic(const bench_config& config,
                   if constexpr ((rht_opt != DeLI::RhtOptimization::slot_index || S == 0) &&
                   // Check constraint: high_bits > 24 requires bucket_index top-level optimization
                                 (B <= 24 || top_opt == DeLI::TopLevelOptimization::bucket_index)) {
-                    deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
+                    if (B >= high_bits_th) {
+                      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
+                    }
                   }
 
                 };
@@ -221,7 +232,13 @@ void benchmark_deli_static(const bench_config& config,
 
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, LOOKUP_UNIFORM };
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10>>(config, key_values, wl, shifting_insert_key_values);
+
+#ifdef FAST_COMPILE
+    using bench_t = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 64,
+                                      BenchmarkDeLI<has_payload, KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::bucket_index, 48>,
+                                      BenchmarkDeLI<has_payload, KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10>>;
+    deli_testbed::run_benchmark<bench_t>(config, key_values, wl, shifting_insert_key_values);
+#endif
 
     // Define high_bits
     /////////// This works with one parameter
@@ -248,6 +265,13 @@ void benchmark_deli_static(const bench_config& config,
       constexpr auto rht_opts = std::integer_sequence<int, 0, 1, 4>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
       constexpr auto top_opts = std::integer_sequence<int, 0, 1>{};
 
+      // Check the high_bits threshold to avoid to test slow configurations (surely not in pareto).
+      const KeyType lcp_xor = key_values.front().first ^ key_values.back().first;
+      const size_t high_bits_th = lcp_xor == 0
+          ? sizeof(KeyType) * CHAR_BIT
+          : static_cast<size_t>(__builtin_clzll(static_cast<unsigned long long>(lcp_xor))
+                                - (sizeof(unsigned long long) - sizeof(KeyType)) * CHAR_BIT);
+
       auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
           std::integer_sequence<unsigned int, bits...>,
           std::integer_sequence<size_t, loads...>,
@@ -273,7 +297,9 @@ void benchmark_deli_static(const bench_config& config,
                   if constexpr ((rht_opt != DeLI::RhtOptimization::slot_index || S == 0) &&
                   // Check constraint: high_bits > 24 requires bucket_index top-level optimization
                                 (B <= 24 || top_opt == DeLI::TopLevelOptimization::bucket_index)) {
-                    deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
+                    if (B >= high_bits_th) {
+                      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
+                    }
                   }
 
                 };
