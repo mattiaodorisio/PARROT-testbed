@@ -637,7 +637,10 @@ private:
     assert(!shifting_insert_key_values_.empty());
     assert(std::is_sorted(key_values_.begin(), key_values_.end(), [](auto const& a, auto const& b) { return a.first < b.first; }));
     const size_t n_inserts = (config.batch_size + 2) / 3;
-    assert(shifting_insert_cursor_ + n_inserts <= shifting_insert_key_values_.size());
+    if (shifting_insert_cursor_ + n_inserts > shifting_insert_key_values_.size()) {
+      // Not enough keys to shift
+      return std::numeric_limits<uint64_t>::max();
+    } 
     
     // Pre-generate non-existing in-distribution keys for the lookup slots.
     const size_t n_lookups = (config.batch_size + 1) / 3;

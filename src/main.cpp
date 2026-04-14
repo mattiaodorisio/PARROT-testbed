@@ -13,6 +13,7 @@
 #include "../indices/benchmark_rs.h"
 #include "../indices/benchmark_tlx.h"
 #include "../indices/benchmark_sea21.h"
+#include "../indices/benchmark_rmi.h"
 #ifdef ENABLE_SWIX
 #include "../indices/benchmark_swix.h"
 #endif
@@ -53,8 +54,8 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
   const std::vector<std::string> index_names = {
       // ── KEY_VALUE mode ──────────────────────────────────────────────────────
       // True key-value stores: return the payload associated with the successor key.
-      // "ALEX",              // dynamic learned index (KEY_VALUE)
-      // "LIPP",              // dynamic learned index (KEY_VALUE)
+      "ALEX",              // dynamic learned index (KEY_VALUE)
+      "LIPP",              // dynamic learned index (KEY_VALUE)
       "DeLI-Static-Payload",
       "DeLI-Dynamic-Payload",
       "PGM-Dynamic",       // dynamic learned index (KEY_VALUE)
@@ -68,20 +69,21 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       "PGM-Static",        // approximate position → shared range search
       "ALEX-PS",           // approximate position via sampling → shared range search
       "PGM-Dynamic-PS",    // approximate position via sampling → shared range search
+      "RMI",                // approximate position via recursive model index → shared range search
 #ifdef ENABLE_SWIX
       // ── SWIX (sliding-window temporal index) ──────────────────────────────
       "SWIX",              // sliding window — SHIFTING only
 #endif
   };
 
-  for (size_t current_init_key_size = (1 << config.min_size); current_init_key_size <= (1 << config.max_size); current_init_key_size *= 2) {
+  bool break_loop = false;
+  for (size_t current_init_key_size = (1 << config.min_size); current_init_key_size <= (1 << config.max_size) && !break_loop; current_init_key_size *= 2) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
 
     // Check if we have enough keys loaded
-    if (current_init_key_size > keys.size()) {
-      std::cerr << "Error: Not enough keys loaded. Requested: " << current_init_key_size 
-                << ", Available: " << keys.size() << std::endl;
-      continue;  // Skip this size and try the next one
+    if (current_init_key_size >= keys.size()) {
+      break_loop = true;
+      current_init_key_size = keys.size();
     }
 
     // key_pairs_kv: key → random payload  (KEY_VALUE mode: ALEX, LIPP, PGM-Dynamic, DeLI-Payload)
@@ -90,16 +92,18 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
     //                                      the expected successor key stored as payload)
     std::vector<std::pair<KeyType, PayloadType>> key_pairs_kv(current_init_key_size);
     std::vector<std::pair<KeyType, PayloadType>> key_pairs_ps(current_init_key_size);
-    for (size_t i = 0; i < key_pairs_kv.size(); ++i) {
-      key_pairs_kv[i].first  = keys[i];
-      key_pairs_kv[i].second = static_cast<PayloadType>(rand_gen());
+    
+    {
+      std::vector<KeyType> sorted_keys(keys.begin(), keys.begin() + current_init_key_size);
+      std::sort(sorted_keys.begin(), sorted_keys.end());
 
-      key_pairs_ps[i].first = key_pairs_ps[i].second = keys[i];
+      for (size_t i = 0; i < current_init_key_size; ++i) {
+        key_pairs_kv[i].first  = sorted_keys[i];
+        key_pairs_kv[i].second = static_cast<PayloadType>(rand_gen());
+
+        key_pairs_ps[i].first = key_pairs_ps[i].second = sorted_keys[i];
+      }
     }
-
-    // Sort by key
-    std::sort(key_pairs_kv.begin(), key_pairs_kv.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
-    std::sort(key_pairs_ps.begin(), key_pairs_ps.end(), [](auto const& a, auto const& b) { return a.first < b.first; });
 
     // Build a full sorted shifting stream: initial prefix + append suffix
     std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_kv = key_pairs_kv;
@@ -179,6 +183,9 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       }
       else if (index_name == "PGM-Dynamic-PS") {
         deli_testbed::benchmark_pgm_dynamic_ps<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+      } 
+      else if (index_name == "RMI") {
+        deli_testbed::benchmark_rmi<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
       }
 #ifdef ENABLE_SWIX
       else if (index_name == "SWIX") {

@@ -17,8 +17,12 @@ add_compile_options(-g -fno-omit-frame-pointer -O3 -march=native)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/indices)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/indices/tlx)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/indices/unordered_dense)
-
-add_executable(deLi_testbed src/main.cpp)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/indices/rmi)
+ 
+# RMI: collect pre-generated model sources (empty list when no models exist yet)
+file(GLOB_RECURSE RMI_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/indices/rmi/*.cpp")
+ 
+add_executable(deLi_testbed src/main.cpp ${RMI_SOURCES})
 add_executable(generate_datasets src/generate_datasets.cpp)
 
 # add_subdirectory(indices/DILI)

@@ -23,3 +23,6 @@
 	path = indices/sea21-predecessor
 	url = https://github.com/pdinklag/tdc.git
 	branch = sea21-predecessor
+[submodule "indices/RMI"]
+	path = indices/RMI
+	url = https://github.com/learnedsystems/RMI.git
