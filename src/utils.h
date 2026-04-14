@@ -31,6 +31,7 @@ struct bench_config {
   bool pareto;
   int min_size;
   int max_size;
+  bool entire_dataset;
 };
 
 namespace utils {

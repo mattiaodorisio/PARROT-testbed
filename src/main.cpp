@@ -48,7 +48,7 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
     return;
   }
 
-  std::cout << "\n=== Running benchmarks with exponentially increasing init_num_keys ===" << std::endl;
+  std::cout << "\n=== Running benchmarks" << (config.entire_dataset ? " on entire dataset" : " with exponentially increasing init_num_keys") << " ===" << std::endl;
 
   // Define index types and names
   const std::vector<std::string> index_names = {
@@ -76,15 +76,24 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
 #endif
   };
 
-  bool break_loop = false;
-  for (size_t current_init_key_size = (1 << config.min_size); current_init_key_size <= (1 << config.max_size) && !break_loop; current_init_key_size *= 2) {
-    std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
-
-    // Check if we have enough keys loaded
-    if (current_init_key_size >= keys.size()) {
-      break_loop = true;
-      current_init_key_size = keys.size();
+  // Build the list of dataset sizes to iterate over.
+  // Default: powers of two from 2^min_size to 2^max_size (capped at keys.size()).
+  // With --entire_dataset: a single run over the full dataset.
+  std::vector<size_t> sizes_to_run;
+  if (config.entire_dataset) {
+    sizes_to_run.push_back(keys.size());
+  } else {
+    for (size_t s = (size_t(1) << config.min_size); s <= (size_t(1) << config.max_size); s *= 2) {
+      if (s >= keys.size()) {
+        sizes_to_run.push_back(keys.size());
+        break;
+      }
+      sizes_to_run.push_back(s);
     }
+  }
+
+  for (size_t current_init_key_size : sizes_to_run) {
+    std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
 
     // key_pairs_kv: key → random payload  (KEY_VALUE mode: ALEX, LIPP, PGM-Dynamic, DeLI-Payload)
     // key_pairs_ps: key → key             (PREDECESSOR_SEARCH mode: all others; payload==key so
@@ -216,6 +225,7 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
  * --min_size               log of the minimum number of initial keys (default: 8 -> 2^8)
  * --max_size               log of the maximum number of initial keys (default: 20 -> 2^20)
  * --indices                comma-separated list of index names to run (default: all)
+ * --entire_dataset         run a single experiment on the full dataset (mutually exclusive with min_size/max_size)
  */
 int main(int argc, char* argv[]) {
   auto flags = parse_flags(argc, argv);
@@ -230,6 +240,7 @@ int main(int argc, char* argv[]) {
   bool print_batch_stats = get_boolean_flag(flags, "print_batch_stats");
   bool clear_cache = get_boolean_flag(flags, "clear_cache");
   bool pareto = get_boolean_flag(flags, "pareto");
+  bool entire_dataset = get_boolean_flag(flags, "entire_dataset");
   auto min_size = stoi(get_with_default(flags, "min_size", "8"));
   auto max_size = stoi(get_with_default(flags, "max_size", "20"));
   std::string indices_str = get_with_default(flags, "indices", "");
@@ -253,6 +264,9 @@ int main(int argc, char* argv[]) {
   }
   if (!num_batches.empty()) {
     throw std::runtime_error("--num_batches is deprecated. Please use --min_batches and --max_batches instead.");
+  }
+  if (entire_dataset && (flags.count("min_size") || flags.count("max_size"))) {
+    throw std::runtime_error("--entire_dataset is mutually exclusive with --min_size and --max_size");
   }
 
   // Check if input file does exist
@@ -308,7 +322,8 @@ int main(int argc, char* argv[]) {
       clear_cache: clear_cache,
       pareto: pareto,
       min_size: min_size,
-      max_size: max_size
+      max_size: max_size,
+      entire_dataset: entire_dataset
   };
 
   // Call execute with appropriate key type based on filename suffix
