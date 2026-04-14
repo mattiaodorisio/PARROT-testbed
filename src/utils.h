@@ -5,6 +5,14 @@
 #include <unordered_set>
 #include <random>
 #include <functional>
+#include <fstream>
+#include <chrono>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <sstream>
+#include <cassert>
+
 #include "zipf.h"
 
 static constexpr uint64_t seed = 123456789;
@@ -90,12 +98,12 @@ template <class RandomIt>
 std::vector<typename std::iterator_traits<RandomIt>::value_type> get_existing_keys(const RandomIt data_begin, const RandomIt data_end, int num_searches, bool allow_duplicates = true) {
   using T = typename std::iterator_traits<RandomIt>::value_type;
   const size_t data_size = std::distance(data_begin, data_end);
-  std::uniform_int_distribution<int> dis(0, data_size - 1);
+  std::uniform_int_distribution<size_t> dis(0, data_size - 1);
   std::vector<T> data_sample;
   data_sample.reserve(num_searches);
   if (allow_duplicates) {
     for (int i = 0; i < num_searches; i++) {
-      int pos = dis(rand_gen);
+      size_t pos = dis(rand_gen);
       // Lower bound: Searches for the FIRST element which is not ordered before value
       while (pos > 0 && data_begin[pos].first == data_begin[pos - 1].first) --pos;
       data_sample.push_back(data_begin[pos]);
@@ -103,11 +111,9 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_existing_ke
   } else {
     if ((size_t)num_searches > data_size)
       return std::vector<T>(data_begin, data_end);
-    std::unordered_set<int> used_indices;
+    std::unordered_set<size_t> used_indices;
     while ((int)data_sample.size() < num_searches) {
-      int pos = dis(rand_gen);
-      // Lower bound: Searches for the FIRST element which is not ordered before value
-      while (pos > 0 && data_begin[pos].first == data_begin[pos - 1].first) --pos;
+      size_t pos = dis(rand_gen);
       if (used_indices.insert(pos).second) {
         data_sample.push_back(data_begin[pos]);
       }
@@ -118,18 +124,19 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_existing_ke
 
 template <class RandomIt>
 std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existing_keys(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
+  assert(std::is_sorted(data_begin, data_end));
   using T = typename std::iterator_traits<RandomIt>::value_type;
   auto [min_it, max_it] = std::minmax_element(data_begin, data_end);
   T min_ = *min_it, max_ = *max_it;
   std::uniform_int_distribution<T> dis(min_, max_);
-  std::unordered_set<T> existing_keys(data_begin, data_end);
+  std::unordered_set<T> added_keys;
   std::vector<T> data_sample;
   data_sample.reserve(num_searches);
   int attempts = 0;
   int increases = 0;
   while (data_sample.size() < num_searches) {
     T key = dis(rand_gen);
-    if (existing_keys.insert(key).second) {
+    if (!std::binary_search(data_begin, data_end, key) && added_keys.insert(key).second) {
       data_sample.push_back(key);
     }
     if (++attempts > num_searches * 2) {
@@ -148,9 +155,8 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existin
 
 template <class RandomIt>
 std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existing_keys_in_distribution(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
+  assert(std::is_sorted(data_begin, data_end));
   using T = typename std::iterator_traits<RandomIt>::value_type;
-  auto [min_it, max_it] = std::minmax_element(data_begin, data_end);
-  T min_ = *min_it, max_ = *max_it;
   constexpr size_t interval_range = 100;
   const size_t size_ = std::distance(data_begin, data_end);
   std::uniform_int_distribution<size_t> dis(0, (size_ - 1) / interval_range);

@@ -212,6 +212,8 @@ class Benchmark {
         existing_keys.reserve(keys.size() + lookup_keys.size());
         existing_keys.insert(existing_keys.end(), keys.begin(), keys.end());
         existing_keys.insert(existing_keys.end(), lookup_keys.begin(), lookup_keys.end());
+        // utils::get_non_existing_keys expects a sorted array
+        std::sort(existing_keys.begin(), existing_keys.end());
 
         std::vector<KeyType> extra_keys =
             utils::get_non_existing_keys(existing_keys.begin(), existing_keys.end(), config.batch_size - lookup_keys.size());
@@ -558,6 +560,8 @@ private:
       existing_keys.reserve(keys.size() + insert_keys.size());
       existing_keys.insert(existing_keys.end(), keys.begin(), keys.end());
       existing_keys.insert(existing_keys.end(), insert_keys.begin(), insert_keys.end());
+      // utils::get_non_existing_keys expects a sorted array
+      std::sort(existing_keys.begin(), existing_keys.end());
 
       std::vector<KeyType> extra_keys =
           utils::get_non_existing_keys(existing_keys.begin(), existing_keys.end(), config.batch_size - insert_keys.size());
@@ -598,6 +602,8 @@ private:
       existing_keys.reserve(keys.size() + mixed_keys.size());
       existing_keys.insert(existing_keys.end(), keys.begin(), keys.end());
       existing_keys.insert(existing_keys.end(), mixed_keys.begin(), mixed_keys.end());
+      // utils::get_non_existing_keys expects a sorted array
+      std::sort(existing_keys.begin(), existing_keys.end());
 
       std::vector<KeyType> extra_keys =
           utils::get_non_existing_keys(existing_keys.begin(), existing_keys.end(), config.batch_size - mixed_keys.size());
@@ -650,6 +656,8 @@ private:
     if (lookup_keys.size() < n_lookups) {
       std::vector<KeyType> existing_keys(keys_view.begin(), keys_view.end());
       existing_keys.insert(existing_keys.end(), lookup_keys.begin(), lookup_keys.end());
+      // utils::get_non_existing_keys expects a sorted array
+      std::sort(existing_keys.begin(), existing_keys.end());
       auto extra = utils::get_non_existing_keys(
           existing_keys.begin(), existing_keys.end(),
           static_cast<int>(n_lookups - lookup_keys.size()));
