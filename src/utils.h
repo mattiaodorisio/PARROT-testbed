@@ -238,6 +238,17 @@ std::vector<typename std::iterator_traits<RandomIt>::value_type> get_existing_ke
 }
 #endif
 
+constexpr size_t log2_ceil(const size_t n) {
+  if (n <= 1) return 0;
+  size_t log = 0;
+  size_t m = n - 1;
+  while (m > 0) {
+    m >>= 1;
+    log++;
+  }
+  return log;
+}
+
 uint64_t timing(std::function<void()> fn) {
   const auto start = std::chrono::high_resolution_clock::now();
   fn();

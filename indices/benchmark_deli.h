@@ -188,11 +188,11 @@ void benchmark_deli_dynamic(const bench_config& config,
       static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
       constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
                                  std::integer_sequence<unsigned int, 0, 4, 8, 12, 16, 20>,
-                                 std::integer_sequence<unsigned int, 24, 32, 40, 48>>{};
+                                 std::integer_sequence<unsigned int, 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48>>{};
 
       constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70>{};
-      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2, 4>{};
-      constexpr auto rht_opts = std::integer_sequence<int, 0, 1>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
+      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2>{};
+      constexpr auto rht_opts = std::integer_sequence<int, 0>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
       constexpr auto top_opts = std::integer_sequence<int, 1>{};
 
       // Check the high_bits threshold to avoid to test slow configurations (surely not in pareto).
@@ -215,9 +215,16 @@ void benchmark_deli_dynamic(const bench_config& config,
 
         // 5-level nested cartesian product
         auto run_for_bits = [&]<unsigned int B>() {
-          // For mix_gauss datasets, high_bits starts from 12 (uint32) or 40 (uint64)
-          constexpr unsigned int mix_gauss_min_bits = sizeof(KeyType) * CHAR_BIT == 32 ? 12u : 40u;
-          if (cfg.data_filename.find("mix_gauss") != std::string::npos && B < mix_gauss_min_bits) return;
+          // Run only B = round4(high_bits_th + log2(n)) + c, for c ∈ {-4, 0, 4}
+          const size_t log2_n = kv.size() > 1
+              ? static_cast<size_t>(63 - __builtin_clzll(static_cast<unsigned long long>(kv.size())))
+              : 0;
+          const long long raw_target = static_cast<long long>(high_bits_th) + static_cast<long long>(log2_n);
+          const long long target = ((raw_target + 3LL) / 4LL) * 4LL; // round up to next multiple of 4
+          bool run_this = false;
+          for (int c : {-4, 0, 4})
+            if (target + c == static_cast<long long>(B)) { run_this = true; break; }
+          if (!run_this) return;
 
           auto run_for_loads = [&]<size_t L>() {
             auto run_for_simd = [&]<size_t S>() {
@@ -231,9 +238,7 @@ void benchmark_deli_dynamic(const bench_config& config,
                   if constexpr ((rht_opt != DeLI::RhtOptimization::slot_index || S == 0) &&
                   // Check constraint: high_bits > 24 requires bucket_index top-level optimization
                                 (B <= 24 || top_opt == DeLI::TopLevelOptimization::bucket_index)) {
-                    if (B >= high_bits_th) {
-                      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
-                    }
+                    deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
                   }
 
                 };
@@ -293,11 +298,11 @@ void benchmark_deli_static(const bench_config& config,
       static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
       constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
                                  std::integer_sequence<unsigned int, 0, 4, 8, 12, 16, 20>,
-                                 std::integer_sequence<unsigned int, 24, 32, 40, 48>>{};
+                                 std::integer_sequence<unsigned int, 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48>>{};
 
       constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70>{};
-      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2, 4>{};
-      constexpr auto rht_opts = std::integer_sequence<int, 0, 1, 4>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
+      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2>{};
+      constexpr auto rht_opts = std::integer_sequence<int, 0, 4>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
       constexpr auto top_opts = std::integer_sequence<int, 1>{};
 
       // Check the high_bits threshold to avoid to test slow configurations (surely not in pareto).
@@ -320,9 +325,16 @@ void benchmark_deli_static(const bench_config& config,
 
         // 5-level nested cartesian product
         auto run_for_bits = [&]<unsigned int B>() {
-          // For mix_gauss datasets, high_bits starts from 12 (uint32) or 40 (uint64)
-          constexpr unsigned int mix_gauss_min_bits = sizeof(KeyType) * CHAR_BIT == 32 ? 12u : 40u;
-          if (cfg.data_filename.find("mix_gauss") != std::string::npos && B < mix_gauss_min_bits) return;
+          // Run only B = round4(high_bits_th + log2(n)) + c, for c ∈ {-4, 0, 4}
+          const size_t log2_n = kv.size() > 1
+              ? static_cast<size_t>(63 - __builtin_clzll(static_cast<unsigned long long>(kv.size())))
+              : 0;
+          const long long raw_target = static_cast<long long>(high_bits_th) + static_cast<long long>(log2_n);
+          const long long target = ((raw_target + 3LL) / 4LL) * 4LL; // round up to next multiple of 4
+          bool run_this = false;
+          for (int c : {-4, 0, 4})
+            if (target + c == static_cast<long long>(B)) { run_this = true; break; }
+          if (!run_this) return;
 
           auto run_for_loads = [&]<size_t L>() {
             auto run_for_simd = [&]<size_t S>() {
@@ -336,9 +348,7 @@ void benchmark_deli_static(const bench_config& config,
                   if constexpr ((rht_opt != DeLI::RhtOptimization::slot_index || S == 0) &&
                   // Check constraint: high_bits > 24 requires bucket_index top-level optimization
                                 (B <= 24 || top_opt == DeLI::TopLevelOptimization::bucket_index)) {
-                    if (B >= high_bits_th) {
-                      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, rht_opt, S, L, top_opt, B, mode, sampling>>(cfg, kv, workload, shifting_kv);
-                    }
+                    deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, rht_opt, S, L, top_opt, B, mode, sampling>>(cfg, kv, workload, shifting_kv);
                   }
 
                 };
@@ -370,6 +380,7 @@ void benchmark_deli_static_ps(const bench_config& config,
     benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 16>(config, key_pairs_ps);
     benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 64>(config, key_pairs_ps);
     benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 128>(config, key_pairs_ps);
+  }
 #endif
 }
 
