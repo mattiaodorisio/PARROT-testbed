@@ -190,6 +190,9 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       else if (index_name == "ALEX-PS") {
         deli_testbed::benchmark_alex_ps<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
       }
+      else if (index_name == "DeLI-Static-PS") {
+        deli_testbed::benchmark_deli_static_ps<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+      }
       else if (index_name == "PGM-Dynamic-PS") {
         deli_testbed::benchmark_pgm_dynamic_ps<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
       } 

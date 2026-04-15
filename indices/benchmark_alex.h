@@ -124,8 +124,14 @@ void benchmark_alex_ps(const bench_config& config,
                        const std::vector<std::pair<KeyType, PayloadType>>& /* shifting unused */) {
   constexpr Workload supported_workloads[] = {LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, LOOKUP_UNIFORM};
   for (const auto& wl : supported_workloads) {
-    deli_testbed::run_benchmark<BenchmarkALEX<KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 16>>(
-        config, key_pairs_ps, wl, {});
+#ifdef FAST_COMPILE
+    deli_testbed::run_benchmark<BenchmarkALEX<KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 16>>(config, key_pairs_ps, wl, {});
+#else
+    deli_testbed::run_benchmark<BenchmarkALEX<KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH,  4>>(config, key_pairs_ps, wl, {});
+    deli_testbed::run_benchmark<BenchmarkALEX<KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH,  8>>(config, key_pairs_ps, wl, {});
+    deli_testbed::run_benchmark<BenchmarkALEX<KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 16>>(config, key_pairs_ps, wl, {});
+    deli_testbed::run_benchmark<BenchmarkALEX<KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 32>>(config, key_pairs_ps, wl, {});
+#endif
   }
 }
 

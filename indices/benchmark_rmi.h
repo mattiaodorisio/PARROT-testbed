@@ -7,7 +7,6 @@
 // Comment out `#define COMPILE_RMI` in utils.h to exclude all RMI code from
 // the build (useful when no models have been generated yet, or to reduce
 // compile time).
-#define COMPILE_RMI
 #ifdef COMPILE_RMI
 
 #include <algorithm>

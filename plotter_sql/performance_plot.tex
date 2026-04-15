@@ -38,7 +38,7 @@
 
 %% IMPORT-DATA stats combined_bench.txt
 
-%% SQL CREATE TABLE stats_reduced AS SELECT index_name, index_variant, workload_type, init_num_keys, lookup_distribution, dataset_name, MEDIAN(total_time) AS total_time, MEDIAN(throughput) AS throughput FROM stats GROUP BY index_name, index_variant, workload_type, init_num_keys, lookup_distribution, dataset_name;
+%% SQL CREATE TABLE stats_reduced AS SELECT index_name, index_variant, workload_type, init_num_keys, dataset_name, MEDIAN(total_time) AS total_time, MEDIAN(throughput) AS throughput FROM stats GROUP BY index_name, index_variant, workload_type, init_num_keys, dataset_name;
 %% SQL DROP TABLE stats;
 %% SQL ALTER TABLE stats_reduced RENAME TO stats;
 
@@ -107,7 +107,7 @@
     %% SELECT x, y, MULTIPLOT FROM (
     %%   SELECT
     %%     total_time AS x,
-    %%     (rn - 1) * 1.0 / total_count AS y,
+    %%     (rn) * 1.0 / total_count AS y,
     %%     MULTIPLOT,
     %%     ROW_NUMBER() OVER (PARTITION BY MULTIPLOT, bucket ORDER BY total_time) as row_in_bucket
     %%   FROM (
@@ -118,7 +118,7 @@
     %%       NTILE(500) OVER (PARTITION BY MULTIPLOT ORDER BY total_time) AS bucket,
     %%       MULTIPLOT
     %%     FROM stats
-    %%     WHERE init_num_keys = 1048576 AND index_name = 'DeLI-Static'
+    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Static'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -128,7 +128,7 @@
 \end{subfigure}
 \hfill
 %% END FOREACH 
-\caption{Performance plots for DeLI-Static index on all workloads and distributions (init key size 1048576).}
+\caption{Performance plots for DeLI-Static index on all workloads and distributions (init key size $2^{i}, i \in [20 , 25]$).}
 \end{figure}
 
 
@@ -163,7 +163,7 @@
     %% SELECT x, y, MULTIPLOT FROM (
     %%   SELECT
     %%     total_time AS x,
-    %%     (rn - 1) * 1.0 / total_count AS y,
+    %%     (rn) * 1.0 / total_count AS y,
     %%     MULTIPLOT,
     %%     ROW_NUMBER() OVER (PARTITION BY MULTIPLOT, bucket ORDER BY total_time) as row_in_bucket
     %%   FROM (
@@ -174,7 +174,7 @@
     %%       NTILE(500) OVER (PARTITION BY MULTIPLOT ORDER BY total_time) AS bucket,
     %%       MULTIPLOT
     %%     FROM stats
-    %%     WHERE init_num_keys = 1048576 AND index_name = 'DeLI-Dynamic'
+    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Dynamic'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -184,7 +184,117 @@
 \end{subfigure}
 \hfill
 %% END FOREACH 
-\caption{Performance plots for DeLI-Dynamic index on all workloads and distributions (init key size 1048576).}
+\caption{Performance plots for DeLI-Dynamic index on all workloads and distributions (init key size $2^{i}, i \in [20 , 25]$).}
+\end{figure}
+
+\section{DeLI Static Payload}\label{sec:delistaticpayload}
+
+\subsection{Performance plot (all workloads and distributions)}
+
+\begin{figure}[H]
+\small
+\centering
+
+%% FOREACH opt IN (RHTOptimization,SIMDLanes,RHTLoad,TopOptimization,Highbits)
+\begin{subfigure}{0.45\textwidth}
+\centering
+\begin{tikzpicture}
+  \begin{axis}[
+    title={{opt}},
+    xlabel={Time (seconds)},
+    ylabel={Fraction of instances},
+    xmode=log,
+    log basis x={2},
+    width=\linewidth,
+    height=5.5cm,
+    grid=major,
+    legend pos=south east,
+    mark=*,
+    mark size=0pt,
+    line width=0.5pt
+    ]
+    %% MULTIPLOT({opt})
+    %% SELECT x, y, MULTIPLOT FROM (
+    %%   SELECT
+    %%     total_time AS x,
+    %%     (rn) * 1.0 / total_count AS y,
+    %%     MULTIPLOT,
+    %%     ROW_NUMBER() OVER (PARTITION BY MULTIPLOT, bucket ORDER BY total_time) as row_in_bucket
+    %%   FROM (
+    %%     SELECT
+    %%       total_time,
+    %%       RANK() OVER (PARTITION BY MULTIPLOT ORDER BY total_time) as rn,
+    %%       COUNT(*) OVER (PARTITION BY MULTIPLOT) as total_count,
+    %%       NTILE(500) OVER (PARTITION BY MULTIPLOT ORDER BY total_time) AS bucket,
+    %%       MULTIPLOT
+    %%     FROM stats
+    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Static-Payload'
+    %%   )
+    %% )
+    %% WHERE row_in_bucket = 1
+    %% ORDER BY MULTIPLOT, x
+  \end{axis}
+\end{tikzpicture}
+\end{subfigure}
+\hfill
+%% END FOREACH
+\caption{Performance plots for DeLI-Static-Payload index on all workloads and distributions (init key size $2^{i}, i \in [20 , 25]$).}
+\end{figure}
+
+
+
+\section{DeLI Dynamic Payload}\label{sec:delidynamicpayload}
+
+\subsection{Performance plot (all workloads and distributions)}
+
+\begin{figure}[H]
+\small
+\centering
+
+%% FOREACH opt IN (RHTOptimization,SIMDLanes,RHTLoad,TopOptimization,Highbits)
+\begin{subfigure}{0.45\textwidth}
+\centering
+\begin{tikzpicture}
+  \begin{axis}[
+    title={{opt}},
+    xlabel={Time (seconds)},
+    ylabel={Fraction of instances},
+    xmode=log,
+    log basis x={2},
+    width=\linewidth,
+    height=5.5cm,
+    grid=major,
+    legend pos=south east,
+    mark=*,
+    mark size=0pt,
+    line width=0.5pt
+    ]
+    %% MULTIPLOT({opt})
+    %% SELECT x, y, MULTIPLOT FROM (
+    %%   SELECT
+    %%     total_time AS x,
+    %%     (rn) * 1.0 / total_count AS y,
+    %%     MULTIPLOT,
+    %%     ROW_NUMBER() OVER (PARTITION BY MULTIPLOT, bucket ORDER BY total_time) as row_in_bucket
+    %%   FROM (
+    %%     SELECT
+    %%       total_time,
+    %%       RANK() OVER (PARTITION BY MULTIPLOT ORDER BY total_time) as rn,
+    %%       COUNT(*) OVER (PARTITION BY MULTIPLOT) as total_count,
+    %%       NTILE(500) OVER (PARTITION BY MULTIPLOT ORDER BY total_time) AS bucket,
+    %%       MULTIPLOT
+    %%     FROM stats
+    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Dynamic-Payload'
+    %%   )
+    %% )
+    %% WHERE row_in_bucket = 1
+    %% ORDER BY MULTIPLOT, x
+  \end{axis}
+\end{tikzpicture}
+\end{subfigure}
+\hfill
+%% END FOREACH
+\caption{Performance plots for DeLI-Dynamic-Payload index on all workloads and distributions (init key size $2^{i}, i \in [20 , 25]$).}
 \end{figure}
 
 \section{Best Variants Performance}\label{sec:best}
@@ -213,7 +323,7 @@
     %% SELECT x, y, MULTIPLOT FROM (
     %%   SELECT
     %%     total_time AS x,
-    %%     (rn - 1) * 1.0 / total_count AS y,
+    %%     (rn) * 1.0 / total_count AS y,
     %%     MULTIPLOT,
     %%     ROW_NUMBER() OVER (PARTITION BY MULTIPLOT, bucket ORDER BY total_time) as row_in_bucket
     %%   FROM (
@@ -224,14 +334,14 @@
     %%       NTILE(1000) OVER (PARTITION BY MULTIPLOT ORDER BY total_time) AS bucket,
     %%       MULTIPLOT
     %%     FROM stats_best
-    %%     WHERE init_num_keys = 1048576
+    %%     WHERE init_num_keys >= 1048576
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
     %% ORDER BY MULTIPLOT, x
   \end{axis}
 \end{tikzpicture}
-\caption{Performance plots for best index variants (init key size 1048576).}
+\caption{Performance plots for best index variants (init key size $2^{i}, i \in [20 , 25]$).}
 \end{figure}
 
 \end{document}
