@@ -76,12 +76,22 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
 #endif
   };
 
+  // Compute how many keys are needed for the shifting suffix (independent of init size).
+  const size_t inserts_per_batch = static_cast<size_t>((config.batch_size + 2) / 3);
+  const size_t required_append_keys = inserts_per_batch * static_cast<size_t>(config.max_batches + 1);
+
   // Build the list of dataset sizes to iterate over.
   // Default: powers of two from 2^min_size to 2^max_size (capped at keys.size()).
-  // With --entire_dataset: a single run over the full dataset.
+  // With --entire_dataset: a single run using all keys except the last required_append_keys,
+  // which are reserved for the shifting suffix.
   std::vector<size_t> sizes_to_run;
   if (config.entire_dataset) {
-    sizes_to_run.push_back(keys.size());
+    if (keys.size() <= required_append_keys) {
+      std::cerr << "Error: dataset is too small to reserve " << required_append_keys
+                << " keys for the shifting suffix." << std::endl;
+      return;
+    }
+    sizes_to_run.push_back(keys.size() - required_append_keys);
   } else {
     for (size_t s = (size_t(1) << config.min_size); s <= (size_t(1) << config.max_size); s *= 2) {
       if (s >= keys.size()) {
@@ -117,8 +127,6 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
     // Build a full sorted shifting stream: initial prefix + append suffix
     std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_kv = key_pairs_kv;
     std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_ps = key_pairs_ps;
-    const size_t inserts_per_batch = static_cast<size_t>((config.batch_size + 2) / 3);
-    const size_t required_append_keys = inserts_per_batch * static_cast<size_t>(config.max_batches + 1);
     shifting_key_pairs_kv.reserve(current_init_key_size + required_append_keys);
     shifting_key_pairs_ps.reserve(current_init_key_size + required_append_keys);
     if (keys.size() >= current_init_key_size && required_append_keys > 0) {
