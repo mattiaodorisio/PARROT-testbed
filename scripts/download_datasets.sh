@@ -92,8 +92,26 @@ function main() {
       download_coordinate_file "USA-road-d.USA.co.txt" "USA-road-d.USA.co.gz" "https://www.diag.uniroma1.it/~challenge9/data/USA-road-d/USA-road-d.USA.co.gz"
    fi
 
-   echo "done"
+   echo "Download done"
+   cd ..
+}
+
+function shuffle_datasets() {
+   echo "shuffling datasets ..."
+   cd data
+   for f in \
+      wiki_ts_200M_uint64 \
+      books_200M_uint32   \
+      books_800M_uint64   \
+      osm_cellids_800M_uint64 \
+      fb_200M_uint64
+   do
+      python3 ../scripts/shuffle_dataset.py "$f" "${f}_shuffled"
+   done
+   echo "Shuffling done"
+   cd ..
 }
 
 # Run
 main
+shuffle_datasets
