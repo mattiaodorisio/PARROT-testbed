@@ -767,9 +767,9 @@ def substitute_caption_parameters(caption: str, filter_conditions: Optional[List
     # Add workload type display name
     if 'workload_type' in parameters:
         workload_display_map = {
-            'LOOKUP_IN_DISTRIBUTION': 'In-Distribution Lookup',
+            'LOOKUP_IN_DISTRIBUTION': 'In-Distr. Lookup',
             'LOOKUP_EXISTING': 'Existing Lookup', 
-            'INSERT_IN_DISTRIBUTION': 'In-Distribution Insert'
+            'INSERT_IN_DISTRIBUTION': 'In-Distr. Insert'
         }
         parameters['workload_display_name'] = workload_display_map.get(
             parameters['workload_type'], parameters['workload_type']
@@ -813,17 +813,17 @@ def compact_axis_for_subfigure(axis_code: str) -> str:
     # Remove explicit legend placement from each subplot; a shared legend is added globally.
     compact_axis = re.sub(r'\s*legend\s+pos\s*=\s*[^,]+,\s*\n', '\n', compact_axis)
 
-    # Force compact dimensions suitable for 3 plots per row.
+    # Force compact dimensions suitable for dense multiplot layouts.
     # Replace only dedicated axis option lines (not "line width" nor plot lines).
     compact_axis = re.sub(
         r'(^\s*)width\s*=\s*[^,\n]+,\s*$',
-        r'\1width=0.90\\linewidth,',
+        r'\1width=0.92\\linewidth,',
         compact_axis,
         flags=re.MULTILINE,
     )
     compact_axis = re.sub(
         r'(^\s*)height\s*=\s*[^,\n]+,\s*$',
-        r'\1height=0.56\\linewidth,',
+        r'\1height=0.70\\linewidth,',
         compact_axis,
         flags=re.MULTILINE,
     )
@@ -869,7 +869,7 @@ def build_shared_legend(series_names: List[str]) -> str:
         "\\vspace{0.3em}",
         "\\begin{center}",
         "\\begin{tikzpicture}",
-        f"\\begin{{axis}}[hide axis, xmin=0, xmax=1, ymin=0, ymax=1, legend columns={legend_columns}, legend style={{draw=none, font=\\small}}]",
+        f"\\begin{{axis}}[hide axis, xmin=0, xmax=1, ymin=0, ymax=1, legend columns={legend_columns}, legend style={{draw=none, font=\\scriptsize}}]",
     ]
 
     for series_name in legend_series_names:
@@ -942,9 +942,9 @@ def get_workload_display_name(filter_conditions: Optional[List[Tuple[str, str]]]
     filter_dict = {k: v for k, v in filter_conditions}
     workload_type = filter_dict.get('workload_type', '')
     workload_display_map = {
-        'LOOKUP_IN_DISTRIBUTION': 'In-Distribution Lookup',
+        'LOOKUP_IN_DISTRIBUTION': 'In-Distr. Lookup',
         'LOOKUP_EXISTING': 'Existing Lookup',
-        'INSERT_IN_DISTRIBUTION': 'In-Distribution Insert',
+        'INSERT_IN_DISTRIBUTION': 'In-Distr. Insert',
         'DELETE_EXISTING': 'Delete Existing',
         'MIXED': 'Mixed',
     }
@@ -1029,18 +1029,13 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
     
     # Prepare better labels
     x_label = x_col.replace('_', ' ').title()
-    if agg_func != 'NONE':
-        y_label = f"{agg_func.title()} {actual_y_col.replace('_', ' ').title()}"
-    else:
-        y_label = actual_y_col.replace('_', ' ').title()
-    
+    y_label = actual_y_col.replace('_', ' ').title()
+
     # Special handling for certain column names
     if 'total_time' in actual_y_col:
-        y_label += ' (s)'
+        y_label = 'Batch time (s)'
     elif 'throughput' in actual_y_col:
-        y_label += ' (ops/sec)'
-        
-    y_label = y_label.replace('Total', 'Batch')
+        y_label = 'Throughput (ops/sec)'
     
     # Substitute parameters in caption and title
     caption = substitute_caption_parameters(caption, filter_conditions, data, x_col, y_col, groupby_col)
@@ -1071,7 +1066,7 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
                                  filter_string: str, groupby_col: str,
                                  title: str, caption: str, label: str,
                                  figure_template_path: str = None,
-                                 cols_per_row: int = 3) -> str:
+                                 cols_per_row: int = 4) -> str:
     """
     Create a multiplot figure with multiple subfigures, one for each filter.
     
@@ -1125,10 +1120,10 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
         return f"% No valid data for multiplot {title}"
     
     # Calculate subfigure width based on columns per row with layout margin.
-    if cols_per_row == 3:
-        subfig_width = "0.315\\textwidth"
-    else:
-        subfig_width = f"{0.94 / cols_per_row:.2f}\\textwidth"
+    # Reserve ~2% per inter-column gap; the y-label on the leftmost plot eats a
+    # little extra space, so we keep a small asymmetric nudge for that column.
+    gap_total = 0.02 * (cols_per_row - 1)
+    subfig_width = f"{(1.0 - gap_total) / cols_per_row:.3f}\\textwidth"
     
     # Build multiplot LaTeX
     latex_lines = [
@@ -1168,17 +1163,14 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
         if not is_last:
             if is_end_of_row:
                 latex_lines.append("\\par\\medskip")
+            elif in_last_row and last_row_count < cols_per_row:
+                # Fixed gap in the incomplete last row → subfigures left-aligned.
+                latex_lines.append("\\hspace{0.02\\textwidth}")
+            elif position_in_row == 0:
+                # Extra room after leftmost plot to compensate for the y-label width.
+                latex_lines.append("\\hspace{0.02\\textwidth}")
             else:
-                # Keep a natural left-to-right flow for incomplete final rows.
-                if in_last_row and last_row_count == 2 and position_in_last_row == 0:
-                    latex_lines.append("\\hspace{0.035\\textwidth}")
-                elif cols_per_row == 3:
-                    # Add extra room after the leftmost plot (with y-label),
-                    # while keeping the 2nd-3rd spacing unchanged.
-                    if position_in_row == 0:
-                        latex_lines.append("\\hspace{0.03\\textwidth}")
-                else:
-                    latex_lines.append("\\hfill")
+                latex_lines.append("\\hfill")
 
     # Add one shared legend for all subfigures.
     shared_legend = build_shared_legend(shared_series_names)
