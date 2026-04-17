@@ -183,9 +183,15 @@ def parse_filter(filter_str: str) -> Optional[List[Tuple[str, str]]]:
     # Split by unescaped semicolons to get individual conditions
     for condition in temp_str.split(';'):
         condition = condition.strip()
-        if '=' in condition:
+        # Match comparison operators (>=, <=, >, <) before falling back to =
+        cmp_match = re.match(r'^([^><=!]+)(>=|<=|>|<)(.+)$', condition)
+        if cmp_match:
+            key = cmp_match.group(1).strip().replace(placeholder, ';')
+            op  = cmp_match.group(2)
+            value = cmp_match.group(3).strip().replace(placeholder, ';')
+            conditions.append((key, op + value))
+        elif '=' in condition:
             key, value = condition.split('=', 1)
-            # Restore escaped semicolons in both key and value
             key = key.strip().replace(placeholder, ';')
             value = value.strip().replace(placeholder, ';')
             conditions.append((key, value))
@@ -232,21 +238,44 @@ def parse_groupby_clause(groupby_str: str) -> Tuple[str, Optional[Tuple[str, str
         Tuple[str, Optional[Tuple[str, str]]]: (primary_groupby_column, (agg_func, agg_column) or None)
     """
     groupby_str = groupby_str.strip()
-    
-    # Split by semicolon to separate primary groupby from aggregation
-    parts = [part.strip() for part in groupby_str.split(';')]
+
+    # Temporarily replace escaped semicolons so the top-level split works correctly.
+    # Escaped semicolons appear in PIN variant values (e.g. GFB\;1\;40\;BI\;12\;512).
+    _ESC = "___ESCAPED_SEMICOLON___"
+    temp_str = groupby_str.replace('\\;', _ESC)
+
+    # Split by unescaped semicolons to separate primary groupby from aggregation modifier
+    parts = [part.strip().replace(_ESC, '\\;') for part in temp_str.split(';')]
     
     primary_groupby = parts[0]
     best_aggregation = None
     
-    # Check for BEST aggregation in remaining parts
+    # Check for BEST or PIN aggregation in remaining parts
     for part in parts[1:]:
         best_pattern = r'^BEST\(([^)]+)\)$'
         match = re.match(best_pattern, part, re.IGNORECASE)
         if match:
             best_aggregation = ('BEST', match.group(1))
             break
-    
+
+        # PIN(col:IndexA=variantA,IndexB=variantB\;with\;semicolons)
+        pin_pattern = r'^PIN\(([^:]+):(.+)\)$'
+        match = re.match(pin_pattern, part, re.IGNORECASE)
+        if match:
+            variant_col = match.group(1).strip()
+            map_str = match.group(2)
+            placeholder = "___ESCAPED_SEMICOLON___"
+            map_str = map_str.replace('\\;', placeholder)
+            pin_map = {}
+            for entry in map_str.split(','):
+                if '=' in entry:
+                    k, v = entry.split('=', 1)
+                    k = k.strip().replace(placeholder, ';')
+                    v = v.strip().replace(placeholder, ';')
+                    pin_map[k] = v
+            best_aggregation = ('PIN', variant_col, pin_map)
+            break
+
     return (primary_groupby, best_aggregation)
 
 
@@ -310,6 +339,52 @@ def select_best_variant(data: List[Dict], primary_groupby_col: str, best_col: st
     return result_data
 
 
+def select_pinned_variant(data: List[Dict], primary_groupby_col: str, variant_col: str,
+                          y_col: str, x_col: str, pin_map: Dict[str, str]) -> List[Dict]:
+    """
+    For each primary group, use the variant specified in pin_map if the group key
+    appears there; otherwise fall back to selecting the best-performing variant.
+
+    Args:
+        data (List[Dict]): Input data (already filtered and aggregated)
+        primary_groupby_col (str): Primary column to group by (e.g., 'index_name')
+        variant_col (str): Column holding the variant identifier (e.g., 'index_variant')
+        y_col (str): Y-axis column used for BEST fallback comparison
+        x_col (str): X-axis column used for BEST fallback comparison
+        pin_map (Dict[str, str]): Mapping from primary group key to the desired variant value
+
+    Returns:
+        List[Dict]: Data containing only the selected variant for each primary group
+    """
+    primary_groups: Dict = {}
+    for row in data:
+        if primary_groupby_col in row and variant_col in row:
+            primary_key = str(row[primary_groupby_col])
+            if primary_key not in primary_groups:
+                primary_groups[primary_key] = []
+            primary_groups[primary_key].append(row)
+
+    result_data = []
+    for primary_key, group_rows in primary_groups.items():
+        if primary_key in pin_map:
+            pinned = pin_map[primary_key]
+            selected = [r for r in group_rows if str(r.get(variant_col, '')) == pinned]
+            if selected:
+                print(f"Pinned variant for {primary_key}: {pinned}")
+                result_data.extend(selected)
+            else:
+                print(f"Warning: pinned variant '{pinned}' not found for {primary_key}, falling back to BEST")
+                result_data.extend(
+                    select_best_variant(group_rows, primary_groupby_col, variant_col, y_col, x_col)
+                )
+        else:
+            result_data.extend(
+                select_best_variant(group_rows, primary_groupby_col, variant_col, y_col, x_col)
+            )
+
+    return result_data
+
+
 def apply_filter(data: List[Dict], filter_conditions: Optional[List[Tuple[str, str]]]) -> List[Dict]:
     """
     Apply multiple filter conditions to the data. All conditions must be satisfied (AND logic).
@@ -339,7 +414,24 @@ def apply_filter(data: List[Dict], filter_conditions: Optional[List[Tuple[str, s
                 break
             
             row_value = str(row[key])
-            
+
+            # Check for comparison operators (>=, <=, >, <)
+            cmp_match = re.match(r'^(>=|<=|>|<)(.+)$', value)
+            if cmp_match:
+                op, threshold = cmp_match.group(1), cmp_match.group(2)
+                try:
+                    lhs = float(row[key])
+                    rhs = float(threshold)
+                    result = (op == '>=' and lhs >= rhs) or (op == '<=' and lhs <= rhs) or \
+                             (op == '>'  and lhs >  rhs) or (op == '<'  and lhs <  rhs)
+                    if not result:
+                        all_conditions_met = False
+                        break
+                except (ValueError, TypeError):
+                    all_conditions_met = False
+                    break
+                continue
+
             # Check if this is a substring filter (starts and ends with *)
             if value.startswith('*') and value.endswith('*') and len(value) > 2:
                 # Substring matching - remove the * characters and check if substring is in the value
@@ -424,15 +516,17 @@ def group_and_aggregate(data: List[Dict], groupby_col: str, agg_func: str, agg_c
         
         aggregated_data.append(result_row)
     
-    # Apply BEST selection if specified
+    # Apply BEST / PIN selection if specified
     if best_aggregation:
-        best_func, best_col = best_aggregation
-        if best_func.upper() == 'BEST':
-            # Determine the y column name after aggregation
-            y_col_name = f'{agg_func.lower()}_{agg_col}' if agg_func != 'NONE' else agg_col
-            
-            # Select best variants
+        agg_type = best_aggregation[0].upper()
+        y_col_name = f'{agg_func.lower()}_{agg_col}' if agg_func != 'NONE' else agg_col
+
+        if agg_type == 'BEST':
+            best_col = best_aggregation[1]
             aggregated_data = select_best_variant(aggregated_data, primary_groupby, best_col, y_col_name, x_col)
+        elif agg_type == 'PIN':
+            variant_col, pin_map = best_aggregation[1], best_aggregation[2]
+            aggregated_data = select_pinned_variant(aggregated_data, primary_groupby, variant_col, y_col_name, x_col, pin_map)
     
     return aggregated_data
 
@@ -559,10 +653,9 @@ def generate_pgfplot_data(
             # Sort by x column
             valid_data.sort(key=lambda row: row[x_col])
             
-            # Determine legend entry - include variant if BEST aggregation was used
-            if best_aggregation and best_aggregation[0] == 'BEST':
+            # Determine legend entry — include variant when BEST or PIN selects one
+            if best_aggregation and best_aggregation[0].upper() in ('BEST', 'PIN'):
                 variant_col = best_aggregation[1]
-                # Get the variant from the first valid data point (they should all be the same due to BEST selection)
                 if valid_data and variant_col in valid_data[0]:
                     variant_value = valid_data[0][variant_col]
                     if variant_value and str(variant_value).lower() != 'none':
@@ -578,9 +671,9 @@ def generate_pgfplot_data(
             series_color = get_series_color(str(group_value))
 
             # Get consistent marker based on the index variant:
-            # - BEST case: use the selected variant value as the marker key
+            # - BEST/PIN case: use the selected variant value as the marker key
             # - otherwise: use the group value itself (works when grouping by index_variant)
-            if best_aggregation and best_aggregation[0] == 'BEST':
+            if best_aggregation and best_aggregation[0].upper() in ('BEST', 'PIN'):
                 variant_col = best_aggregation[1]
                 if valid_data and variant_col in valid_data[0]:
                     marker_key = str(valid_data[0][variant_col])
@@ -899,10 +992,15 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
     # Parse groupby clause
     primary_groupby_col, best_aggregation = parse_groupby_clause(groupby_col)
     
-    # If BEST aggregation is specified, select the best variant
-    if best_aggregation and best_aggregation[0] == 'BEST':
-        best_col = best_aggregation[1]
-        filtered_data = select_best_variant(filtered_data, primary_groupby_col, best_col, actual_y_col, x_col)
+    # If BEST or PIN aggregation is specified, narrow to selected variant before aggregation
+    if best_aggregation:
+        agg_type = best_aggregation[0].upper()
+        if agg_type == 'BEST':
+            best_col = best_aggregation[1]
+            filtered_data = select_best_variant(filtered_data, primary_groupby_col, best_col, actual_y_col, x_col)
+        elif agg_type == 'PIN':
+            variant_col, pin_map = best_aggregation[1], best_aggregation[2]
+            filtered_data = select_pinned_variant(filtered_data, primary_groupby_col, variant_col, actual_y_col, x_col, pin_map)
     
     # Group and aggregate data
     processed_data = group_and_aggregate(filtered_data, primary_groupby_col, agg_func, actual_y_col, x_col)
@@ -1103,7 +1201,33 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
     return "\n".join(latex_lines)
 
 
-def create_performance_plot(data: List[Dict], multiplot_template_path: str = None, 
+def split_directive_fields(body: str) -> List[str]:
+    """
+    Split a directive body by commas, ignoring commas inside parentheses.
+    This lets PIN(col:A=v1,B=v2) live in a field without being broken apart
+    by the top-level field separator.
+    """
+    fields: List[str] = []
+    current: List[str] = []
+    depth = 0
+    for ch in body:
+        if ch == '(':
+            depth += 1
+            current.append(ch)
+        elif ch == ')':
+            depth -= 1
+            current.append(ch)
+        elif ch == ',' and depth == 0:
+            fields.append(''.join(current))
+            current = []
+        else:
+            current.append(ch)
+    if current:
+        fields.append(''.join(current))
+    return fields
+
+
+def create_performance_plot(data: List[Dict], multiplot_template_path: str = None,
                           figure_template_path: str = None) -> str:
     """
     Create a comprehensive performance plot comparing all indices using templates.
@@ -1130,13 +1254,22 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
     except Exception as e:
         raise Exception(f"Error reading multiplot template file {multiplot_template_path}: {e}")
     
-    # Parse MULTIPLOT placeholders (filters separated by |)
-    multiplot_pattern = r'^%% \{\{MULTIPLOT:([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^}]+)\}\}$'
-    multiplot_matches = re.findall(multiplot_pattern, template_content, re.MULTILINE)
-    
-    # Parse PLOT placeholders (single filter)
-    plot_pattern = r'^%% \{\{PLOT:([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^}]+)\}\}$'
-    plot_matches = re.findall(plot_pattern, template_content, re.MULTILINE)
+    # Detect directive lines and split fields with a parenthesis-aware splitter so that
+    # commas inside PIN(...) or similar modifiers are not mistaken for field separators.
+    # Each entry is (full_line, x_col, y_col, filter_str, groupby_col, title, caption, label).
+    multiplot_matches = []
+    plot_matches = []
+    directive_detect = re.compile(r'^%% \{\{(MULTIPLOT|PLOT):(.+)\}\}$', re.MULTILINE)
+    for m in directive_detect.finditer(template_content):
+        kind = m.group(1)
+        fields = split_directive_fields(m.group(2))
+        if len(fields) == 7:
+            # Keep the original matched line as placeholder; strip only for processing.
+            parsed = (m.group(0),) + tuple(f.strip() for f in fields)
+            if kind == 'MULTIPLOT':
+                multiplot_matches.append(parsed)
+            else:
+                plot_matches.append(parsed)
     
     # Validate that at least one plot directive exists
     if not plot_matches and not multiplot_matches:
@@ -1153,7 +1286,7 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
     
     # Process MULTIPLOT directives
     for match in multiplot_matches:
-        x_col, y_col, filter_str, groupby_col, title, caption, label = match
+        placeholder, x_col, y_col, filter_str, groupby_col, title, caption, label = match
         
         # Parse aggregation from y_col
         agg_func, actual_y_col = parse_aggregation(y_col)
@@ -1183,31 +1316,24 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
                         break
         
         if has_required_cols and filters_valid:
-            # Generate the multiplot figure
             figure = create_multiplot_from_filters(
                 data, x_col, y_col, filter_str, groupby_col,
                 title, caption, label, figure_template_path
             )
-            
-            # Replace the placeholder
-            placeholder = f"%% {{{{MULTIPLOT:{x_col},{y_col},{filter_str},{groupby_col},{title},{caption},{label}}}}}"
             result_content = result_content.replace(placeholder, figure)
         else:
-            # Remove the placeholder if data unavailable
-            placeholder = f"%% {{{{MULTIPLOT:{x_col},{y_col},{filter_str},{groupby_col},{title},{caption},{label}}}}}"
             missing_info = []
             if not has_required_cols:
                 missing_info.append(f"missing columns")
             if not filters_valid:
                 missing_info.append(f"filters not applicable")
-            
-            result_content = result_content.replace(placeholder, 
+            result_content = result_content.replace(placeholder,
                 f"% Skipped multiplot {title} - {', '.join(missing_info)}")
             print(f"Warning: Skipping multiplot {title} - {', '.join(missing_info)}")
     
     # Process PLOT directives
     for match in plot_matches:
-        x_col, y_col, filter_str, groupby_col, title, caption, label = match
+        placeholder, x_col, y_col, filter_str, groupby_col, title, caption, label = match
         
         # Parse filter condition
         filter_conditions = parse_filter(filter_str)
@@ -1239,18 +1365,12 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
                     break
         
         if has_required_cols and filter_applicable:
-            # Generate the figure
             figure = create_figure_from_template(
                 data, x_col, y_col, filter_conditions, groupby_col,
                 title, caption, label, figure_template_path
             )
-            
-            # Replace the placeholder with the actual figure
-            placeholder = f"%% {{{{PLOT:{x_col},{y_col},{filter_str},{groupby_col},{title},{caption},{label}}}}}"
             result_content = result_content.replace(placeholder, figure)
         else:
-            # Remove the placeholder if no data available
-            placeholder = f"%% {{{{PLOT:{x_col},{y_col},{filter_str},{groupby_col},{title},{caption},{label}}}}}"
             missing_info = []
             if not has_required_cols:
                 missing_cols = [x_col, actual_y_col, primary_groupby]
