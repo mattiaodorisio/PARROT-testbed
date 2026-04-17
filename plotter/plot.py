@@ -1257,33 +1257,45 @@ def join_multiline_directives(content: str) -> str:
     return '\n'.join(result)
 
 
-def create_performance_plot(data: List[Dict], multiplot_template_path: str = None,
-                          figure_template_path: str = None) -> str:
+def split_template_documents(template_content: str):
     """
-    Create a comprehensive performance plot comparing all indices using templates.
-    Handles both PLOT (single filter) and MULTIPLOT (multiple filters) directives.
-    
-    Args:
-        data (List[Dict]): Benchmark data
-        multiplot_template_path (str): Path to multiplot template (optional)
-        figure_template_path (str): Path to figure template (optional)
-        
-    Returns:
-        str: Complete LaTeX document code
+    If the template contains multiple \\begin{document}...\\end{document} blocks,
+    returns a list of (output_name, full_content) tuples where the shared preamble
+    (everything before the first \\begin{document}) is prepended to each block.
+    Returns None when there is only one document block (single-file mode).
     """
-    # Path to multiplot template
-    if multiplot_template_path is None:
-        multiplot_template_path = os.path.join(os.path.dirname(__file__), 'multiplot_template.tex')
-    
-    # Read multiplot template
-    try:
-        with open(multiplot_template_path, 'r') as f:
-            template_content = f.read()
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Multiplot template file not found: {multiplot_template_path}")
-    except Exception as e:
-        raise Exception(f"Error reading multiplot template file {multiplot_template_path}: {e}")
+    begin_positions = [m.start() for m in re.finditer(r'\\begin\{document\}', template_content)]
+    if len(begin_positions) <= 1:
+        return None
 
+    preamble = template_content[:begin_positions[0]].rstrip('\n')
+
+    documents = []
+    for i, begin_pos in enumerate(begin_positions):
+        end_match = re.search(r'\\end\{document\}', template_content[begin_pos:])
+        if not end_match:
+            continue
+        end_pos = begin_pos + end_match.end()
+        body = template_content[begin_pos:end_pos]
+
+        if i == 0:
+            preceding = preamble
+        else:
+            prev_end_re = re.search(r'\\end\{document\}', template_content[begin_positions[i - 1]:])
+            prev_end = begin_positions[i - 1] + prev_end_re.end()
+            preceding = template_content[prev_end:begin_pos]
+
+        output_match = re.search(r'^%% OUTPUT:\s*(\S+)', preceding, re.MULTILINE)
+        name = output_match.group(1) if output_match else f"figure_{i + 1:02d}"
+
+        documents.append((name, preamble + '\n\n' + body))
+
+    return documents
+
+
+def _process_template_content(data: List[Dict], template_content: str,
+                               figure_template_path: str = None) -> str:
+    """Process PLOT/MULTIPLOT directives in template_content and return the result."""
     template_content = join_multiline_directives(template_content)
 
     # Detect directive lines and split fields with a parenthesis-aware splitter so that
@@ -1305,8 +1317,11 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
     
     # Validate that at least one plot directive exists
     if not plot_matches and not multiplot_matches:
-        raise ValueError(f"No plots defined in template file {multiplot_template_path}. "
-                        f"Template must contain at least one %% {{{{PLOT:...}}}} or %% {{{{MULTIPLOT:...}}}} directive.")
+        # Debug: show the first few lines of joined content to diagnose
+        preview = '\n'.join(template_content.splitlines()[:30])
+        print(f"DEBUG joined content (first 30 lines):\n{preview}\n", file=sys.stderr)
+        raise ValueError("No plots defined in template content. "
+                         "Template must contain at least one %% {{PLOT:...}} or %% {{MULTIPLOT:...}} directive.")
     
     # Initialize color mapping for consistent colors across all plots
     try:
@@ -1417,6 +1432,20 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
             print(f"Warning: Skipping plot {title} - {', '.join(missing_info)}")
     
     return result_content
+
+
+def create_performance_plot(data: List[Dict], multiplot_template_path: str = None,
+                            figure_template_path: str = None) -> str:
+    if multiplot_template_path is None:
+        multiplot_template_path = os.path.join(os.path.dirname(__file__), 'multiplot_template.tex')
+    try:
+        with open(multiplot_template_path, 'r') as f:
+            template_content = f.read()
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Multiplot template file not found: {multiplot_template_path}")
+    except Exception as e:
+        raise Exception(f"Error reading multiplot template file {multiplot_template_path}: {e}")
+    return _process_template_content(data, template_content, figure_template_path)
 
 
 def find_benchmark_files(directory_path: str) -> Dict[str, str]:
@@ -1597,9 +1626,11 @@ def main():
     parser.add_argument('input_path', help='Path to directory containing benchmark log files, or single benchmark log file')
     parser.add_argument('--multiplot-template', help='Path to multiplot template file')
     parser.add_argument('--figure-template', help='Path to figure template file (for individual figures)')
-    parser.add_argument('--output', help='Output LaTeX file path', 
+    parser.add_argument('--output', help='Output LaTeX file path (single-doc mode)',
                        default='benchmark_plot.tex')
-    
+    parser.add_argument('--output-dir', help='Output directory for multi-document mode',
+                       default='build')
+
     args = parser.parse_args()
     
     try:
@@ -1639,19 +1670,39 @@ def main():
             all_columns.update(row.keys())
         print(f"Columns available: {', '.join(sorted(all_columns))}")
         
-        # Generate plot using template system
-        latex_content = create_performance_plot(
-            data, args.multiplot_template, args.figure_template
-        )
-        
-        # Write output file
-        output_path = args.output
-        with open(output_path, 'w') as f:
-            f.write(latex_content)
-        
+        # Check whether the template has multiple \begin{document} blocks
+        multi_docs = None
+        if args.multiplot_template:
+            try:
+                with open(args.multiplot_template, 'r') as f:
+                    raw_template = f.read()
+                multi_docs = split_template_documents(raw_template)
+                print(f"DEBUG: split_template_documents found {len(multi_docs) if multi_docs else 0} documents", file=sys.stderr)
+            except Exception as e:
+                print(f"DEBUG: split_template_documents failed: {e}", file=sys.stderr)
+
         print(f"\n=== Output ===")
-        print(f"LaTeX file generated: {output_path}")
-        print(f"To compile: pdflatex {output_path}")
+        if multi_docs:
+            # Multi-document mode: write one .tex per block into output_dir
+            output_dir = args.output_dir
+            os.makedirs(output_dir, exist_ok=True)
+            for name, content in multi_docs:
+                processed = _process_template_content(data, content, args.figure_template)
+                out_path = os.path.join(output_dir, name + '.tex')
+                with open(out_path, 'w') as f:
+                    f.write(processed)
+                print(f"LaTeX file generated: {out_path}")
+            print(f"To compile: run build.sh")
+        else:
+            # Single-document mode (original behaviour)
+            latex_content = create_performance_plot(
+                data, args.multiplot_template, args.figure_template
+            )
+            output_path = args.output
+            with open(output_path, 'w') as f:
+                f.write(latex_content)
+            print(f"LaTeX file generated: {output_path}")
+            print(f"To compile: pdflatex {output_path}")
         
         # Print data sample
         print(f"\n=== Data Sample ===")

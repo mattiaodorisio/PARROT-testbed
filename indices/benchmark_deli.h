@@ -10,6 +10,22 @@
 // Wrapper object
 
 namespace deli_testbed {
+
+/// Per-dataset high_bits for 64-bit keys.
+inline unsigned int get_high_bits_64(const std::string& data_filename) {
+  if (data_filename.find("books") != std::string::npos) return 16;
+  if (data_filename.find("exponential") != std::string::npos) return 17;
+  if (data_filename.find("fb") != std::string::npos) return 29;
+  if (data_filename.find("mix") != std::string::npos) return 17;
+  if (data_filename.find("normal") != std::string::npos) return 17;
+  if (data_filename.find("osm") != std::string::npos) return 16;
+  if (data_filename.find("uniform") != std::string::npos) return 16;
+  if (data_filename.find("USA-road-d.USA.co.txt") != std::string::npos) return 54;
+  if (data_filename.find("wiki") != std::string::npos) return 49;
+  if (data_filename.find("zipf") != std::string::npos) return 16;
+  return 16;
+}
+
 template <bool has_payload,
           typename KEY_TYPE, typename PAYLOAD_TYPE,
           bool dynamic,
@@ -164,10 +180,8 @@ void benchmark_deli_dynamic(const bench_config& config,
   constexpr Workload supported_workloads[] = { LOOKUP_EXISTING, LOOKUP_IN_DISTRIBUTION, LOOKUP_UNIFORM, INSERT_IN_DISTRIBUTION, DELETE_EXISTING, MIXED, SHIFTING };
   for (const auto& wl : supported_workloads) {
 #ifdef FAST_COMPILE
-    using bench_t = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 64,
-                                      BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::bucket_index, 48>,
-                                      BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10>>;
-    deli_testbed::run_benchmark<bench_t>(config, key_values, wl, shifting_insert_key_values);
+    if constexpr (sizeof(KeyType) * CHAR_BIT == 32)
+      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10>>(config, key_values, wl, shifting_insert_key_values);
 #endif
 
     // Define high_bits
@@ -188,21 +202,14 @@ void benchmark_deli_dynamic(const bench_config& config,
       static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
       constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
                                  std::integer_sequence<unsigned int, 0, 4, 8, 12, 16, 20>,
-                                 std::integer_sequence<unsigned int, 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48>>{};
+                                 std::integer_sequence<unsigned int, 16, 17, 29, 49, 54>>{};
 
       constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70>{};
       constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2>{};
       constexpr auto rht_opts = std::integer_sequence<int, 0>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
       constexpr auto top_opts = std::integer_sequence<int, 1>{};
 
-      // Check the high_bits threshold to avoid to test slow configurations (surely not in pareto).
-      const KeyType lcp_xor = key_values.front().first ^ key_values.back().first;
-      const size_t high_bits_th = lcp_xor == 0
-          ? sizeof(KeyType) * CHAR_BIT
-          : static_cast<size_t>(__builtin_clzll(static_cast<unsigned long long>(lcp_xor))
-                                - (sizeof(unsigned long long) - sizeof(KeyType)) * CHAR_BIT);
-
-      auto run_pareto = [high_bits_th]<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
+      auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
           std::integer_sequence<unsigned int, bits...>,
           std::integer_sequence<size_t, loads...>,
           std::integer_sequence<size_t, simd_unrolled...>,
@@ -215,17 +222,11 @@ void benchmark_deli_dynamic(const bench_config& config,
 
         // 5-level nested cartesian product
         auto run_for_bits = [&]<unsigned int B>() {
-          // Run only B = round4(high_bits_th + log2(n)) + c, for c ∈ {-4, 0, 4}
-          const size_t log2_n = kv.size() > 1
-              ? static_cast<size_t>(63 - __builtin_clzll(static_cast<unsigned long long>(kv.size())))
-              : 0;
-          const long long raw_target = static_cast<long long>(high_bits_th) + static_cast<long long>(log2_n);
-          const long long target = ((raw_target + 3LL) / 4LL) * 4LL; // round up to next multiple of 4
-          bool run_this = false;
-          for (int c : {-4, 0, 4})
-            if (target + c == static_cast<long long>(B)) { run_this = true; break; }
-          if (!run_this) return;
-
+          // For 64-bit keys: only run the dataset-specific value from get_high_bits_64
+          if constexpr (sizeof(KeyType) * CHAR_BIT == 64) {
+            if (B != get_high_bits_64(cfg.data_filename)) return;
+          }
+          // For 32-bit keys: run all values in the sequence
           auto run_for_loads = [&]<size_t L>() {
             auto run_for_simd = [&]<size_t S>() {
               auto run_for_rht = [&]<int R>() {
@@ -274,10 +275,8 @@ void benchmark_deli_static(const bench_config& config,
   for (const auto& wl : supported_workloads) {
 
 #ifdef FAST_COMPILE
-    using bench_t = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 64,
-                                      BenchmarkDeLI<has_payload, KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::bucket_index, 48, mode, sampling>,
-                                      BenchmarkDeLI<has_payload, KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10, mode, sampling>>;
-    deli_testbed::run_benchmark<bench_t>(config, key_values, wl, shifting_insert_key_values);
+    if constexpr (sizeof(KeyType) * CHAR_BIT == 32)
+      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10, mode, sampling>>(config, key_values, wl, shifting_insert_key_values);
 #endif
 
     // Define high_bits
@@ -298,21 +297,14 @@ void benchmark_deli_static(const bench_config& config,
       static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
       constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
                                  std::integer_sequence<unsigned int, 0, 4, 8, 12, 16, 20>,
-                                 std::integer_sequence<unsigned int, 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48>>{};
+                                 std::integer_sequence<unsigned int, 16, 17, 29, 49, 54>>{};
 
       constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70>{};
       constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2>{};
       constexpr auto rht_opts = std::integer_sequence<int, 0, 4>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
       constexpr auto top_opts = std::integer_sequence<int, 1>{};
 
-      // Check the high_bits threshold to avoid to test slow configurations (surely not in pareto).
-      const KeyType lcp_xor = key_values.front().first ^ key_values.back().first;
-      const size_t high_bits_th = lcp_xor == 0
-          ? sizeof(KeyType) * CHAR_BIT
-          : static_cast<size_t>(__builtin_clzll(static_cast<unsigned long long>(lcp_xor))
-                                - (sizeof(unsigned long long) - sizeof(KeyType)) * CHAR_BIT);
-
-      auto run_pareto = [high_bits_th]<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
+      auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
           std::integer_sequence<unsigned int, bits...>,
           std::integer_sequence<size_t, loads...>,
           std::integer_sequence<size_t, simd_unrolled...>,
@@ -325,17 +317,11 @@ void benchmark_deli_static(const bench_config& config,
 
         // 5-level nested cartesian product
         auto run_for_bits = [&]<unsigned int B>() {
-          // Run only B = round4(high_bits_th + log2(n)) + c, for c ∈ {-4, 0, 4}
-          const size_t log2_n = kv.size() > 1
-              ? static_cast<size_t>(63 - __builtin_clzll(static_cast<unsigned long long>(kv.size())))
-              : 0;
-          const long long raw_target = static_cast<long long>(high_bits_th) + static_cast<long long>(log2_n);
-          const long long target = ((raw_target + 3LL) / 4LL) * 4LL; // round up to next multiple of 4
-          bool run_this = false;
-          for (int c : {-4, 0, 4})
-            if (target + c == static_cast<long long>(B)) { run_this = true; break; }
-          if (!run_this) return;
-
+          // For 64-bit keys: only run the dataset-specific value from get_high_bits_64
+          if constexpr (sizeof(KeyType) * CHAR_BIT == 64) {
+            if (B != get_high_bits_64(cfg.data_filename)) return;
+          }
+          // For 32-bit keys: run all values in the sequence
           auto run_for_loads = [&]<size_t L>() {
             auto run_for_simd = [&]<size_t S>() {
               auto run_for_rht = [&]<int R>() {
