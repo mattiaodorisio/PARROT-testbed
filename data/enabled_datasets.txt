@@ -10,11 +10,10 @@ mix_gauss_50M_uint32
 zipf_50M_uint32
 
 # Real world unit64
-books_200M_uint32
-books_800M_uint64
-fb_200M_uint64
-osm_cellids_800M_uint64
-wiki_ts_200M_uint64
+books_800M_uint64 entire
+fb_200M_uint64 entire
+osm_cellids_800M_uint64 entire
+wiki_ts_200M_uint64 entire
 
 # Synthetic uint64
 exponential_50M_uint64

@@ -71,10 +71,6 @@ function main() {
       download_file_zst wiki_ts_200M_uint64 4f1402b1c476d67f77d2da4955432f7d https://dataverse.harvard.edu/api/access/datafile/:persistentId?persistentId=doi:10.7910/DVN/JGVF9A/SVN8PI
    fi
    
-   if [ ! -f books_200M_uint32 ]; then
-      download_file_zst books_200M_uint32 9f3e578671e5c0348cdddc9c68946770 https://dataverse.harvard.edu/api/access/datafile/:persistentId?persistentId=doi:10.7910/DVN/JGVF9A/5YTV8K  
-   fi
-
    if [ ! -f books_800M_uint64 ]; then
       download_file_zst books_800M_uint64 8708eb3e1757640ba18dcd3a0dbb53bc https://www.dropbox.com/s/y2u3nbanbnbmg7n/books_800M_uint64.zst?dl=1
    fi
@@ -101,7 +97,6 @@ function shuffle_datasets() {
    cd data
    for f in \
       wiki_ts_200M_uint64 \
-      books_200M_uint32   \
       books_800M_uint64   \
       osm_cellids_800M_uint64 \
       fb_200M_uint64
