@@ -1227,6 +1227,44 @@ def split_directive_fields(body: str) -> List[str]:
     return fields
 
 
+def join_multiline_directives(content: str) -> str:
+    """
+    Join PLOT/MULTIPLOT directives that have been split across multiple lines.
+
+    A directive line that starts with '%% {{MULTIPLOT:' or '%% {{PLOT:' but does
+    not contain '}}' is continued by subsequent lines that begin with '%%' followed
+    by whitespace.  The '%%' prefix (and any leading whitespace after it) is stripped
+    from each continuation line before appending, so the caller can break the directive
+    at any point and indent freely:
+
+        %% {{MULTIPLOT:x,y,
+        %%   filter1|filter2,
+        %%   groupby,Title,Caption,Label}}
+    """
+    lines = content.split('\n')
+    result: List[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if re.match(r'^%% \{\{(MULTIPLOT|PLOT):', line) and '}}' not in line:
+            combined = line
+            i += 1
+            while i < len(lines):
+                cont = re.match(r'^%%\s+(.*)', lines[i])
+                if cont:
+                    combined += cont.group(1)
+                    i += 1
+                    if '}}' in combined:
+                        break
+                else:
+                    break
+            result.append(combined)
+        else:
+            result.append(line)
+            i += 1
+    return '\n'.join(result)
+
+
 def create_performance_plot(data: List[Dict], multiplot_template_path: str = None,
                           figure_template_path: str = None) -> str:
     """
@@ -1253,7 +1291,9 @@ def create_performance_plot(data: List[Dict], multiplot_template_path: str = Non
         raise FileNotFoundError(f"Multiplot template file not found: {multiplot_template_path}")
     except Exception as e:
         raise Exception(f"Error reading multiplot template file {multiplot_template_path}: {e}")
-    
+
+    template_content = join_multiline_directives(template_content)
+
     # Detect directive lines and split fields with a parenthesis-aware splitter so that
     # commas inside PIN(...) or similar modifiers are not mistaken for field separators.
     # Each entry is (full_line, x_col, y_col, filter_str, groupby_col, title, caption, label).
