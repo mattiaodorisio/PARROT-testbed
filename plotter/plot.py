@@ -831,7 +831,7 @@ def compact_axis_for_subfigure(axis_code: str) -> str:
     # Keep labels readable while reducing footprint.
     compact_axis = compact_axis.replace(
         '\\begin{axis}[',
-        '\\begin{axis}[\n    scale only axis=true,\n    tick label style={font=\\tiny},\n    label style={font=\\scriptsize},\n    title style={font=\\scriptsize},\n    xticklabel style={rotate=45, anchor=east},',
+        '\\begin{axis}[\n    scale only axis=true,\n    tick label style={font=\\normalsize},\n    label style={font=\\normalsize},\n    title style={font=\\normalsize},',
         1
     )
 
@@ -1182,11 +1182,6 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
     # such as {dataset_display_name} in multiplot-level captions.
     caption_filter_conditions = parse_filter(filters[0]) if filters else None
 
-    # Add caption and close figure
-    caption_text = substitute_caption_parameters(caption, caption_filter_conditions, data, x_col, y_col, groupby_col)
-    title_text = substitute_caption_parameters(title, caption_filter_conditions, data, x_col, y_col, groupby_col)
-    
-    latex_lines.append(f"\\caption{{{title_text}: {caption_text}}}")
     latex_lines.append(f"\\label{{fig:{label}}}")
     latex_lines.append("\\end{figure}")
     
@@ -1307,7 +1302,7 @@ def _process_template_content(data: List[Dict], template_content: str,
     for m in directive_detect.finditer(template_content):
         kind = m.group(1)
         fields = split_directive_fields(m.group(2))
-        if len(fields) == 7:
+        if len(fields) in (7, 8) and kind == 'MULTIPLOT' or len(fields) == 7 and kind == 'PLOT':
             # Keep the original matched line as placeholder; strip only for processing.
             parsed = (m.group(0),) + tuple(f.strip() for f in fields)
             if kind == 'MULTIPLOT':
@@ -1333,7 +1328,12 @@ def _process_template_content(data: List[Dict], template_content: str,
     
     # Process MULTIPLOT directives
     for match in multiplot_matches:
-        placeholder, x_col, y_col, filter_str, groupby_col, title, caption, label = match
+        if len(match) == 9:
+            placeholder, x_col, y_col, filter_str, groupby_col, title, caption, label, cols_per_row_str = match
+            cols_per_row = int(cols_per_row_str) if cols_per_row_str else 4
+        else:
+            placeholder, x_col, y_col, filter_str, groupby_col, title, caption, label = match
+            cols_per_row = 4
         
         # Parse aggregation from y_col
         agg_func, actual_y_col = parse_aggregation(y_col)
@@ -1365,7 +1365,8 @@ def _process_template_content(data: List[Dict], template_content: str,
         if has_required_cols and filters_valid:
             figure = create_multiplot_from_filters(
                 data, x_col, y_col, filter_str, groupby_col,
-                title, caption, label, figure_template_path
+                title, caption, label, figure_template_path,
+                cols_per_row=cols_per_row
             )
             result_content = result_content.replace(placeholder, figure)
         else:

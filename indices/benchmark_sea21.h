@@ -85,25 +85,27 @@ void benchmark_sea21(const bench_config& config,
   constexpr uint8_t kw = static_cast<uint8_t>(sizeof(KeyType) * 8);
 
   for (const auto& wl : workloads) {
-    run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
-        sea::DynIndex<uint64_t, 24, sea::bucket_bv<uint64_t, 24>>,
-        FixedString{"SEA21"}, FixedString{"bv-24"}, true>>(
-        config, key_values, wl, shifting_key_values);
+    if constexpr (std::is_same_v<KeyType, uint32_t>) {
+      run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
+          sea::DynIndex<uint64_t, 24, sea::bucket_bv<uint64_t, 24>>,
+          FixedString{"SEA21"}, FixedString{"bv-24"}, true>>(
+          config, key_values, wl, shifting_key_values);
 
-    run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
-        sea::DynIndex<uint64_t, 20, sea::bucket_hybrid<uint64_t, 20>>,
-        FixedString{"SEA21"}, FixedString{"hybrid-20"}, true>>(
-        config, key_values, wl, shifting_key_values);
+      run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
+          sea::DynIndex<uint64_t, 20, sea::bucket_hybrid<uint64_t, 20>>,
+          FixedString{"SEA21"}, FixedString{"hybrid-20"}, true>>(
+          config, key_values, wl, shifting_key_values);
 
-    run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
-        sea::DynIndexMap<uint64_t, 24, sea::map_bucket_bv<uint64_t, 24>>,
-        FixedString{"SEA21-Map"}, FixedString{"bv-24"}, true>>(
-        config, key_values, wl, shifting_key_values);
+      run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
+          sea::DynIndexMap<uint64_t, 24, sea::map_bucket_bv<uint64_t, 24>>,
+          FixedString{"SEA21-Map"}, FixedString{"bv-24"}, true>>(
+          config, key_values, wl, shifting_key_values);
 
-    run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
-        sea::DynIndexMap<uint64_t, 20, sea::map_bucket_hybrid<uint64_t, 20>>,
-        FixedString{"SEA21-Map"}, FixedString{"hybrid-20"}, true>>(
-        config, key_values, wl, shifting_key_values);
+      run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
+          sea::DynIndexMap<uint64_t, 20, sea::map_bucket_hybrid<uint64_t, 20>>,
+          FixedString{"SEA21-Map"}, FixedString{"hybrid-20"}, true>>(
+          config, key_values, wl, shifting_key_values);
+    }
 
     run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
         sea::YFastTrie<sea::yfast_bucket<uint64_t, 9, 2>, kw>,

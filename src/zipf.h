@@ -1,67 +1,71 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
+#pragma once
 
-// Zipf generator, inspired by
-// https://github.com/brianfrankcooper/YCSB/blob/master/core/src/main/java/site/ycsb/generator/ScrambledZipfianGenerator.java
-// https://github.com/brianfrankcooper/YCSB/blob/master/core/src/main/java/site/ycsb/generator/ZipfianGenerator.java
+/**
+ *
+ * Adapted from
+ * https://stackoverflow.com/questions/9983239/how-to-generate-zipf-distributed-numbers-efficiently
+ *
+ * NOTE: this function has a memory leak due to the static allocation of sum_probs,
+ * but since this programs ends immediatly after calling it it is not a problem in practice.
+ */
+template <class ForwardIt>
+void zipf_distr(ForwardIt first_, const ForwardIt last_, double skew = 0.75,
+                     size_t cardinality = 1e8) {
+  typedef typename std::iterator_traits<ForwardIt>::value_type T;
+  const size_t size = std::distance(first_, last_);
 
-class ScrambledZipfianGenerator {
- public:
-  static constexpr double ZETAN = 26.46902820178302;
-  static constexpr double ZIPFIAN_CONSTANT = 0.99;
+  srand(42);
 
-  int num_keys_;
-  double alpha_;
-  double eta_;
-  std::mt19937_64 gen_;
-  std::uniform_real_distribution<double> dis_;
+  // Start generating numbers
+  for (size_t i = 0; i < size; ++i) {
+    static bool first = true;  // Static first time flag
+    static double c = 0;       // Normalization constant
+    static double *sum_probs;  // Pre-calculated sum of probabilities
 
-  explicit ScrambledZipfianGenerator(int num_keys, uint64_t rng_seed = std::random_device{}())
-      : num_keys_(num_keys), gen_(rng_seed), dis_(0, 1) {
-    double zeta2theta = zeta(2);
-    alpha_ = 1. / (1. - ZIPFIAN_CONSTANT);
-    eta_ = (1 - std::pow(2. / num_keys_, 1 - ZIPFIAN_CONSTANT)) /
-           (1 - zeta2theta / ZETAN);
-  }
+    // Compute normalization constant on first call only
+    if (first) {
+      for (size_t i = 1; i <= cardinality; ++i)
+        c = c + (1.0 / pow((double)i, skew));
+      c = 1.0 / c;
 
-  int nextValue() {
-    double u = dis_(gen_);
-    double uz = u * ZETAN;
-
-    int ret;
-    if (uz < 1.0) {
-      ret = 0;
-    } else if (uz < 1.0 + std::pow(0.5, ZIPFIAN_CONSTANT)) {
-      ret = 1;
-    } else {
-      ret = (int)(num_keys_ * std::pow(eta_ * u - eta_ + 1, alpha_));
+      sum_probs = (double *)malloc((cardinality + 1) * sizeof(*sum_probs));
+      sum_probs[0] = 0;
+      for (size_t i = 1; i <= cardinality; ++i) {
+        sum_probs[i] = sum_probs[i - 1] + c / pow((double)i, skew);
+      }
+      first = false;
     }
 
-    ret = fnv1a(ret) % num_keys_;
-    return ret;
+    // Pull a uniform random number (0 < z < 1)
+    double z;
+    do {
+      z = 1. * rand() / RAND_MAX;
+    } while ((z == 0) || (z == 1));
+
+    // Map z to the value
+    size_t low = 1, high = cardinality, mid;
+    T zipf_value = 0;  // Computed exponential value to be returned
+    do {
+      mid = floor((low + high) / 2);
+
+      if (sum_probs[mid] >= z && sum_probs[mid - 1] < z) {
+        zipf_value = mid;
+        break;
+      } else if (sum_probs[mid] >= z) {
+        high = mid - 1;
+      } else {
+        low = mid + 1;
+      }
+    } while (low <= high);
+
+    first_[i] = zipf_value;
   }
 
-  double zeta(long n) {
-    double sum = 0.0;
-    for (long i = 0; i < n; i++) {
-      sum += 1 / std::pow(i + 1, ZIPFIAN_CONSTANT);
+  // Scale values to fit in the range of T
+  if (cardinality < std::numeric_limits<T>::max()) {
+    double scale = static_cast<double>(std::numeric_limits<T>::max()) / cardinality;
+    for (ForwardIt it = first_; it != last_; ++it) {
+      *it = static_cast<T>(*it * scale);
     }
-    return sum;
   }
-
-  // FNV hash from https://create.stephan-brumme.com/fnv-hash/
-  static const uint32_t PRIME = 0x01000193;  //   16777619
-  static const uint32_t SEED = 0x811C9DC5;   // 2166136261
-  /// hash a single byte
-  inline uint32_t fnv1a(unsigned char oneByte, uint32_t hash = SEED) {
-    return (oneByte ^ hash) * PRIME;
-  }
-  /// hash a 32 bit integer (four bytes)
-  inline uint32_t fnv1a(int fourBytes, uint32_t hash = SEED) {
-    const unsigned char* ptr = (const unsigned char*)&fourBytes;
-    hash = fnv1a(*ptr++, hash);
-    hash = fnv1a(*ptr++, hash);
-    hash = fnv1a(*ptr++, hash);
-    return fnv1a(*ptr, hash);
-  }
-};
+}

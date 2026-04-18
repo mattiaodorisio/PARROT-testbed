@@ -364,10 +364,11 @@ std::vector<T> generate_mix_of_gauss_distr(size_t size, UniqueMode unique_mode) 
 template<typename T>
 std::vector<T> generate_zipf_distr(size_t size) {
     std::vector<T> data(size);
-    ScrambledZipfianGenerator zipf_gen(size);
-    for (size_t i = 0; i < size; ++i) {
-      data[i] = static_cast<T>(zipf_gen.nextValue());
-    }
+    zipf_distr(data.begin(), data.end(), 0.99, 1e8);
+
+    // Only adjustment method for the zipf
+    make_unique_adjusted_samples(data, std::numeric_limits<T>::max(), 106);
+
     return data;
 }
 

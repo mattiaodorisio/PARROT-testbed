@@ -37,14 +37,15 @@ def shuffle_dataset(infile: str, outfile: str) -> None:
             f.read(int(size) * np.dtype(dtype).itemsize), dtype=dtype
         ).copy()
 
+    data = np.unique(data)
     rng = np.random.default_rng(42)
     rng.shuffle(data)
 
     with open(outfile, "wb") as f:
-        np.array([size], dtype=np.uint64).tofile(f)
+        np.array([len(data)], dtype=np.uint64).tofile(f)
         data.tofile(f)
 
-    print(f"Shuffled {size} {dtype} elements  ->  {outfile}")
+    print(f"Deduplicated ({size} -> {len(data)}) and shuffled {dtype} elements  ->  {outfile}")
 
 
 if __name__ == "__main__":

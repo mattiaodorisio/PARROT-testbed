@@ -30,6 +30,8 @@ while IFS= read -r line; do
     entire_flag=""
     if grep -qw "entire" <<< "$line"; then
       entire_flag="--entire_dataset"
+    else
+      entire_flag="--min-size=15 --max-size=25"
     fi
 
     if [ ! -f "../data/$dataset" ]; then

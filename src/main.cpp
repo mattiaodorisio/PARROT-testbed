@@ -102,7 +102,7 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
     }
   }
 
-  for (size_t current_init_key_size : sizes_to_run) {
+  for (const size_t current_init_key_size : sizes_to_run) {
     std::cout << "\n=== Testing with " << current_init_key_size << " initial keys ===" << std::endl;
 
     // key_pairs_kv: key → random payload  (KEY_VALUE mode: ALEX, LIPP, PGM-Dynamic, DeLI-Payload)
@@ -111,6 +111,10 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
     //                                      the expected successor key stored as payload)
     std::vector<std::pair<KeyType, PayloadType>> key_pairs_kv(current_init_key_size);
     std::vector<std::pair<KeyType, PayloadType>> key_pairs_ps(current_init_key_size);
+
+    // Build a full sorted shifting stream: initial prefix + append suffix
+    std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_kv;
+    std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_ps;
     
     {
       std::vector<KeyType> sorted_keys(keys.begin(), keys.begin() + current_init_key_size);
@@ -122,37 +126,35 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
 
         key_pairs_ps[i].first = key_pairs_ps[i].second = sorted_keys[i];
       }
-    }
 
-    // Build a full sorted shifting stream: initial prefix + append suffix
-    std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_kv = key_pairs_kv;
-    std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_ps = key_pairs_ps;
-    shifting_key_pairs_kv.reserve(current_init_key_size + required_append_keys);
-    shifting_key_pairs_ps.reserve(current_init_key_size + required_append_keys);
-    if (keys.size() >= current_init_key_size && required_append_keys > 0) {
-      std::unordered_set<KeyType> seen_shifting_keys;
-      seen_shifting_keys.reserve(current_init_key_size + required_append_keys);
-      for (const auto& kv : key_pairs_kv) {
-        seen_shifting_keys.insert(kv.first);
-      }
+      // Build a full sorted shifting stream: initial prefix + append suffix
+      shifting_key_pairs_kv = key_pairs_kv;
+      shifting_key_pairs_ps = key_pairs_ps;
+      shifting_key_pairs_kv.reserve(current_init_key_size + required_append_keys);
+      shifting_key_pairs_ps.reserve(current_init_key_size + required_append_keys);
+      if (keys.size() >= current_init_key_size && required_append_keys > 0) {
+        std::unordered_set<KeyType> added_keys;
+        added_keys.reserve(required_append_keys);
 
-      for (size_t i = current_init_key_size; i < keys.size(); ++i) {
-        if (shifting_key_pairs_kv.size() >= current_init_key_size + required_append_keys) {
-          break;
+        for (size_t i = current_init_key_size; i < keys.size(); ++i) {
+          if (shifting_key_pairs_kv.size() >= current_init_key_size + required_append_keys) {
+            break;
+          }
+          const KeyType key = keys[i];
+          if (std::binary_search(sorted_keys.begin(), sorted_keys.end(), key) || 
+              !added_keys.insert(key).second) {
+            continue;
+          }
+          shifting_key_pairs_kv.emplace_back(key, static_cast<PayloadType>(rand_gen()));
+          shifting_key_pairs_ps.emplace_back(key, key);
         }
-        const KeyType key = keys[i];
-        if (!seen_shifting_keys.insert(key).second) {
-          continue;
-        }
-        shifting_key_pairs_kv.emplace_back(key, static_cast<PayloadType>(rand_gen()));
-        shifting_key_pairs_ps.emplace_back(key, key);
       }
     }
 
     // Do NOT sort shifting_key_pairs_kv and shifting_key_pairs_ps
     // The first init_key_size are already sorted (they are bulk loaded)
     // The rest is as it appears in the file as expected
-
+    
     for (const auto& index_name : index_names) {
       if (!allowed_indices.empty() && !allowed_indices.count(index_name)) continue;
       std::cout << "--- Running workloads for " << index_name << " (init_keys=" << current_init_key_size << ") ---" << std::endl;
