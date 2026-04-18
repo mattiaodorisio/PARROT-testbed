@@ -226,7 +226,14 @@ void benchmark_deli_dynamic(const bench_config& config,
           if constexpr (sizeof(KeyType) * CHAR_BIT == 64) {
             if (B != get_high_bits_64(cfg.data_filename)) return;
           }
-          // For 32-bit keys: run all values in the sequence
+          // For 32-bit keys: skip 0 high bits for non-uniform datasets
+          if constexpr (sizeof(KeyType) * CHAR_BIT == 32 && B == 0) {
+            if (cfg.data_filename.find("uniform") == std::string::npos) return;
+          }
+          // For 32-bit keys: skip 4 high bits for mix_gauss datasets
+          if constexpr (sizeof(KeyType) * CHAR_BIT == 32 && B <= 8) {
+            if (cfg.data_filename.find("mix_gauss") != std::string::npos) return;
+          }
           auto run_for_loads = [&]<size_t L>() {
             auto run_for_simd = [&]<size_t S>() {
               auto run_for_rht = [&]<int R>() {
@@ -321,7 +328,14 @@ void benchmark_deli_static(const bench_config& config,
           if constexpr (sizeof(KeyType) * CHAR_BIT == 64) {
             if (B != get_high_bits_64(cfg.data_filename)) return;
           }
-          // For 32-bit keys: run all values in the sequence
+          // For 32-bit keys: skip 0 high bits for non-uniform datasets
+          if constexpr (sizeof(KeyType) * CHAR_BIT == 32 && B == 0) {
+            if (cfg.data_filename.find("uniform") == std::string::npos) return;
+          }
+          // For 32-bit keys: skip 4 high bits for mix_gauss datasets
+          if constexpr (sizeof(KeyType) * CHAR_BIT == 32 && B <= 8) {
+            if (cfg.data_filename.find("mix_gauss") != std::string::npos) return;
+          }
           auto run_for_loads = [&]<size_t L>() {
             auto run_for_simd = [&]<size_t S>() {
               auto run_for_rht = [&]<int R>() {
