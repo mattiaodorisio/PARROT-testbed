@@ -95,7 +95,7 @@ void benchmark_swix(const bench_config& config,
                     const std::vector<std::pair<KeyType, PayloadType>>& shifting_key_pairs) {
     const size_t window = key_pairs.size();
 
-    
+#ifdef EXTENDED_SWIX
     if (window == (1 << 7)) {
         deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 7)>>(
             config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
@@ -108,72 +108,51 @@ void benchmark_swix(const bench_config& config,
     } else if (window == (1 << 10)) {
         deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 10)>>(
             config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-#ifndef FAST_COMPILE
     } else if (window == (1 << 11)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 11)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 11)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
     } else if (window == (1 << 12)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 12)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 12)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
     } else if (window == (1 << 13)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 13)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 13)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
     } else if (window == (1 << 14)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 14)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 15)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 15)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 16)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 16)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 17)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 17)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 18)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 18)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 19)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 19)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 20)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 20)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 21)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 21)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 22)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 22)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 23)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 23)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 24)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 24)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 25)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 25)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 26)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 26)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 27)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 27)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 28)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 28)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 29)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 29)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-    } else if (window == (1 << 30)) {
-    deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 30)>>(
-        config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
-#endif
-    } else {
-        // No benchmark available
-        return;
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 14)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
     }
+#endif
+    if (window == (1 << 15)) {
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 15)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+    }
+#ifndef FAST_COMPILE
+    if (window == (1 << 16)) {
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 16)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+    } else if (window == (1 << 17)) {
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 17)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+    } else if (window == (1 << 18)) {
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 18)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+    } else if (window == (1 << 19)) {
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 19)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+    } else if (window == (1 << 20)) {
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 20)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+    } else if (window == (1 << 21)) {
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 21)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+    } else if (window == (1 << 22)) {
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 22)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+    } else if (window == (1 << 23)) {
+        deli_testbed::run_benchmark<BenchmarkSWIX<KeyType, PayloadType, (1 << 23)>>(
+            config, key_pairs, Workload::SHIFTING, shifting_key_pairs);
+    }
+#endif // FAST_COMPILE
 }
 
 }  // namespace deli_testbed

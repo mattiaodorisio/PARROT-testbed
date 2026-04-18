@@ -52,11 +52,10 @@
 %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
 %%             dataset_name=uniform_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=uniform_50M_uint32;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=uniform_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
 %%             dataset_name=uniform_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=uniform_50M_uint32;workload_type=DELETE_EXISTING;init_num_keys>=32768|
-%%             dataset_name=uniform_50M_uint32;workload_type=MIXED;init_num_keys>=32768|
-%%             dataset_name=uniform_50M_uint32;workload_type=SHIFTING;init_num_keys>=32768|
-%%             dataset_name=uniform_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768,
+%%             dataset_name=uniform_50M_uint32;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
 %% PIN(index_variant:
 %%             DeLI-Static=GFB\;1\;70\;BI\;4\;512,
@@ -68,7 +67,7 @@
 %%             SEA21-YFast=sl-bw9,
 %%             SEA21=hybrid-20,
 %%             SEA21-Map=hybrid-20
-%% ),Time, {dataset_display_name} dataset,index_name}}
+%% ),Time, {dataset_display_name} dataset,index_name,3}}
 \end{document}
 
 %% OUTPUT: normal
@@ -76,11 +75,11 @@
 %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
 %%             dataset_name=normal_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=normal_50M_uint32;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=normal_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
 %%             dataset_name=normal_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=normal_50M_uint32;workload_type=DELETE_EXISTING;init_num_keys>=32768|
 %%             dataset_name=normal_50M_uint32;workload_type=MIXED;init_num_keys>=32768|
-%%             dataset_name=normal_50M_uint32;workload_type=SHIFTING;init_num_keys>=32768|
-%%             dataset_name=normal_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768,
+%%             dataset_name=normal_50M_uint32;workload_type=SHIFTING;init_num_keys>=32768,
 %% index_name;
 %% PIN(index_variant:
 %%             DeLI-Static=GFB\;1\;70\;BI\;4\;512,
@@ -100,11 +99,10 @@
 %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
 %%             dataset_name=exponential_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=exponential_50M_uint32;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=exponential_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
 %%             dataset_name=exponential_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=exponential_50M_uint32;workload_type=DELETE_EXISTING;init_num_keys>=32768|
-%%             dataset_name=exponential_50M_uint32;workload_type=MIXED;init_num_keys>=32768|
-%%             dataset_name=exponential_50M_uint32;workload_type=SHIFTING;init_num_keys>=32768|
-%%             dataset_name=exponential_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768,
+%%             dataset_name=exponential_50M_uint32;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
 %% PIN(index_variant:
 %%             DeLI-Static=GFB\;1\;70\;BI\;4\;512,
@@ -116,7 +114,7 @@
 %%             SEA21-YFast=sl-bw9,
 %%             SEA21=hybrid-20,
 %%             SEA21-Map=hybrid-20
-%% ),Time, {dataset_display_name} dataset,index_name}}
+%% ),Time, {dataset_display_name} dataset,index_name,3}}
 \end{document}
 
 %% OUTPUT: mix_gauss
@@ -124,11 +122,10 @@
 %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
 %%             dataset_name=mix_gauss_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=mix_gauss_50M_uint32;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=mix_gauss_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
 %%             dataset_name=mix_gauss_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=mix_gauss_50M_uint32;workload_type=DELETE_EXISTING;init_num_keys>=32768|
-%%             dataset_name=mix_gauss_50M_uint32;workload_type=MIXED;init_num_keys>=32768|
-%%             dataset_name=mix_gauss_50M_uint32;workload_type=SHIFTING;init_num_keys>=32768|
-%%             dataset_name=mix_gauss_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768,
+%%             dataset_name=mix_gauss_50M_uint32;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
 %% PIN(index_variant:
 %%             DeLI-Static=GFB\;1\;70\;BI\;4\;512,
@@ -140,7 +137,7 @@
 %%             SEA21-YFast=sl-bw9,
 %%             SEA21=hybrid-20,
 %%             SEA21-Map=hybrid-20
-%% ),Time, {dataset_display_name} dataset,index_name}}
+%% ),Time, {dataset_display_name} dataset,index_name,3}}
 \end{document}
 
 %% OUTPUT: summary_uint64
@@ -172,14 +169,13 @@
 %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
 %%             dataset_name=uniform_50M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=uniform_50M_uint64;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=uniform_50M_uint64;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
 %%             dataset_name=uniform_50M_uint64;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=uniform_50M_uint64;workload_type=DELETE_EXISTING;init_num_keys>=32768|
-%%             dataset_name=uniform_50M_uint64;workload_type=MIXED;init_num_keys>=32768|
-%%             dataset_name=uniform_50M_uint64;workload_type=SHIFTING;init_num_keys>=32768|
-%%             dataset_name=uniform_50M_uint64;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768,
+%%             dataset_name=uniform_50M_uint64;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
 %% BEST(index_variant
-%% ),Time, {dataset_display_name} dataset,index_name}}
+%% ),Time, {dataset_display_name} dataset,index_name,3}}
 \end{document}
 
 %% OUTPUT: normal_uint64
@@ -187,11 +183,11 @@
 %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
 %%             dataset_name=normal_50M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=normal_50M_uint64;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=normal_50M_uint64;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
 %%             dataset_name=normal_50M_uint64;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=normal_50M_uint64;workload_type=DELETE_EXISTING;init_num_keys>=32768|
 %%             dataset_name=normal_50M_uint64;workload_type=MIXED;init_num_keys>=32768|
-%%             dataset_name=normal_50M_uint64;workload_type=SHIFTING;init_num_keys>=32768|
-%%             dataset_name=normal_50M_uint64;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768,
+%%             dataset_name=normal_50M_uint64;workload_type=SHIFTING;init_num_keys>=32768,
 %% index_name;
 %% BEST(index_variant
 %% ),Time, {dataset_display_name} dataset,index_name}}
@@ -202,14 +198,13 @@
 %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
 %%             dataset_name=exponential_50M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=exponential_50M_uint64;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=exponential_50M_uint64;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
 %%             dataset_name=exponential_50M_uint64;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=exponential_50M_uint64;workload_type=DELETE_EXISTING;init_num_keys>=32768|
-%%             dataset_name=exponential_50M_uint64;workload_type=MIXED;init_num_keys>=32768|
-%%             dataset_name=exponential_50M_uint64;workload_type=SHIFTING;init_num_keys>=32768|
-%%             dataset_name=exponential_50M_uint64;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768,
+%%             dataset_name=exponential_50M_uint64;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
 %% BEST(index_variant
-%% ),Time, {dataset_display_name} dataset,index_name}}
+%% ),Time, {dataset_display_name} dataset,index_name,3}}
 \end{document}
 %%             DeLI-Dynamic=N\;1\;70\;BI\;4\;512,
 %%             DeLI-Static-Payload=SI\;0\;70\;BI\;4\;512,
@@ -227,12 +222,11 @@
 %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
 %%             dataset_name=mix_gauss_50M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=mix_gauss_50M_uint64;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=mix_gauss_50M_uint64;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
 %%             dataset_name=mix_gauss_50M_uint64;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=mix_gauss_50M_uint64;workload_type=DELETE_EXISTING;init_num_keys>=32768|
-%%             dataset_name=mix_gauss_50M_uint64;workload_type=MIXED;init_num_keys>=32768|
-%%             dataset_name=mix_gauss_50M_uint64;workload_type=SHIFTING;init_num_keys>=32768|
-%%             dataset_name=mix_gauss_50M_uint64;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768,
+%%             dataset_name=mix_gauss_50M_uint64;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
 %% BEST(index_variant
-%% ),Time, {dataset_display_name} dataset,index_name}}
+%% ),Time, {dataset_display_name} dataset,index_name,3}}
 \end{document}
