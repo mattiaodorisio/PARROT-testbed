@@ -117,6 +117,27 @@ def reset_color_mapping():
     _MARKER_INDEX = 0
 
 
+_LINEBREAK = '\x00'
+
+def format_legend_label(label: str) -> str:
+    """Format a legend label for display: trim the last semicolon-separated field when
+    there are 6 fields, and replace 'DeLI' with 'PARROT'.
+    Long labels get a line-break marker before ' (' which is resolved to \\\\ after escaping."""
+    parts = label.split(';')
+    if len(parts) == 6:
+        label = ';'.join(parts[:5]) + ')'
+    # if len(label) > 20:
+    #     label = label.replace(' (', _LINEBREAK + '(')
+    return label.replace('DeLI', 'PARROT').replace("Dynamic", "Dyn").replace("Static", "Stat").replace("Payload", "PL")
+
+
+def escape_legend_label(label: str) -> str:
+    """Format, escape, then resolve line-break markers to LaTeX \\\\."""
+    formatted = format_legend_label(label)
+    parts = formatted.split(_LINEBREAK)
+    return '\\\\'.join(escape_latex_text(p) for p in parts)
+
+
 def escape_latex_text(value) -> str:
     """Escape LaTeX special characters in text content."""
     text = str(value)
@@ -643,10 +664,14 @@ def generate_pgfplot_data(
                 and is_valid_plot_value(row[x_col]) and is_valid_plot_value(row[y_col])
             ]
             if y_soft_max is not None and y_soft_max > 0:
-                # Keep slightly out-of-range values, but drop extreme overshoots
-                # that can trigger TeX "Dimension too large" in pgfplots.
+                # Clip values that would trigger TeX "Dimension too large" to the
+                # safe cap instead of dropping them, so the line visibly shoots off
+                # the top of the plot rather than connecting through a gap.
                 soft_cap = y_soft_max * y_soft_max_ratio
-                valid_data = [row for row in valid_data if float(row[y_col]) <= soft_cap]
+                valid_data = [
+                    {**row, y_col: soft_cap} if float(row[y_col]) > soft_cap else row
+                    for row in valid_data
+                ]
             if not valid_data:
                 continue
                 
@@ -676,7 +701,8 @@ def generate_pgfplot_data(
             if best_aggregation and best_aggregation[0].upper() in ('BEST', 'PIN'):
                 variant_col = best_aggregation[1]
                 if valid_data and variant_col in valid_data[0]:
-                    marker_key = str(valid_data[0][variant_col])
+                    _mv = valid_data[0][variant_col]
+                    marker_key = str(_mv) if _mv and str(_mv).lower() != 'none' else str(group_value)
                 else:
                     marker_key = str(group_value)
             else:
@@ -693,7 +719,7 @@ def generate_pgfplot_data(
             
             data_lines.append("};")
             if max_legend_entry > 0:
-                safe_legend_entry = escape_latex_text(legend_entry)
+                safe_legend_entry = escape_legend_label(legend_entry)
                 data_lines.append(f"\\addlegendentry{{{safe_legend_entry}}}")
                 max_legend_entry -= 1
             data_lines.append("")
@@ -707,7 +733,10 @@ def generate_pgfplot_data(
         ]
         if y_soft_max is not None and y_soft_max > 0:
             soft_cap = y_soft_max * y_soft_max_ratio
-            valid_data = [row for row in valid_data if float(row[y_col]) <= soft_cap]
+            valid_data = [
+                {**row, y_col: soft_cap} if float(row[y_col]) > soft_cap else row
+                for row in valid_data
+            ]
         if valid_data:
             valid_data.sort(key=lambda row: row[x_col])
             
@@ -877,8 +906,8 @@ def build_shared_legend(series_names: List[str]) -> str:
         color = get_series_color(color_key)
         marker_key = resolve_series_marker_key(series_name)
         marker = get_series_marker(marker_key)
-        legend_lines.append(f"\\addlegendimage{{color={color}, mark={marker}}}")
-        legend_lines.append(f"\\addlegendentry{{{escape_latex_text(series_name)}}}")
+        legend_lines.append(f"\\addlegendimage{{color={color}, mark={marker}, mark size=1.1pt}}")
+        legend_lines.append(f"\\addlegendentry{{{escape_legend_label(series_name)}}}")
 
     legend_lines.extend([
         "\\end{axis}",
