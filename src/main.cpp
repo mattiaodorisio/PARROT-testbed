@@ -191,8 +191,10 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       else if (index_name == "SEA21") {
         deli_testbed::benchmark_sea21<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
       }
-      else if (index_name == "RS" && config.entire_dataset) {
-        deli_testbed::benchmark_rs<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+      else if (index_name == "RS") {
+        if (config.entire_dataset) {
+          deli_testbed::benchmark_rs<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+        }
       }
       else if (index_name == "PGM-Static") {
         deli_testbed::benchmark_pgm_static<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
@@ -206,12 +208,16 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       else if (index_name == "PGM-Dynamic-PS") {
         deli_testbed::benchmark_pgm_dynamic_ps<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
       } 
-      else if (index_name == "RMI" && config.entire_dataset) {
-        deli_testbed::benchmark_rmi<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+      else if (index_name == "RMI") {
+        if (config.entire_dataset) {
+          deli_testbed::benchmark_rmi<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+        }
       }
 #ifdef ENABLE_SWIX
-      else if (index_name == "SWIX" && config.data_filename.find("USA") != std::string::npos) {
-        deli_testbed::benchmark_swix<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+      else if (index_name == "SWIX") {
+        if (config.data_filename.find("USA") != std::string::npos) {
+          deli_testbed::benchmark_swix<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+        }
       }
 #endif
       else {
