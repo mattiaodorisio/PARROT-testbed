@@ -125,10 +125,15 @@ def format_legend_label(label: str) -> str:
     Long labels get a line-break marker before ' (' which is resolved to \\\\ after escaping."""
     parts = label.split(';')
     if len(parts) == 6:
-        label = ';'.join(parts[:5]) + ')'
+        label = ';'.join(parts[:4]) + ')'
     # if len(label) > 20:
     #     label = label.replace(' (', _LINEBREAK + '(')
-    return label.replace('DeLI', 'PARROT').replace("Dynamic", "Dyn").replace("Static", "Stat").replace("Payload", "PL")
+    return (label.replace('DeLI', 'PARROT')
+        .replace("Dynamic", "Dyn")
+        .replace("Static", "Stat")
+        .replace("Payload", "PL")
+        .replace("SEA21-YFast", "YFastTrie")
+        .replace("GFB", "GF"))
 
 
 def escape_legend_label(label: str) -> str:
@@ -389,7 +394,7 @@ def select_pinned_variant(data: List[Dict], primary_groupby_col: str, variant_co
     for primary_key, group_rows in primary_groups.items():
         if primary_key in pin_map:
             pinned = pin_map[primary_key]
-            selected = [r for r in group_rows if str(r.get(variant_col, '')) == pinned]
+            selected = [r for r in group_rows if pinned in str(r.get(variant_col, ''))]
             if selected:
                 print(f"Pinned variant for {primary_key}: {pinned}")
                 result_data.extend(selected)
@@ -678,35 +683,37 @@ def generate_pgfplot_data(
             # Sort by x column
             valid_data.sort(key=lambda row: row[x_col])
             
-            # Determine legend entry — include variant when BEST or PIN selects one
-            if best_aggregation and best_aggregation[0].upper() in ('BEST', 'PIN'):
-                variant_col = best_aggregation[1]
-                if valid_data and variant_col in valid_data[0]:
-                    variant_value = valid_data[0][variant_col]
-                    if variant_value and str(variant_value).lower() != 'none':
-                        legend_entry = f"{group_value} ({variant_value})"
-                    else:
-                        legend_entry = group_value
+            # Determine legend entry and marker key — include variant when BEST or PIN selects one.
+            # For PIN, use the pinned string (not the full variant value) so that all series
+            # matched by the same pin string share the same legend label and marker.
+            if best_aggregation and best_aggregation[0].upper() == 'PIN':
+                pin_map_ba = best_aggregation[2]
+                pinned_str = pin_map_ba.get(str(group_value), '')
+                if pinned_str:
+                    legend_entry = f"{group_value} ({pinned_str})"
+                    marker_key = pinned_str
                 else:
                     legend_entry = group_value
-            else:
-                legend_entry = group_value
-
-            # Get consistent color for the series based on index_name only
-            series_color = get_series_color(str(group_value))
-
-            # Get consistent marker based on the index variant:
-            # - BEST/PIN case: use the selected variant value as the marker key
-            # - otherwise: use the group value itself (works when grouping by index_variant)
-            if best_aggregation and best_aggregation[0].upper() in ('BEST', 'PIN'):
+                    marker_key = str(group_value)
+            elif best_aggregation and best_aggregation[0].upper() == 'BEST':
                 variant_col = best_aggregation[1]
                 if valid_data and variant_col in valid_data[0]:
                     _mv = valid_data[0][variant_col]
-                    marker_key = str(_mv) if _mv and str(_mv).lower() != 'none' else str(group_value)
+                    if _mv and str(_mv).lower() != 'none':
+                        legend_entry = f"{group_value} ({_mv})"
+                        marker_key = str(_mv)
+                    else:
+                        legend_entry = group_value
+                        marker_key = str(group_value)
                 else:
+                    legend_entry = group_value
                     marker_key = str(group_value)
             else:
+                legend_entry = group_value
                 marker_key = str(group_value)
+
+            # Get consistent color for the series based on index_name only
+            series_color = get_series_color(str(group_value))
             series_marker = get_series_marker(marker_key)
 
             data_lines.append(f"% Data for {legend_entry}")
@@ -1091,11 +1098,12 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
     return result_content
 
 
-def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str, 
+def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
                                  filter_string: str, groupby_col: str,
                                  title: str, caption: str, label: str,
                                  figure_template_path: str = None,
-                                 cols_per_row: int = 4) -> str:
+                                 cols_per_row: int = 4,
+                                 row_titles: List[str] = None) -> str:
     """
     Create a multiplot figure with multiple subfigures, one for each filter.
     
@@ -1169,6 +1177,13 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
         # Add newline before starting new row (except first row)
         if i > 0 and i % cols_per_row == 0:
             latex_lines.append("")
+
+        # Insert row title at the start of each row, if provided
+        if i % cols_per_row == 0 and row_titles:
+            row_idx = i // cols_per_row
+            if row_idx < len(row_titles) and row_titles[row_idx]:
+                rule = "" if row_idx == 0 else "{\\color{lightgray}\\rule{\\linewidth}{0.2pt}}\\\\[-0.5ex]"
+                latex_lines.append(f"\\par\\noindent{rule}\\textbf{{{escape_latex_text(row_titles[row_idx])}}}\\par\\smallskip")
 
         # Keep y-axis label only on the leftmost subplot of each row.
         axis_code_for_slot = axis_code
@@ -1331,7 +1346,7 @@ def _process_template_content(data: List[Dict], template_content: str,
     for m in directive_detect.finditer(template_content):
         kind = m.group(1)
         fields = split_directive_fields(m.group(2))
-        if len(fields) in (7, 8) and kind == 'MULTIPLOT' or len(fields) == 7 and kind == 'PLOT':
+        if len(fields) in (7, 8, 9) and kind == 'MULTIPLOT' or len(fields) == 7 and kind == 'PLOT':
             # Keep the original matched line as placeholder; strip only for processing.
             parsed = (m.group(0),) + tuple(f.strip() for f in fields)
             if kind == 'MULTIPLOT':
@@ -1357,7 +1372,12 @@ def _process_template_content(data: List[Dict], template_content: str,
     
     # Process MULTIPLOT directives
     for match in multiplot_matches:
-        if len(match) == 9:
+        row_titles = []
+        if len(match) == 10:
+            placeholder, x_col, y_col, filter_str, groupby_col, title, caption, label, cols_per_row_str, row_titles_str = match
+            cols_per_row = int(cols_per_row_str) if cols_per_row_str else 4
+            row_titles = [t.strip() for t in row_titles_str.split('|')]
+        elif len(match) == 9:
             placeholder, x_col, y_col, filter_str, groupby_col, title, caption, label, cols_per_row_str = match
             cols_per_row = int(cols_per_row_str) if cols_per_row_str else 4
         else:
@@ -1395,7 +1415,8 @@ def _process_template_content(data: List[Dict], template_content: str,
             figure = create_multiplot_from_filters(
                 data, x_col, y_col, filter_str, groupby_col,
                 title, caption, label, figure_template_path,
-                cols_per_row=cols_per_row
+                cols_per_row=cols_per_row,
+                row_titles=row_titles,
             )
             result_content = result_content.replace(placeholder, figure)
         else:

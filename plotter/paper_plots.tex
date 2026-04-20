@@ -35,7 +35,7 @@
 %%             dataset_name=exponential_50M_uint32;workload_type=DELETE_EXISTING;init_num_keys>=32768,
 %% index_name;
 %% PIN(index_variant:
-%%             DeLI-Static=GFB\;1\;70\;BI\;4\;512,
+%%             DeLI-Static=GFB\;1\;70\;BI\;12\;512,
 %%             DeLI-Dynamic=N\;1\;60\;BI\;12\;512,
 %%             DeLI-Static-Payload=GFB\;0\;70\;BI\;12\;512,
 %%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;12\;512,
@@ -44,7 +44,7 @@
 %%             SEA21-YFast=sl-bw9,
 %%             SEA21=hybrid-20,
 %%             SEA21-Map=hybrid-20
-%% ),Time,,index_name}}
+%% ),Time,,index_name,4,Uniform dataset|Gaussian dataset|Mixture of 2 Gaussians dataset|Exponential dataset}}
 \end{document}
 
 %% OUTPUT: uniform
@@ -60,7 +60,7 @@
 %% PIN(index_variant:
 %%             DeLI-Static=GFB\;1\;70\;BI\;4\;512,
 %%             DeLI-Dynamic=N\;1\;70\;BI\;4\;512,
-%%             DeLI-Static-Payload=SI\;0\;70\;BI\;4\;512,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;4\;512,
 %%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;4\;512,
 %%             Static-PGM=8,
 %%             Dynamic-PGM=16,
@@ -84,7 +84,7 @@
 %% PIN(index_variant:
 %%             DeLI-Static=GFB\;1\;70\;BI\;4\;512,
 %%             DeLI-Dynamic=N\;1\;70\;BI\;4\;512,
-%%             DeLI-Static-Payload=SI\;0\;70\;BI\;4\;512,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;4\;512,
 %%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;4\;512,
 %%             Static-PGM=8,
 %%             Dynamic-PGM=16,
@@ -105,10 +105,10 @@
 %%             dataset_name=exponential_50M_uint32;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
 %% PIN(index_variant:
-%%             DeLI-Static=GFB\;1\;70\;BI\;4\;512,
-%%             DeLI-Dynamic=N\;1\;70\;BI\;4\;512,
-%%             DeLI-Static-Payload=SI\;0\;70\;BI\;4\;512,
-%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;4\;512,
+%%             DeLI-Static=GFB\;1\;70\;BI\;12\;512,
+%%             DeLI-Dynamic=N\;1\;70\;BI\;12\;512,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;12\;512,
+%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;12\;512,
 %%             Static-PGM=8,
 %%             Dynamic-PGM=16,
 %%             SEA21-YFast=sl-bw9,
@@ -128,7 +128,7 @@
 %%             dataset_name=mix_gauss_50M_uint32;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
 %% PIN(index_variant:
-%%             DeLI-Static=GFB\;1\;70\;BI\;4\;512,
+%%             DeLI-Static=GFB\;1\;70\;BI\;12\;512,
 %%             DeLI-Dynamic=N\;1\;60\;BI\;12\;512,
 %%             DeLI-Static-Payload=GFB\;0\;70\;BI\;12\;512,
 %%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;12\;512,
@@ -160,8 +160,15 @@
 %%             dataset_name=exponential_50M_uint64;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=exponential_50M_uint64;workload_type=DELETE_EXISTING;init_num_keys>=32768,
 %% index_name;
-%% BEST(index_variant
-%% ),Time,,index_name}}
+%% PIN(index_variant:
+%%             DeLI-Static=GFB\;1\;70\;BI,
+%%             DeLI-Dynamic=N\;1\;70\;BI,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI,
+%%             DeLI-Dynamic-Payload=N\;0\;70\;BI,
+%%             Static-PGM=8,
+%%             Dynamic-PGM=64,
+%%             SEA21-YFast=sl-bw9
+%% ),Time,,index_name,4,Uniform dataset|Gaussian dataset|Mixture of 2 Gaussians dataset|Exponential dataset}}
 \end{document}
 
 %% OUTPUT: uniform_uint64
@@ -174,7 +181,14 @@
 %%             dataset_name=uniform_50M_uint64;workload_type=DELETE_EXISTING;init_num_keys>=32768|
 %%             dataset_name=uniform_50M_uint64;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
-%% BEST(index_variant
+%% PIN(index_variant:
+%%             DeLI-Static=GFB\;1\;70\;BI\;16\;512,
+%%             DeLI-Dynamic=N\;1\;70\;BI\;16\;512,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;16\;512,
+%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;16\;512,
+%%             Static-PGM=8,
+%%             Dynamic-PGM=64,
+%%             SEA21-YFast=sl-bw9             
 %% ),Time, {dataset_display_name} dataset,index_name,3}}
 \end{document}
 
@@ -189,7 +203,14 @@
 %%             dataset_name=normal_50M_uint64;workload_type=MIXED;init_num_keys>=32768|
 %%             dataset_name=normal_50M_uint64;workload_type=SHIFTING;init_num_keys>=32768,
 %% index_name;
-%% BEST(index_variant
+%% PIN(index_variant:
+%%             DeLI-Static=GFB\;1\;70\;BI\;17\;512,
+%%             DeLI-Dynamic=N\;1\;70\;BI\;17\;512,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;17\;512,
+%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;17\;512,
+%%             Static-PGM=8,
+%%             Dynamic-PGM=16,
+%%             SEA21-YFast=sl-bw9   
 %% ),Time, {dataset_display_name} dataset,index_name}}
 \end{document}
 
@@ -203,18 +224,15 @@
 %%             dataset_name=exponential_50M_uint64;workload_type=DELETE_EXISTING;init_num_keys>=32768|
 %%             dataset_name=exponential_50M_uint64;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
-%% BEST(index_variant
-%% ),Time, {dataset_display_name} dataset,index_name,3}}
-\end{document}
-%%             DeLI-Dynamic=N\;1\;70\;BI\;4\;512,
-%%             DeLI-Static-Payload=SI\;0\;70\;BI\;4\;512,
-%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;4\;512,
+%% PIN(index_variant:
+%%             DeLI-Static=GFB\;1\;70\;BI\;17\;512,
+%%             DeLI-Dynamic=N\;1\;70\;BI\;17\;512,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;17\;512,
+%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;17\;512,
 %%             Static-PGM=8,
 %%             Dynamic-PGM=16,
-%%             SEA21-YFast=sl-bw9,
-%%             SEA21=hybrid-20,
-%%             SEA21-Map=hybrid-20
-%% ),Time, {dataset_display_name} dataset,index_name}}
+%%             SEA21-YFast=sl-bw9   
+%% ),Time, {dataset_display_name} dataset,index_name,3}}
 \end{document}
 
 %% OUTPUT: mix_gauss_uint64
@@ -227,6 +245,59 @@
 %%             dataset_name=mix_gauss_50M_uint64;workload_type=DELETE_EXISTING;init_num_keys>=32768|
 %%             dataset_name=mix_gauss_50M_uint64;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
-%% BEST(index_variant
+%% PIN(index_variant:
+%%             DeLI-Static=GFB\;1\;70\;BI\;17\;512,
+%%             DeLI-Dynamic=N\;1\;70\;BI\;17\;512,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;17\;512,
+%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;17\;512,
+%%             Static-PGM=8,
+%%             Dynamic-PGM=16,
+%%             SEA21-YFast=sl-bw9  
 %% ),Time, {dataset_display_name} dataset,index_name,3}}
+\end{document}
+
+%% OUTPUT: usa_uint32
+\begin{document}
+%% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
+%%             dataset_name=USA-road-d.USA;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=USA-road-d.USA;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
+%%             dataset_name=USA-road-d.USA;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
+%%             dataset_name=USA-road-d.USA;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
+%%             dataset_name=USA-road-d.USA;workload_type=DELETE_EXISTING;init_num_keys>=32768|
+%%             dataset_name=USA-road-d.USA;workload_type=MIXED;init_num_keys>=32768|
+%%             dataset_name=USA-road-d.USA;workload_type=SHIFTING;init_num_keys>=32768,
+%% index_name;
+%% PIN(index_variant:
+%%             DeLI-Static=GFB\;1\;60\;BI\;12\;512,
+%%             DeLI-Dynamic=N\;1\;60\;BI\;12\;512,
+%%             DeLI-Static-Payload=GFB\;0\;60\;BI\;12\;512,
+%%             DeLI-Dynamic-Payload=N\;0\;60\;BI\;12\;512,
+%%             Static-PGM=8,
+%%             Dynamic-PGM=256,
+%%             SEA21-YFast=sl-bw9,
+%%             SEA21=hybrid-20,
+%%             SEA21-Map=hybrid-20
+%% ),Time, {dataset_display_name} dataset,index_name,4}}
+\end{document}
+
+%% OUTPUT: usa_uint64
+\begin{document}
+%% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
+%%             dataset_name=USA-road-d.USA.co;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=USA-road-d.USA.co;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
+%%             dataset_name=USA-road-d.USA.co;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
+%%             dataset_name=USA-road-d.USA.co;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
+%%             dataset_name=USA-road-d.USA.co;workload_type=DELETE_EXISTING;init_num_keys>=32768|
+%%             dataset_name=USA-road-d.USA.co;workload_type=MIXED;init_num_keys>=32768|
+%%             dataset_name=USA-road-d.USA.co;workload_type=SHIFTING;init_num_keys>=32768,
+%% index_name;
+%% PIN(index_variant:
+%%             DeLI-Static=GFB\;1\;70\;BI\;54\;512,
+%%             DeLI-Dynamic=N\;1\;70\;BI\;54\;512,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;54\;512,
+%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;54\;512,
+%%             Static-PGM=8,
+%%             Dynamic-PGM=16,
+%%             SEA21-YFast=sl-bw9
+%% ),Time, {dataset_display_name} dataset,index_name,4}}
 \end{document}
