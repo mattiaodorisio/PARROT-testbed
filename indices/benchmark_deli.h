@@ -169,7 +169,8 @@ class BenchmarkDeLI
 template <bool has_payload, typename KeyType, typename PayloadType>
 void benchmark_deli_dynamic(const bench_config& config,
                     std::vector<std::pair<KeyType, PayloadType>>& key_values,
-                    const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values) {
+                    const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values,
+                    std::vector<std::pair<KeyType, PayloadType>> insert_delete_key_values = {}) {
   // Check if there are duplicates
   for (size_t i = 1; i < key_values.size(); ++i) {
     if (key_values[i].first == key_values[i - 1].first) {
@@ -201,11 +202,11 @@ void benchmark_deli_dynamic(const bench_config& config,
 
       static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
       constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
-                                 std::integer_sequence<unsigned int, 0, 4, 8, 12, 16, 20>,
+                                 std::integer_sequence<unsigned int, 12>,
                                  std::integer_sequence<unsigned int, 16, 17, 29, 49, 54>>{};
 
       constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70>{};
-      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2>{};
+      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1>{};
       constexpr auto rht_opts = std::integer_sequence<int, 0>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
       constexpr auto top_opts = std::integer_sequence<int, 1>{};
 
@@ -227,12 +228,8 @@ void benchmark_deli_dynamic(const bench_config& config,
             if (B != get_high_bits_64(cfg.data_filename)) return;
           }
           // For 32-bit keys: skip 0 high bits for non-uniform datasets
-          if constexpr (sizeof(KeyType) * CHAR_BIT == 32 && B == 0) {
-            if (cfg.data_filename.find("uniform") == std::string::npos) return;
-          }
-          // For 32-bit keys: skip 4 high bits for mix_gauss datasets
           if constexpr (sizeof(KeyType) * CHAR_BIT == 32 && B <= 8) {
-            if (cfg.data_filename.find("mix_gauss") != std::string::npos) return;
+            if (cfg.data_filename.find("uniform") == std::string::npos) return;
           }
           auto run_for_loads = [&]<size_t L>() {
             auto run_for_simd = [&]<size_t S>() {
@@ -264,6 +261,63 @@ void benchmark_deli_dynamic(const bench_config& config,
     }
 #endif // FAST_COMPILE
 }
+  if (!insert_delete_key_values.empty()) {
+#ifdef FAST_COMPILE
+    if constexpr (sizeof(KeyType) * CHAR_BIT == 32)
+      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, 10>>(config, insert_delete_key_values, INSERT_DELETE);
+#endif
+#ifndef FAST_COMPILE
+    if (config.pareto) {
+      static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
+      constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
+                                 std::integer_sequence<unsigned int, 12>,
+                                 std::integer_sequence<unsigned int, 16, 17, 29, 49, 54>>{};
+      constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70>{};
+      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1>{};
+      constexpr auto rht_opts = std::integer_sequence<int, 0>{};
+      constexpr auto top_opts = std::integer_sequence<int, 1>{};
+
+      auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
+          std::integer_sequence<unsigned int, bits...>,
+          std::integer_sequence<size_t, loads...>,
+          std::integer_sequence<size_t, simd_unrolled...>,
+          std::integer_sequence<int, rht_optimizations...>,
+          std::integer_sequence<int, top_optimizations...>,
+          const bench_config& cfg,
+          std::vector<std::pair<KeyType, PayloadType>>& kv) {
+
+        auto run_for_bits = [&]<unsigned int B>() {
+          if constexpr (sizeof(KeyType) * CHAR_BIT == 64) {
+            if (B != get_high_bits_64(cfg.data_filename)) return;
+          }
+          if constexpr (sizeof(KeyType) * CHAR_BIT == 32 && B <= 0) {
+            if (cfg.data_filename.find("uniform") == std::string::npos) return;
+          }
+          auto run_for_loads = [&]<size_t L>() {
+            auto run_for_simd = [&]<size_t S>() {
+              auto run_for_rht = [&]<int R>() {
+                auto run_for_top = [&]<int T>() {
+                  constexpr DeLI::RhtOptimization rht_opt = static_cast<DeLI::RhtOptimization>(R);
+                  constexpr DeLI::TopLevelOptimization top_opt = static_cast<DeLI::TopLevelOptimization>(T);
+                  if constexpr ((rht_opt != DeLI::RhtOptimization::slot_index || S == 0) &&
+                                (B <= 24 || top_opt == DeLI::TopLevelOptimization::bucket_index)) {
+                    deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, rht_opt, S, L, top_opt, B>>(cfg, kv, INSERT_DELETE);
+                  }
+                };
+                (run_for_top.template operator()<top_optimizations>(), ...);
+              };
+              (run_for_rht.template operator()<rht_optimizations>(), ...);
+            };
+            (run_for_simd.template operator()<simd_unrolled>(), ...);
+          };
+          (run_for_loads.template operator()<loads>(), ...);
+        };
+        (run_for_bits.template operator()<bits>(), ...);
+      };
+      run_pareto(high_bits, load_balance, rht_simd_unrolled, rht_opts, top_opts, config, insert_delete_key_values);
+    }
+#endif
+  }
 }
 
 template <bool has_payload, typename KeyType, typename PayloadType,
@@ -303,12 +357,12 @@ void benchmark_deli_static(const bench_config& config,
 
       static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
       constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
-                                 std::integer_sequence<unsigned int, 0, 4, 8, 12, 16, 20>,
+                                 std::integer_sequence<unsigned int, 12>,
                                  std::integer_sequence<unsigned int, 16, 17, 29, 49, 54>>{};
 
       constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70>{};
-      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2>{};
-      constexpr auto rht_opts = std::integer_sequence<int, 0, 4>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
+      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1>{};
+      constexpr auto rht_opts = std::integer_sequence<int, 4>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
       constexpr auto top_opts = std::integer_sequence<int, 1>{};
 
       auto run_pareto = []<unsigned int... bits, size_t... loads, size_t... simd_unrolled, int... rht_optimizations, int... top_optimizations>(
@@ -329,12 +383,8 @@ void benchmark_deli_static(const bench_config& config,
             if (B != get_high_bits_64(cfg.data_filename)) return;
           }
           // For 32-bit keys: skip 0 high bits for non-uniform datasets
-          if constexpr (sizeof(KeyType) * CHAR_BIT == 32 && B == 0) {
-            if (cfg.data_filename.find("uniform") == std::string::npos) return;
-          }
-          // For 32-bit keys: skip 4 high bits for mix_gauss datasets
           if constexpr (sizeof(KeyType) * CHAR_BIT == 32 && B <= 8) {
-            if (cfg.data_filename.find("mix_gauss") != std::string::npos) return;
+            if (cfg.data_filename.find("uniform") == std::string::npos) return;
           }
           auto run_for_loads = [&]<size_t L>() {
             auto run_for_simd = [&]<size_t S>() {
@@ -368,20 +418,20 @@ void benchmark_deli_static(const bench_config& config,
 }
 }
 
-/// PREDECESSOR_SEARCH mode: sweeps over sampling values and delegates to benchmark_deli_static.
+// PREDECESSOR_SEARCH mode: sweeps over sampling values and delegates to benchmark_deli_static.
 template <typename KeyType, typename PayloadType>
 void benchmark_deli_static_ps(const bench_config& config,
                                std::vector<std::pair<KeyType, PayloadType>>& key_pairs_ps,
-                               const std::vector<std::pair<KeyType, PayloadType>>& /* shifting unused */) {
+                               const std::vector<std::pair<KeyType, PayloadType>>&/* shifting unused */) {
 
-  benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 32>(config, key_pairs_ps);
-#ifndef FAST_COMPILE
-  if (config.pareto) {
-    benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 16>(config, key_pairs_ps);
-    benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 64>(config, key_pairs_ps);
-    benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 128>(config, key_pairs_ps);
-  }
-#endif
+//   benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 32>(config, key_pairs_ps);
+// #ifndef FAST_COMPILE
+//   if (config.pareto) {
+//     benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 16>(config, key_pairs_ps);
+//     benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 64>(config, key_pairs_ps);
+//     benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 128>(config, key_pairs_ps);
+//   }
+// #endif
 }
 
 }  // namespace deli_testbed

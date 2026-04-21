@@ -68,6 +68,7 @@ enum Workload : int {
   DELETE_EXISTING,
   MIXED,
   SHIFTING,
+  INSERT_DELETE,
 };
 
 std::string workload_name(Workload workload) {
@@ -79,6 +80,7 @@ std::string workload_name(Workload workload) {
     case DELETE_EXISTING: return "DELETE_EXISTING";
     case MIXED: return "MIXED";
     case SHIFTING: return "SHIFTING";
+    case INSERT_DELETE: return "INSERT_DELETE";
     default: return "UNKNOWN_WORKLOAD";
   }
 }
@@ -167,6 +169,13 @@ class Benchmark {
         return DoShifting(index, config);
       } else {
         throw std::runtime_error("SHIFTING not supported by this index");
+      }
+    } else if constexpr (W == INSERT_DELETE) {
+      if constexpr (requires(Index& i, typename Index::KeyType k, typename Index::PayloadType p) { i.insert(k, p); }
+                   && requires(Index& i, typename Index::KeyType k) { i.erase(k); }) {
+        return DoInsertDelete(index, config);
+      } else {
+        throw std::runtime_error("INSERT_DELETE not supported by this index");
       }
     } else {
       throw std::runtime_error("Workload not implemented");
@@ -708,6 +717,39 @@ private:
         });
   }
 
+  template <class Index>
+  uint64_t DoInsertDelete(Index& index, const bench_config& config) {
+    // Insert all keys in key_values_ order, then delete in the same order.
+    // key_values_ holds the original file-order pairs set by run_benchmark before the batch loop.
+    const size_t n = key_values_.size();
+
+    if (config.clear_cache) {
+      individual_ns_sum_ = 0;
+      for (size_t i = 0; i < n; ++i) {
+        for (uint64_t& v : memory_) random_sum_ += v;
+        _mm_mfence();
+        individual_ns_sum_ += utils::timing([&] {
+          index.insert(key_values_[i].first, key_values_[i].second);
+        });
+      }
+      for (size_t i = 0; i < n; ++i) {
+        for (uint64_t& v : memory_) random_sum_ += v;
+        _mm_mfence();
+        individual_ns_sum_ += utils::timing([&] {
+          index.erase(key_values_[i].first);
+        });
+      }
+      return individual_ns_sum_;
+    } else {
+      return utils::timing([&] {
+        for (size_t i = 0; i < n; ++i)
+          index.insert(key_values_[i].first, key_values_[i].second);
+        for (size_t i = 0; i < n; ++i)
+          index.erase(key_values_[i].first);
+      });
+    }
+  }
+
   std::vector<std::pair<KeyType, PayloadType>> key_values_;
   const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values_;
   uint64_t random_sum_ = 0;
@@ -732,6 +774,15 @@ void run_benchmark(const bench_config& config,
       return;
     }
 
+    if (workload == Workload::INSERT_IN_DISTRIBUTION || workload == Workload::DELETE_EXISTING) {
+      return;
+    }
+
+    // For INSERT_DELETE each batch performs N inserts + N deletes.
+    const size_t batch_ops = (workload == Workload::INSERT_DELETE)
+        ? 2 * key_values.size()
+        : static_cast<size_t>(config.batch_size);
+
     // Create the index and bulk load initial keys
     IndexWrapper index;
 
@@ -745,6 +796,9 @@ void run_benchmark(const bench_config& config,
     if (workload == Workload::SHIFTING) {
       benchmark.init(shifting_insert_key_values, key_values.size());
       index.bulk_load(shifting_insert_key_values.begin(), shifting_insert_key_values.begin() + key_values.size());
+    } else if (workload == Workload::INSERT_DELETE) {
+      // Store keys in their supplied (original file) order; index starts empty — no bulk load.
+      benchmark.init(key_values);
     } else {
       benchmark.init(key_values);
       index.bulk_load(key_values.begin(), key_values.end());
@@ -784,10 +838,13 @@ void run_benchmark(const bench_config& config,
         case MIXED: 
           batch_time = benchmark.template RunWorkload<MIXED, IndexWrapper>(index, config); 
           break;
-        case SHIFTING: 
-          batch_time = benchmark.template RunWorkload<SHIFTING, IndexWrapper>(index, config); 
+        case SHIFTING:
+          batch_time = benchmark.template RunWorkload<SHIFTING, IndexWrapper>(index, config);
           break;
-        default: 
+        case INSERT_DELETE:
+          batch_time = benchmark.template RunWorkload<INSERT_DELETE, IndexWrapper>(index, config);
+          break;
+        default:
           throw std::runtime_error("Workload not implemented");
       }
 
@@ -799,7 +856,7 @@ void run_benchmark(const bench_config& config,
         const int measured_batch_no = run_no - 1;
         const bool run_error = (batch_time == std::numeric_limits<uint64_t>::max());
         if (!run_error && batch_time > 0) {
-          measured_throughputs.push_back(1. * config.batch_size / batch_time * 1e9);
+          measured_throughputs.push_back(1. * batch_ops / batch_time * 1e9);
         }
 
         double running_mean = 0.0;
@@ -830,9 +887,9 @@ void run_benchmark(const bench_config& config,
 
         if (config.print_batch_stats) {
           std::cout << std::scientific << std::setprecision(3);
-          std::cout << index.name() << " " << workload_name(workload) << ": " << config.batch_size << " operations completed\n";
+          std::cout << index.name() << " " << workload_name(workload) << ": " << batch_ops << " operations completed\n";
           std::cout << "Total time: " << batch_time / 1e9 << " seconds\n";
-          double batch_overall_throughput = (batch_time > 0) ? (1. * config.batch_size / batch_time * 1e9) : 0.0;
+          double batch_overall_throughput = (batch_time > 0) ? (1. * batch_ops / batch_time * 1e9) : 0.0;
           std::cout << "Throughput: " << batch_overall_throughput << " ops/sec\n";
           std::cout << "Convergence: n=" << measured_throughputs.size()
                     << ", mean=" << running_mean
@@ -841,8 +898,8 @@ void run_benchmark(const bench_config& config,
         }
 
         // Use the benchmark's print method for consistent formatting
-        benchmark.PrintResult(IndexWrapper::name(), IndexWrapper::variant(), workload_name(workload), measured_batch_no, key_values.size(), 
-                              config.batch_size, batch_time, config.out_file,
+        benchmark.PrintResult(IndexWrapper::name(), IndexWrapper::variant(), workload_name(workload), measured_batch_no, key_values.size(),
+                              batch_ops, batch_time, config.out_file,
                               measured_throughputs.size(), running_mean, running_rse, adaptive_stop_triggered);
 
         // Adaptive stop based on relative standard error (RSE) of throughput.

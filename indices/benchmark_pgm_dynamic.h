@@ -98,7 +98,8 @@ class BenchmarkDynamicPGM
 template <typename KeyType, typename PayloadType>
 void benchmark_pgm_dynamic(const bench_config& config,
                            std::vector<std::pair<KeyType, PayloadType>>& key_values,
-                           const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values) {
+                           const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values,
+                           std::vector<std::pair<KeyType, PayloadType>> insert_delete_key_values = {}) {
 
   // Check for sentinel value
   constexpr KeyType sentinel = std::numeric_limits<KeyType>::has_infinity
@@ -127,6 +128,28 @@ void benchmark_pgm_dynamic(const bench_config& config,
       deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 1024>>(config, key_values, wl, shifting_insert_key_values);
     }
 #endif // FAST_COMPILE
+  }
+  if (!insert_delete_key_values.empty()) {
+    // Reject sentinel value (same guard as above)
+    constexpr KeyType sentinel = std::numeric_limits<KeyType>::has_infinity
+        ? std::numeric_limits<KeyType>::infinity()
+        : std::numeric_limits<KeyType>::max();
+    if (!std::any_of(insert_delete_key_values.begin(), insert_delete_key_values.end(),
+                     [sentinel](const auto& kv) { return kv.first == sentinel; })) {
+      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 16>>(
+          config, insert_delete_key_values, INSERT_DELETE);
+#ifndef FAST_COMPILE
+      if (config.pareto) {
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 8>>(config, insert_delete_key_values, INSERT_DELETE);
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 32>>(config, insert_delete_key_values, INSERT_DELETE);
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 64>>(config, insert_delete_key_values, INSERT_DELETE);
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 128>>(config, insert_delete_key_values, INSERT_DELETE);
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 256>>(config, insert_delete_key_values, INSERT_DELETE);
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 512>>(config, insert_delete_key_values, INSERT_DELETE);
+        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 1024>>(config, insert_delete_key_values, INSERT_DELETE);
+      }
+#endif
+    }
   }
 }
 

@@ -112,6 +112,13 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
     std::vector<std::pair<KeyType, PayloadType>> key_pairs_kv(current_init_key_size);
     std::vector<std::pair<KeyType, PayloadType>> key_pairs_ps(current_init_key_size);
 
+    // original_key_pairs: keys in their input-file order (not sorted), used for INSERT_DELETE.
+    // Payload is set to key so it works for both KEY_VALUE and PREDECESSOR_SEARCH indices without
+    // consuming extra random values that would shift payloads for the sorted pairs.
+    std::vector<std::pair<KeyType, PayloadType>> original_key_pairs(current_init_key_size);
+    for (size_t i = 0; i < current_init_key_size; ++i)
+      original_key_pairs[i] = {keys[i], static_cast<PayloadType>(keys[i])};
+
     // Build a full sorted shifting stream: initial prefix + append suffix
     std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_kv;
     std::vector<std::pair<KeyType, PayloadType>> shifting_key_pairs_ps;
@@ -161,7 +168,7 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       
       // ── KEY_VALUE mode ──────────────────────────────────────────────────────
       if (index_name == "ALEX") {
-        deli_testbed::benchmark_alex<KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
+        deli_testbed::benchmark_alex<KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv, original_key_pairs);
       }
       else if (index_name == "LIPP") {
         deli_testbed::benchmark_lipp<KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
@@ -170,26 +177,26 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
       //   deli_testbed::benchmark_dili<KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
       // }
       else if (index_name == "DeLI-Dynamic-Payload") {
-        deli_testbed::benchmark_deli_dynamic<true, KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
+        deli_testbed::benchmark_deli_dynamic<true, KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv, original_key_pairs);
       }
       else if (index_name == "DeLI-Static-Payload") {
         deli_testbed::benchmark_deli_static<true, KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
       }
       else if (index_name == "PGM-Dynamic") {
-        deli_testbed::benchmark_pgm_dynamic<KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv);
+        deli_testbed::benchmark_pgm_dynamic<KeyType, PayloadType>(config, key_pairs_kv, shifting_key_pairs_kv, original_key_pairs);
       }
       // ── PREDECESSOR_SEARCH mode ─────────────────────────────────────────────
       else if (index_name == "DeLI-Dynamic") {
-        deli_testbed::benchmark_deli_dynamic<false, KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+        deli_testbed::benchmark_deli_dynamic<false, KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps, original_key_pairs);
       }
       else if (index_name == "DeLI-Static") {
         deli_testbed::benchmark_deli_static<false, KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
       }
       else if (index_name == "TLX") {
-        deli_testbed::benchmark_tlx<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+        deli_testbed::benchmark_tlx<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps, original_key_pairs);
       }
       else if (index_name == "SEA21") {
-        deli_testbed::benchmark_sea21<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps);
+        deli_testbed::benchmark_sea21<KeyType, PayloadType>(config, key_pairs_ps, shifting_key_pairs_ps, original_key_pairs);
       }
       else if (index_name == "RS") {
         if (config.entire_dataset) {
@@ -255,7 +262,7 @@ int main(int argc, char* argv[]) {
   auto max_batches = stoi(get_with_default(flags, "max_batches", "3"));
   auto rse_target = stod(get_with_default(flags, "rse_target", "0.05"));
   std::string output_folder = get_required(flags, "output_folder");
-  auto time_limit = stod(get_with_default(flags, "time_limit", "0.5"));
+  auto time_limit = stod(get_with_default(flags, "time_limit", "2"));
   bool print_batch_stats = get_boolean_flag(flags, "print_batch_stats");
   bool clear_cache = get_boolean_flag(flags, "clear_cache");
   bool pareto = get_boolean_flag(flags, "pareto");
@@ -349,9 +356,11 @@ int main(int argc, char* argv[]) {
   if (keys_file_path.ends_with("_uint32")) {
     execute<uint32_t, uint32_t>(config, allowed_indices);
   } else if (keys_file_path.ends_with("_uint64")) {
-    execute<uint64_t, uint64_t>(config, allowed_indices);
+    std::cout << "Unsupported uint64 key types in this build";
+    // execute<uint64_t, uint64_t>(config, allowed_indices);
   } else if (keys_file_path.ends_with(".txt")) {
-    execute<uint64_t, uint64_t>(config, allowed_indices); // For text files, we assume uint64 keys
+    std::cout << "Assuming uint64 key type for .txt files, unsupported in this build";
+    // execute<uint64_t, uint64_t>(config, allowed_indices); // For text files, we assume uint64 keys
   } else {
     throw std::runtime_error("Unsupported key type in filename. Expected suffixes: _uint32, _uint64, or .txt");
   }

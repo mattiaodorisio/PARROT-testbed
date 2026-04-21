@@ -70,7 +70,8 @@ class BenchmarkSEA21 {
 template <typename KeyType, typename PayloadType>
 void benchmark_sea21(const bench_config& config,
                      std::vector<std::pair<KeyType, PayloadType>>& key_values,
-                     const std::vector<std::pair<KeyType, PayloadType>>& shifting_key_values) {
+                     const std::vector<std::pair<KeyType, PayloadType>>& shifting_key_values,
+                     std::vector<std::pair<KeyType, PayloadType>> insert_delete_key_values = {}) {
   constexpr Workload workloads[] = {
       LOOKUP_EXISTING,
       LOOKUP_IN_DISTRIBUTION,
@@ -87,35 +88,57 @@ void benchmark_sea21(const bench_config& config,
   for (const auto& wl : workloads) {
     if constexpr (std::is_same_v<KeyType, uint32_t>) {
       run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
-          sea::DynIndex<uint64_t, 24, sea::bucket_bv<uint64_t, 24>>,
+          sea::DynIndex<KeyType, 24, sea::bucket_bv<KeyType, 24>>,
           FixedString{"SEA21"}, FixedString{"bv-24"}, true>>(
           config, key_values, wl, shifting_key_values);
 
       run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
-          sea::DynIndex<uint64_t, 20, sea::bucket_hybrid<uint64_t, 20>>,
+          sea::DynIndex<KeyType, 20, sea::bucket_hybrid<KeyType, 20>>,
           FixedString{"SEA21"}, FixedString{"hybrid-20"}, true>>(
           config, key_values, wl, shifting_key_values);
 
       run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
-          sea::DynIndexMap<uint64_t, 24, sea::map_bucket_bv<uint64_t, 24>>,
+          sea::DynIndexMap<KeyType, 24, sea::map_bucket_bv<KeyType, 24>>,
           FixedString{"SEA21-Map"}, FixedString{"bv-24"}, true>>(
           config, key_values, wl, shifting_key_values);
 
       run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
-          sea::DynIndexMap<uint64_t, 20, sea::map_bucket_hybrid<uint64_t, 20>>,
+          sea::DynIndexMap<KeyType, 20, sea::map_bucket_hybrid<KeyType, 20>>,
           FixedString{"SEA21-Map"}, FixedString{"hybrid-20"}, true>>(
           config, key_values, wl, shifting_key_values);
     }
 
     run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
-        sea::YFastTrie<sea::yfast_bucket<uint64_t, 9, 2>, kw>,
+        sea::YFastTrie<sea::yfast_bucket<KeyType, 9, 2>, kw>,
         FixedString{"SEA21-YFast"}, FixedString{"ul-bw9"}>>(
         config, key_values, wl, shifting_key_values);
 
     run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
-        sea::YFastTrie<sea::yfast_bucket_sl<uint64_t, 9, 2>, kw>,
+        sea::YFastTrie<sea::yfast_bucket_sl<KeyType, 9, 2>, kw>,
         FixedString{"SEA21-YFast"}, FixedString{"sl-bw9"}>>(
         config, key_values, wl, shifting_key_values);
+  }
+  if (!insert_delete_key_values.empty()) {
+    if constexpr (std::is_same_v<KeyType, uint32_t>) {
+      run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
+          sea::DynIndex<KeyType, 24, sea::bucket_bv<KeyType, 24>>,
+          FixedString{"SEA21"}, FixedString{"bv-24"}, true>>(
+          config, insert_delete_key_values, INSERT_DELETE);
+
+      run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
+          sea::DynIndex<KeyType, 20, sea::bucket_hybrid<KeyType, 20>>,
+          FixedString{"SEA21"}, FixedString{"hybrid-20"}, true>>(
+          config, insert_delete_key_values, INSERT_DELETE);
+    }
+    run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
+        sea::YFastTrie<sea::yfast_bucket<KeyType, 9, 2>, kw>,
+        FixedString{"SEA21-YFast"}, FixedString{"ul-bw9"}>>(
+        config, insert_delete_key_values, INSERT_DELETE);
+
+    run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
+        sea::YFastTrie<sea::yfast_bucket_sl<KeyType, 9, 2>, kw>,
+        FixedString{"SEA21-YFast"}, FixedString{"sl-bw9"}>>(
+        config, insert_delete_key_values, INSERT_DELETE);
   }
 }
 
