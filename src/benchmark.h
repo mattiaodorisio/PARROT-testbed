@@ -13,6 +13,7 @@
 #include <queue>
 #include <numeric>
 #include <cmath>
+#include <memory>
 
 #include "utils.h"
 
@@ -842,8 +843,14 @@ void run_benchmark(const bench_config& config,
           batch_time = benchmark.template RunWorkload<SHIFTING, IndexWrapper>(index, config);
           break;
         case INSERT_DELETE:
+        {
+          // Destroy and reconstruct the index in-place so each batch starts
+          // from a clean empty state without requiring copy/move.
+          std::destroy_at(&index);
+          std::construct_at(&index);
           batch_time = benchmark.template RunWorkload<INSERT_DELETE, IndexWrapper>(index, config);
           break;
+        }
         default:
           throw std::runtime_error("Workload not implemented");
       }
