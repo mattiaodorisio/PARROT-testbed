@@ -13,8 +13,7 @@
 #include "zipf.h"
 #include "flags.h"
 
-#define M50 50000000
-#define M1 1000000
+#define SIZE (1 << 30)
 
 std::vector<uint32_t> read_bin32_file(const std::string& filename) {
     std::ifstream ifs(filename, std::ios::binary);
@@ -419,12 +418,12 @@ void generate_all_synthetic(const std::string& data_dir, UniqueMode unique_mode,
         if (print_stats_flag) print_stats(data);
     };
 
-    run("normal",      generate_normal_distr<T>(M50, unique_mode));
-    run("exponential", generate_exponential_distr<T>(M50, unique_mode));
-    run("lognormal",   generate_lognormal_distr<T>(M50, unique_mode));
-    run("mix_gauss",   generate_mix_of_gauss_distr<T>(M50, unique_mode));
-    run("zipf",        generate_zipf_distr<T>(M50));
-    run("uniform",     generate_uniform_distr<T>(M50, unique_mode));
+    run("normal",      generate_normal_distr<T>(SIZE, unique_mode));
+    run("exponential", generate_exponential_distr<T>(SIZE, unique_mode));
+    run("lognormal",   generate_lognormal_distr<T>(SIZE, unique_mode));
+    run("mix_gauss",   generate_mix_of_gauss_distr<T>(SIZE, unique_mode));
+    run("zipf",        generate_zipf_distr<T>(SIZE));
+    run("uniform",     generate_uniform_distr<T>(SIZE, unique_mode));
 }
 
 int main(int argc, char* argv[]) {
@@ -444,7 +443,7 @@ int main(int argc, char* argv[]) {
                                                  : UniqueMode::Adjust;
 
     generate_all_synthetic<uint32_t>(data_dir, unique_mode, print_stats_flag);
-    generate_all_synthetic<uint64_t>(data_dir, unique_mode, print_stats_flag);
+    // generate_all_synthetic<uint64_t>(data_dir, unique_mode, print_stats_flag);
 
     std::vector<uint32_t> data = read_bin32_file(data_dir + "/books_200M_uint32");
     // REWRITING THE FILE ON DISK TO REPLACE UINT32_MAX with UINT32_MAX - 1 for safety for some libs

@@ -39,7 +39,7 @@ while IFS= read -r line; do
       continue
     fi
     echo "Running benchmark for $dataset${entire_flag:+ (entire dataset)}"
-    DELI_RMI_PATH=../rmi_data ./deLi_testbed --keys_file=../data/$dataset --max_batches=5 --batch_size=2048 --output_folder=../results --print_batch_stats --pareto $entire_flag >> "$LOG_FILE" 2>&1
+    DELI_RMI_PATH=../rmi_data ./deLi_testbed --keys_file=../data/$dataset --max_batches=5 --batch_size=10000 --output_folder=../results --print_batch_stats --pareto $entire_flag >> "$LOG_FILE" 2>&1
 done < "../data/enabled_datasets.txt"
 
 cd ../plotter
