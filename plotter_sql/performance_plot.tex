@@ -27,6 +27,16 @@
   },
   legend cell align=left,
   legend pos=north west,
+  my colors/.style={
+      cycle list={
+          {blue, thin},
+          {red, thin},
+          {green!60!black, thin},
+          {orange, thin},
+          {purple, thin},
+          {cyan!70!black, thin}
+      }
+  }
 }
 
 \begin{document}
@@ -38,7 +48,7 @@
 
 %% IMPORT-DATA stats combined_bench.txt
 
-%% SQL CREATE TABLE stats_reduced AS SELECT index_name, index_variant, workload_type, init_num_keys, dataset_name, MEDIAN(total_time) AS total_time, MEDIAN(throughput) AS throughput FROM stats GROUP BY index_name, index_variant, workload_type, init_num_keys, dataset_name;
+%% SQL CREATE TABLE stats_reduced AS SELECT index_name, index_variant, workload_type, init_num_keys, dataset_name, MEDIAN(total_time) AS total_time, MEDIAN(throughput) AS throughput FROM stats WHERE dataset_name LIKE '%DeLI%' GROUP BY index_name, index_variant, workload_type, init_num_keys, dataset_name;
 %% SQL DROP TABLE stats;
 %% SQL ALTER TABLE stats_reduced RENAME TO stats;
 
@@ -85,22 +95,26 @@
 \small
 \centering
 
-%% FOREACH opt IN (RHTOptimization,SIMDLanes,RHTLoad,Highbits) SHAREDY
-\begin{subfigure}{0.24\textwidth}
+%% FOREACH opt IN (RHTOptimization,SIMDLanes,RHTLoad)
+\begin{subfigure}{0.4\textwidth}
 \centering
 \begin{tikzpicture}
   \begin{axis}[
+    my colors,
     title={{opt}},
-    xlabel={Time (seconds)},
+    xlabel={Time (s)},
     ylabel={Fraction of instances},
     xmode=log,
     log basis x={2},
-    width=1.2\linewidth,
-    height=3.5cm,
+    ymin=0.1,
+    ymax=0.9,
+    width=0.85\linewidth,
+    height=4.6cm,
     grid=major,
     legend style={
-        at={(0.5,-0.2)},
-        anchor=north,
+        at={(1.02,0.5)},
+        anchor=west,
+        font=\small,
     },
     mark=*,
     mark size=0pt,
@@ -129,7 +143,8 @@
   \end{axis}
 \end{tikzpicture}
 \end{subfigure}
-\hfill
+\newline
+
 %% END FOREACH 
 \caption{Performance plots for DeLI-Static index on all workloads and distributions (init key size $2^{i}, i \in [20 , 25]$).}
 \end{figure}
@@ -144,22 +159,26 @@
 \small
 \centering
 
-%% FOREACH opt IN (RHTOptimization,SIMDLanes,RHTLoad,Highbits) SHAREDY
-\begin{subfigure}{0.24\textwidth}
+%% FOREACH opt IN (RHTOptimization,SIMDLanes,RHTLoad)
+\begin{subfigure}{0.4\textwidth}
 \centering
 \begin{tikzpicture}
   \begin{axis}[
+    my colors,
     title={{opt}},
-    xlabel={Time (seconds)},
+    xlabel={Time (s)},
     ylabel={Fraction of instances},
     xmode=log,
     log basis x={2},
-    width=1.2\linewidth,
-    height=3.5cm,
+    ymin=0.1,
+    ymax=0.9,
+    width=0.85\linewidth,
+    height=4.6cm,
     grid=major,
     legend style={
-        at={(0.5,-0.2)},
-        anchor=north,
+        at={(1.02,0.5)},
+        anchor=west,
+        font=\small,
     },
     mark=*,
     mark size=0pt,
@@ -188,7 +207,8 @@
   \end{axis}
 \end{tikzpicture}
 \end{subfigure}
-\hfill
+\newline
+
 %% END FOREACH 
 \caption{Performance plots for DeLI-Dynamic index on all workloads and distributions (init key size $2^{i}, i \in [20 , 25]$).}
 \end{figure}

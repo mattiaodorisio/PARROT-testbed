@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import re
 import sys
 import argparse
@@ -19,6 +21,15 @@ def auto_cast(v):
         return float(v)
     except ValueError:
         return v
+
+
+PINNED_VARIANTS = {
+    # index_name -> variant string to plot, or None for best
+    # 'DeLI-Static': 'GFB;1;70;BI;16;512',
+    # 'DeLI-Dynamic': 'N;1;70;BI;16;512',
+    # 'DeLI-Static-Payload': 'GFB;0;70;BI;16;512',
+    # 'DeLI-Dynamic-Payload': 'N;0;70;BI;16;512',
+}
 
 
 def parse_file(path):
@@ -65,11 +76,17 @@ def print_results(top3):
                 print(f"    {rank}. {var:<40}  {med:>15,.2f} ops/s")
 
 
-def make_bar_plots(top3, out_prefix):
+def make_bar_plots(top3, out_prefix, medians):
     colors = cm.tab10.colors
     for wt in sorted(top3):
         indices = sorted(top3[wt])
-        best = [(idx, top3[wt][idx][0]) for idx in indices if top3[wt][idx]]
+        def pick(idx):
+            pinned = PINNED_VARIANTS.get(idx)
+            if pinned is not None:
+                return (pinned, medians.get((wt, idx, pinned), 0.0))
+            return top3[wt][idx][0]
+
+        best = [(idx, pick(idx)) for idx in indices if top3[wt][idx]]
         names = [b[0] for b in best]
         throughputs = [b[1][1] for b in best]
         variant_labels = [b[1][0] for b in best]
@@ -79,16 +96,19 @@ def make_bar_plots(top3, out_prefix):
         bars = ax.bar(range(len(names)), throughputs, color=bar_colors)
 
         ax.set_xticks(range(len(names)))
-        ax.set_xticklabels(names, rotation=30, ha='right', fontsize=9)
+        ax.set_xticklabels(names, rotation=0, ha='center', fontsize=10)
         ax.set_ylabel('Median throughput (ops/s)')
         ax.set_title(f'Best variant per index — {wt}')
 
         for bar, label in zip(bars, variant_labels):
+            if label == 'none':
+                continue
+            label = str(label).replace(';512', '')
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height() * 1.01,
                 label,
-                ha='center', va='bottom', fontsize=7, rotation=45,
+                ha='center', va='bottom', fontsize=10, rotation=0,
             )
 
         ax.margins(y=0.2)
@@ -115,7 +135,7 @@ def main():
     top3 = top3_per_index(medians)
     print_results(top3)
     print()
-    make_bar_plots(top3, args.out)
+    make_bar_plots(top3, args.out, medians)
 
 
 if __name__ == '__main__':

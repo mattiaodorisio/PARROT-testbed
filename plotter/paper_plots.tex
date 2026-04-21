@@ -36,7 +36,7 @@
 %% index_name;
 %% PIN(index_variant:
 %%             DeLI-Static=GFB\;1\;70\;BI\;12\;512,
-%%             DeLI-Dynamic=N\;1\;60\;BI\;12\;512,
+%%             DeLI-Dynamic=N\;1\;70\;BI\;12\;512,
 %%             DeLI-Static-Payload=GFB\;0\;70\;BI\;12\;512,
 %%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;12\;512,
 %%             Static-PGM=8,
@@ -58,10 +58,10 @@
 %%             dataset_name=uniform_50M_uint32;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
 %% PIN(index_variant:
-%%             DeLI-Static=GFB\;1\;70\;BI\;4\;512,
-%%             DeLI-Dynamic=N\;1\;70\;BI\;4\;512,
-%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;4\;512,
-%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;4\;512,
+%%             DeLI-Static=GFB\;1\;70\;BI\;12\;512,
+%%             DeLI-Dynamic=N\;1\;70\;BI\;12\;512,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;12\;512,
+%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;12\;512,
 %%             Static-PGM=8,
 %%             Dynamic-PGM=16,
 %%             SEA21-YFast=sl-bw9,
@@ -130,6 +130,29 @@
 %% PIN(index_variant:
 %%             DeLI-Static=GFB\;1\;70\;BI\;12\;512,
 %%             DeLI-Dynamic=N\;1\;60\;BI\;12\;512,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;12\;512,
+%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;12\;512,
+%%             Static-PGM=8,
+%%             Dynamic-PGM=16,
+%%             SEA21-YFast=sl-bw9,
+%%             SEA21=hybrid-20,
+%%             SEA21-Map=hybrid-20
+%% ),Time, {dataset_display_name} dataset,index_name,3}}
+\end{document}
+
+%% OUTPUT: zipf
+\begin{document}
+%% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
+%%             dataset_name=zipf_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
+%%             dataset_name=zipf_50M_uint32;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=zipf_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
+%%             dataset_name=zipf_50M_uint32;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
+%%             dataset_name=zipf_50M_uint32;workload_type=DELETE_EXISTING;init_num_keys>=32768|
+%%             dataset_name=zipf_50M_uint32;workload_type=MIXED;init_num_keys>=32768,
+%% index_name;
+%% PIN(index_variant:
+%%             DeLI-Static=GFB\;1\;70\;BI\;12\;512,
+%%             DeLI-Dynamic=N\;1\;70\;BI\;12\;512,
 %%             DeLI-Static-Payload=GFB\;0\;70\;BI\;12\;512,
 %%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;12\;512,
 %%             Static-PGM=8,
@@ -244,6 +267,27 @@
 %%             dataset_name=mix_gauss_50M_uint64;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=mix_gauss_50M_uint64;workload_type=DELETE_EXISTING;init_num_keys>=32768|
 %%             dataset_name=mix_gauss_50M_uint64;workload_type=MIXED;init_num_keys>=32768,
+%% index_name;
+%% PIN(index_variant:
+%%             DeLI-Static=GFB\;1\;70\;BI\;17\;512,
+%%             DeLI-Dynamic=N\;1\;70\;BI\;17\;512,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;17\;512,
+%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;17\;512,
+%%             Static-PGM=8,
+%%             Dynamic-PGM=16,
+%%             SEA21-YFast=sl-bw9  
+%% ),Time, {dataset_display_name} dataset,index_name,3}}
+\end{document}
+
+%% OUTPUT: zipf_uint64
+\begin{document}
+%% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
+%%             dataset_name=zipf_50M_uint64;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
+%%             dataset_name=zipf_50M_uint64;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=zipf_50M_uint64;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
+%%             dataset_name=zipf_50M_uint64;workload_type=INSERT_IN_DISTRIBUTION;init_num_keys>=32768|
+%%             dataset_name=zipf_50M_uint64;workload_type=DELETE_EXISTING;init_num_keys>=32768|
+%%             dataset_name=zipf_50M_uint64;workload_type=MIXED;init_num_keys>=32768,
 %% index_name;
 %% PIN(index_variant:
 %%             DeLI-Static=GFB\;1\;70\;BI\;17\;512,
