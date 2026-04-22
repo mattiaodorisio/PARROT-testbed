@@ -779,6 +779,11 @@ void run_benchmark(const bench_config& config,
       return;
     }
 
+    // Execute SHIFTING only for normal and USA datasets
+    if (workload == Workload::SHIFTING && !(config.data_filename.contains("normal") || config.data_filename.contains("USA"))) {
+      return;
+    }
+
     // For INSERT_DELETE each batch performs N inserts + N deletes.
     const size_t batch_ops = (workload == Workload::INSERT_DELETE)
         ? 2 * key_values.size()

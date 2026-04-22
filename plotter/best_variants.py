@@ -91,24 +91,27 @@ def make_bar_plots(top3, out_prefix, medians):
         throughputs = [b[1][1] for b in best]
         variant_labels = [b[1][0] for b in best]
 
-        fig, ax = plt.subplots(figsize=(max(8, len(names) * 1.4), 5))
+        fig, ax = plt.subplots(figsize=(max(5, len(names) * 0.9), 5))
         bar_colors = [colors[i % len(colors)] for i in range(len(names))]
         bars = ax.bar(range(len(names)), throughputs, color=bar_colors)
 
         ax.set_xticks(range(len(names)))
-        ax.set_xticklabels(names, rotation=0, ha='center', fontsize=10)
-        ax.set_ylabel('Median throughput (ops/s)')
-        ax.set_title(f'Best variant per index — {wt}')
+        ax.set_xticklabels(names, rotation=45, ha='right', fontsize=13)
+        ax.set_ylabel('Median throughput (ops/s)', fontsize=13)
+        ax.set_title(f'Best variant per index — {wt.replace("_", " ")}', fontsize=14)
+        ax.tick_params(axis='y', labelsize=13)
 
         for bar, label in zip(bars, variant_labels):
             if label == 'none':
                 continue
-            label = str(label).replace(';512', '')
+            parts = str(label).replace(';512', '').split(';')
+            label = ';'.join(parts[:-1] if len(parts) == 5 else parts)
+            label = label.replace('GFB', 'GF').replace('btree_set', '')
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height() * 1.01,
                 label,
-                ha='center', va='bottom', fontsize=10, rotation=0,
+                ha='center', va='bottom', fontsize=13, rotation=0,
             )
 
         ax.margins(y=0.2)

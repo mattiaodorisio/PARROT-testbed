@@ -113,10 +113,12 @@ void benchmark_sea21(const bench_config& config,
         FixedString{"SEA21-YFast"}, FixedString{"ul-bw9"}>>(
         config, key_values, wl, shifting_key_values);
 
-    run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
-        sea::YFastTrie<sea::yfast_bucket_sl<KeyType, 9, 2>, kw>,
-        FixedString{"SEA21-YFast"}, FixedString{"sl-bw9"}>>(
-        config, key_values, wl, shifting_key_values);
+    if (key_values.size() <= (1 << 26)) {
+      run_benchmark<BenchmarkSEA21<KeyType, PayloadType,
+          sea::YFastTrie<sea::yfast_bucket_sl<KeyType, 9, 2>, kw>,
+          FixedString{"SEA21-YFast"}, FixedString{"sl-bw9"}>>(
+          config, key_values, wl, shifting_key_values);
+    }
   }
   if (!insert_delete_key_values.empty()) {
     if constexpr (std::is_same_v<KeyType, uint32_t>) {

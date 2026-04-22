@@ -5,7 +5,7 @@ set -e
 OUTPUT_DIR=build/figures
 mkdir -p "$OUTPUT_DIR"
 
-./plot.py --output-dir "$OUTPUT_DIR" --multiplot-template paper_plots.tex ../results_def/
+./plot.py --output-dir "$OUTPUT_DIR" --multiplot-template paper_plots_big.tex ../results_big/
 
 for tex_file in "$OUTPUT_DIR"/*.tex; do
     echo "Compiling $tex_file ..."

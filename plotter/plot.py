@@ -525,7 +525,13 @@ def group_and_aggregate(data: List[Dict], groupby_col: str, agg_func: str, agg_c
             agg_result = sum(valid_values)
         else:  # NONE - just take the first value
             agg_result = valid_values[0]
-        
+
+        workload_type = group_rows[0].get('workload_type', '') if group_rows else ''
+        if workload_type == 'INSERT_DELETE':
+            agg_result = agg_result / x_value if x_value else agg_result
+        else:
+            agg_result = agg_result / 10000
+
         # Create result row
         result_row = {
             primary_groupby: group_value,
@@ -853,7 +859,7 @@ def compact_axis_for_subfigure(axis_code: str) -> str:
     # Replace only dedicated axis option lines (not "line width" nor plot lines).
     compact_axis = re.sub(
         r'(^\s*)width\s*=\s*[^,\n]+,\s*$',
-        r'\1width=0.92\\linewidth,',
+        r'\1width=0.82\\linewidth,',
         compact_axis,
         flags=re.MULTILINE,
     )
@@ -867,7 +873,7 @@ def compact_axis_for_subfigure(axis_code: str) -> str:
     # Keep labels readable while reducing footprint.
     compact_axis = compact_axis.replace(
         '\\begin{axis}[',
-        '\\begin{axis}[\n    scale only axis=true,\n    tick label style={font=\\normalsize},\n    label style={font=\\normalsize},\n    title style={font=\\normalsize},',
+        '\\begin{axis}[\n    tick label style={font=\\normalsize},\n    label style={font=\\normalsize},\n    title style={font=\\normalsize},',
         1
     )
 
@@ -1080,12 +1086,17 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
     # Substitute parameters in caption
     caption = substitute_caption_parameters(caption, filter_conditions, data, x_col, y_col, groupby_col)
     
+    # Detect log-scale workloads
+    filter_dict = {k: v for k, v in filter_conditions} if filter_conditions else {}
+    y_scale_options = 'ymode=log,\n    ' if filter_dict.get('workload_type') == 'INSERT_DELETE' else ''
+
     # Apply replacements
     replacements = {
         '{{PLOT_DATA}}': plot_data,
         '{{X_LABEL}}': x_label,
         '{{Y_LABEL}}': y_label,
         '{{Y_MAX}}': f"{y_max:.10g}",
+        '{{Y_SCALE_OPTIONS}}': y_scale_options,
         '{{TITLE}}': title,
         '{{CAPTION}}': caption,
         '{{LABEL}}': label
@@ -1160,7 +1171,7 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
     # Reserve ~2% per inter-column gap; the y-label on the leftmost plot eats a
     # little extra space, so we keep a small asymmetric nudge for that column.
     gap_total = 0.02 * (cols_per_row - 1)
-    subfig_width = f"{(1.0 - gap_total) / cols_per_row:.3f}\\textwidth"
+    subfig_width = f"{(0.95 - gap_total) / cols_per_row:.3f}\\textwidth"
     
     # Build multiplot LaTeX
     latex_lines = [
@@ -1196,6 +1207,7 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
         latex_lines.append(axis_code_for_slot)
         latex_lines.append("\\end{tikzpicture}")
         if workload_caption:
+            latex_lines.append("\\captionsetup{justification=centering}")
             latex_lines.append(f"\\caption{{{escape_latex_text(workload_caption)}}}")
         latex_lines.append("\\end{subfigure}")
 
@@ -1213,8 +1225,8 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
             elif position_in_row == 0:
                 # Extra room after leftmost plot to compensate for the y-label width.
                 latex_lines.append("\\hspace{0.02\\textwidth}")
-            else:
-                latex_lines.append("\\hfill")
+            # else:
+            #     latex_lines.append("\\hfill")
 
     # Add one shared legend for all subfigures.
     shared_legend = build_shared_legend(shared_series_names)

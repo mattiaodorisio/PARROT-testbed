@@ -65,6 +65,11 @@ void benchmark_tlx(const bench_config& config,
                    std::vector<std::pair<KeyType, PayloadType>>& key_values,
                    const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values,
                    std::vector<std::pair<KeyType, PayloadType>> insert_delete_key_values = {}) {
+
+  if (key_values.size() > (1 << 26)) {
+    return;
+  }
+  
   constexpr Workload supported_workloads[] = {
       LOOKUP_EXISTING,
       LOOKUP_IN_DISTRIBUTION,
