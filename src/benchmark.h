@@ -191,9 +191,10 @@ class Benchmark {
   private:
   template <class Index>
   uint64_t DoLookupExisting(Index& index, const bench_config& config) {
+    const size_t effective_batch = config.full_dataset_batch ? key_values_.size() : static_cast<size_t>(config.batch_size);
     // Get existing keys from the dataset
-    std::vector<std::pair<KeyType, PayloadType>> lookup_pairs = 
-        utils::get_existing_keys(key_values_.begin(), key_values_.end(), config.batch_size);
+    std::vector<std::pair<KeyType, PayloadType>> lookup_pairs =
+        utils::get_existing_keys(key_values_.begin(), key_values_.end(), effective_batch);
 
     if (config.clear_cache)
       return DoCoreLoop<Index, false, true>(index, lookup_pairs, 
@@ -209,14 +210,15 @@ class Benchmark {
 
   template <class Index>
   uint64_t DoLookupInDistribution(Index& index, const bench_config& config) {
+    const size_t effective_batch = config.full_dataset_batch ? key_values_.size() : static_cast<size_t>(config.batch_size);
     std::vector<std::pair<KeyType, PayloadType>> lookup_pairs;
-    
+
     // Prepare the lookup pair vector
     {
       auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
-      std::vector<KeyType> lookup_keys = utils::get_non_existing_keys_in_distribution(keys.begin(), keys.end(), config.batch_size);
+      std::vector<KeyType> lookup_keys = utils::get_non_existing_keys_in_distribution(keys.begin(), keys.end(), effective_batch);
 
-      if (lookup_keys.size() < config.batch_size) {
+      if (lookup_keys.size() < effective_batch) {
         // existing keys are the ones in keys and in insert_keys
         std::vector<KeyType> existing_keys;
         existing_keys.reserve(keys.size() + lookup_keys.size());
@@ -226,7 +228,7 @@ class Benchmark {
         std::sort(existing_keys.begin(), existing_keys.end());
 
         std::vector<KeyType> extra_keys =
-            utils::get_non_existing_keys(existing_keys.begin(), existing_keys.end(), config.batch_size - lookup_keys.size());
+            utils::get_non_existing_keys(existing_keys.begin(), existing_keys.end(), effective_batch - lookup_keys.size());
         lookup_keys.insert(lookup_keys.end(), extra_keys.begin(), extra_keys.end());
       }
 
@@ -262,11 +264,12 @@ class Benchmark {
 
   template <class Index>
   uint64_t DoLookupUniform(Index& index, const bench_config& config) {
+    const size_t effective_batch = config.full_dataset_batch ? key_values_.size() : static_cast<size_t>(config.batch_size);
     std::vector<std::pair<KeyType, PayloadType>> lookup_pairs;
 
     {
       auto keys = key_values_ | std::views::transform([](auto const& p) { return p.first; });
-      std::vector<KeyType> lookup_keys = utils::get_non_existing_keys(keys.begin(), keys.end(), config.batch_size);
+      std::vector<KeyType> lookup_keys = utils::get_non_existing_keys(keys.begin(), keys.end(), effective_batch);
 
       lookup_pairs.reserve(lookup_keys.size());
       for (const auto& key : lookup_keys) {
@@ -785,8 +788,11 @@ void run_benchmark(const bench_config& config,
     }
 
     // For INSERT_DELETE each batch performs N inserts + N deletes.
+    const bool use_full_dataset_batch = config.full_dataset_batch &&
+        (workload == LOOKUP_EXISTING || workload == LOOKUP_IN_DISTRIBUTION || workload == LOOKUP_UNIFORM);
     const size_t batch_ops = (workload == Workload::INSERT_DELETE)
         ? 2 * key_values.size()
+        : use_full_dataset_batch ? key_values.size()
         : static_cast<size_t>(config.batch_size);
 
     // Create the index and bulk load initial keys

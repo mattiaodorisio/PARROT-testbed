@@ -32,6 +32,7 @@ struct bench_config {
   int min_size;
   int max_size;
   bool entire_dataset;
+  bool full_dataset_batch;
 };
 
 namespace utils {

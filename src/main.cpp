@@ -252,6 +252,7 @@ void execute(const bench_config& config, const std::unordered_set<std::string>& 
  * --max_size               log of the maximum number of initial keys (default: 20 -> 2^20)
  * --indices                comma-separated list of index names to run (default: all)
  * --entire_dataset         run a single experiment on the full dataset (mutually exclusive with min_size/max_size)
+ * --full_dataset_batch     (LOOKUP_EXISTING/IN_DISTRIBUTION/UNIFORM only) set batch_size = dataset size
  */
 int main(int argc, char* argv[]) {
   auto flags = parse_flags(argc, argv);
@@ -267,6 +268,7 @@ int main(int argc, char* argv[]) {
   bool clear_cache = get_boolean_flag(flags, "clear_cache");
   bool pareto = get_boolean_flag(flags, "pareto");
   bool entire_dataset = get_boolean_flag(flags, "entire_dataset");
+  bool full_dataset_batch = get_boolean_flag(flags, "full_dataset_batch");
   auto min_size = stoi(get_with_default(flags, "min_size", "8"));
   auto max_size = stoi(get_with_default(flags, "max_size", "20"));
   std::string indices_str = get_with_default(flags, "indices", "");
@@ -349,7 +351,8 @@ int main(int argc, char* argv[]) {
       pareto: pareto,
       min_size: min_size,
       max_size: max_size,
-      entire_dataset: entire_dataset
+      entire_dataset: entire_dataset,
+      full_dataset_batch: full_dataset_batch
   };
 
   // Call execute with appropriate key type based on filename suffix

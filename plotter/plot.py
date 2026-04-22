@@ -209,8 +209,8 @@ def parse_filter(filter_str: str) -> Optional[List[Tuple[str, str]]]:
     # Split by unescaped semicolons to get individual conditions
     for condition in temp_str.split(';'):
         condition = condition.strip()
-        # Match comparison operators (>=, <=, >, <) before falling back to =
-        cmp_match = re.match(r'^([^><=!]+)(>=|<=|>|<)(.+)$', condition)
+        # Match comparison operators (>=, <=, >, <, !=) before falling back to =
+        cmp_match = re.match(r'^([^><=!]+)(>=|<=|!=|>|<)(.+)$', condition)
         if cmp_match:
             key = cmp_match.group(1).strip().replace(placeholder, ';')
             op  = cmp_match.group(2)
@@ -441,32 +441,36 @@ def apply_filter(data: List[Dict], filter_conditions: Optional[List[Tuple[str, s
             
             row_value = str(row[key])
 
-            # Check for comparison operators (>=, <=, >, <)
-            cmp_match = re.match(r'^(>=|<=|>|<)(.+)$', value)
+            # Check for comparison operators (>=, <=, !=, >, <)
+            cmp_match = re.match(r'^(>=|<=|!=|>|<)(.+)$', value)
             if cmp_match:
                 op, threshold = cmp_match.group(1), cmp_match.group(2)
                 try:
                     lhs = float(row[key])
                     rhs = float(threshold)
                     result = (op == '>=' and lhs >= rhs) or (op == '<=' and lhs <= rhs) or \
-                             (op == '>'  and lhs >  rhs) or (op == '<'  and lhs <  rhs)
+                             (op == '>'  and lhs >  rhs) or (op == '<'  and lhs <  rhs) or \
+                             (op == '!=' and lhs != rhs)
                     if not result:
                         all_conditions_met = False
                         break
                 except (ValueError, TypeError):
-                    all_conditions_met = False
-                    break
+                    # Non-numeric value: only != is meaningful as string comparison
+                    if op == '!=' and row_value == threshold:
+                        all_conditions_met = False
+                        break
+                    elif op != '!=':
+                        all_conditions_met = False
+                        break
                 continue
-
             # Check if this is a substring filter (starts and ends with *)
-            if value.startswith('*') and value.endswith('*') and len(value) > 2:
-                # Substring matching - remove the * characters and check if substring is in the value
-                substring = value[1:-1]  # Remove leading and trailing *
+            elif value.startswith('*') and value.endswith('*') and len(value) > 2:
+                substring = value[1:-1]
                 if substring not in row_value:
                     all_conditions_met = False
                     break
             else:
-                # Exact matching (original behavior)
+                # Exact matching
                 if row_value != value:
                     all_conditions_met = False
                     break
@@ -1075,7 +1079,7 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
 
     # Special handling for certain column names
     if 'total_time' in actual_y_col:
-        y_label = 'Batch time (s)'
+        y_label = 's/query'
     elif 'throughput' in actual_y_col:
         y_label = 'Throughput (ops/sec)'
     
@@ -1693,6 +1697,8 @@ def main():
                        default='benchmark_plot.tex')
     parser.add_argument('--output-dir', help='Output directory for multi-document mode',
                        default='build')
+    parser.add_argument('--global-filter', help='Filter applied to all data before plotting '
+                        '(e.g. "index_name!=Foo;index_name!=Bar")', default='')
 
     args = parser.parse_args()
     
@@ -1718,6 +1724,11 @@ def main():
                 print(f"Extracted dataset name: {dataset_name}")
         else:
             raise ValueError(f"Input path {args.input_path} is neither a file nor a directory")
+
+        if args.global_filter:
+            global_conditions = parse_filter(args.global_filter)
+            data = apply_filter(data, global_conditions)
+            print(f"Global filter applied: {args.global_filter} ({len(data)} rows remaining)")
         
         # Print summary statistics
         print("\n=== Benchmark Summary ===")
