@@ -159,27 +159,29 @@ template <class RandomIt>
 std::vector<typename std::iterator_traits<RandomIt>::value_type> get_non_existing_keys_in_distribution(const RandomIt data_begin, const RandomIt data_end, int num_searches) {
   assert(std::is_sorted(data_begin, data_end));
   using T = typename std::iterator_traits<RandomIt>::value_type;
-  constexpr size_t interval_range = 100;
   const size_t size_ = std::distance(data_begin, data_end);
-  std::uniform_int_distribution<size_t> dis(0, (size_ - 1) / interval_range);
   std::unordered_set<T> added_keys;
   std::vector<T> data_sample;
   data_sample.reserve(num_searches);
+  if (size_ < 2) return data_sample;
+  std::uniform_int_distribution<size_t> pos_dis(0, size_ - 2);
   int attempts = 0;
-  while (data_sample.size() < num_searches) {
-    const size_t index_start_range = dis(rand_gen) * interval_range;
-    const size_t index_end_range = std::min(index_start_range + interval_range - 1, size_ - 1);
-    std::uniform_int_distribution<T> inner_dis(data_begin[index_start_range], data_begin[index_end_range]);
-    T key = inner_dis(rand_gen);
-    if (!std::binary_search(data_begin, data_end, key) && added_keys.insert(key).second) {
-      data_sample.push_back(key);
+  while (data_sample.size() < (size_t)num_searches) {
+    const size_t pos = pos_dis(rand_gen);
+    const T lo = data_begin[pos];
+    const T hi = data_begin[pos + 1];
+    if (hi - lo >= 2) {
+      std::uniform_int_distribution<T> gap_dis(lo + 1, hi - 1);
+      T key = gap_dis(rand_gen);
+      if (added_keys.insert(key).second) {
+        data_sample.push_back(key);
+      }
     }
-    if (++attempts > num_searches * 8) {
+    if (++attempts > num_searches * 16) {
       break;
     }
   }
 
-  // This can return a lower number of samples than requested
   return data_sample;
 }
 
