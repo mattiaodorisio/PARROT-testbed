@@ -25,11 +25,15 @@ def auto_cast(v):
 
 PINNED_VARIANTS = {
     # index_name -> variant string to plot, or None for best
-    # 'DeLI-Static': 'GFB;1;70;BI;16;512',
-    # 'DeLI-Dynamic': 'N;1;70;BI;16;512',
+    'DeLI-Static': 'GFB;0;40;BI;49;512', # wiki
+    'DeLI-Dynamic': 'N;0;70;BI;49;512',  # wiki
+    # 'DeLI-Static': 'GFB;0;30;BI;16;512', # books
+    # 'DeLI-Dynamic': 'N;2;50;BI;16;512',  # books
     # 'DeLI-Static-Payload': 'GFB;0;70;BI;16;512',
     # 'DeLI-Dynamic-Payload': 'N;0;70;BI;16;512',
 }
+
+IGNORE_LIST = ['DeLI-Static-Payload', 'DeLI-Dynamic-Payload']
 
 
 def parse_file(path):
@@ -40,7 +44,8 @@ def parse_file(path):
                 continue
             rec = {k: auto_cast(v) for k, v in FIELD_RE.findall(line)}
             if 'throughput' in rec and isinstance(rec['throughput'], float):
-                records.append(rec)
+                if rec.get('index_name') not in IGNORE_LIST:
+                    records.append(rec)
     return records
 
 
@@ -97,16 +102,18 @@ def make_bar_plots(top3, out_prefix, medians):
 
         ax.set_xticks(range(len(names)))
         ax.set_xticklabels(names, rotation=45, ha='right', fontsize=13)
-        ax.set_ylabel('Median throughput (ops/s)', fontsize=13)
+        ax.set_ylabel('Throughput (ops/s)', fontsize=13)
         ax.set_title(f'Best variant per index — {wt.replace("_", " ")}', fontsize=14)
         ax.tick_params(axis='y', labelsize=13)
 
-        for bar, label in zip(bars, variant_labels):
+        for bar, label, name in zip(bars, variant_labels, names):
             if label == 'none':
                 continue
             parts = str(label).replace(';512', '').split(';')
             label = ';'.join(parts[:-1] if len(parts) == 5 else parts)
-            label = label.replace('GFB', 'GF').replace('btree_set', '')
+            label = label.replace('GFB', 'GF').replace('btree_set', '').replace(';BI', '')
+            if 'RadixSpline' in name:
+                label = label.replace('8', '22').replace('9', '28').replace('10', '28')
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height() * 1.01,

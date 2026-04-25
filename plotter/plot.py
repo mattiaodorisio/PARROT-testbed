@@ -133,7 +133,8 @@ def format_legend_label(label: str) -> str:
         .replace("Static", "Stat")
         .replace("Payload", "PL")
         .replace("SEA21-YFast", "YFastTrie")
-        .replace("GFB", "GF"))
+        .replace("GFB", "GF")
+        .replace("SEA21", "DFH"))
 
 
 def escape_legend_label(label: str) -> str:
@@ -530,11 +531,15 @@ def group_and_aggregate(data: List[Dict], groupby_col: str, agg_func: str, agg_c
         else:  # NONE - just take the first value
             agg_result = valid_values[0]
 
-        workload_type = group_rows[0].get('workload_type', '') if group_rows else ''
-        if workload_type == 'INSERT_DELETE':
-            agg_result = agg_result / x_value if x_value else agg_result
-        else:
-            agg_result = agg_result / 10000
+        try:
+            agg_result = float(agg_result)
+            workload_type = group_rows[0].get('workload_type', '') if group_rows else ''
+            if workload_type == 'INSERT_DELETE':
+                agg_result = agg_result / x_value if x_value else agg_result
+            else:
+                agg_result = agg_result / 10000
+        except (TypeError, ValueError):
+            pass
 
         # Create result row
         result_row = {
@@ -990,9 +995,12 @@ def get_workload_display_name(filter_conditions: Optional[List[Tuple[str, str]]]
     workload_display_map = {
         'LOOKUP_IN_DISTRIBUTION': 'In-Distr. Lookup',
         'LOOKUP_EXISTING': 'Existing Lookup',
+        'LOOKUP_UNIFORM': 'Uniform Lookup',
         'INSERT_IN_DISTRIBUTION': 'In-Distr. Insert',
         'DELETE_EXISTING': 'Delete Existing',
+        'INSERT_DELETE': 'Insert/Delete',
         'MIXED': 'Mixed',
+        'SHIFTING': 'Shifting',
     }
     return workload_display_map.get(workload_type, workload_type.replace('_', ' ').title())
 
@@ -1079,7 +1087,7 @@ def create_figure_from_template(data: List[Dict], x_col: str, y_col: str,
 
     # Special handling for certain column names
     if 'total_time' in actual_y_col:
-        y_label = 's/query'
+        y_label = 'Time(s)/ops'
     elif 'throughput' in actual_y_col:
         y_label = 'Throughput (ops/sec)'
     
@@ -1139,28 +1147,44 @@ def create_multiplot_from_filters(data: List[Dict], x_col: str, y_col: str,
     """
     # Parse individual filters separated by |
     filters = [f.strip() for f in filter_string.split('|')]
-    
+
     if not filters:
         return f"% No filters provided for multiplot {title}"
-    
+
+    # Decide caption strategy: if all filters share the same workload_type, label
+    # each subfigure by dataset_name instead (workload is redundant in that case).
+    def _filter_value(fstr, key):
+        conds = parse_filter(fstr)
+        return {k: v for k, v in conds}.get(key, '') if conds else ''
+
+    all_workloads = [_filter_value(f, 'workload_type') for f in filters]
+    use_dataset_as_caption = len(set(all_workloads)) == 1 and all_workloads[0]
+
+    def _get_caption(filter_conditions):
+        if use_dataset_as_caption:
+            fd = {k: v for k, v in filter_conditions} if filter_conditions else {}
+            raw = fd.get('dataset_name', '')
+            return raw.replace('_', ' ').replace('uint32', '').replace('50M', '').title() if raw else ''
+        return get_workload_display_name(filter_conditions)
+
     # Generate axis code for each filter
     subfigures = []
     shared_series_names = []
     for filter_str in filters:
         filter_conditions = parse_filter(filter_str)
-        
+
         # Create figure for this filter (it will include the outer figure environment)
         figure_content = create_figure_from_template(
             data, x_col, y_col, filter_conditions, groupby_col,
             "", "", "",  # Empty labels for subfigures
             figure_template_path
         )
-        
+
         # Extract just the axis environment
         axis_code = extract_axis_from_figure(figure_content)
         axis_code, axis_series = extract_series_names_and_strip_legend(axis_code)
         axis_code = compact_axis_for_subfigure(axis_code)
-        workload_caption = get_workload_display_name(filter_conditions)
+        workload_caption = _get_caption(filter_conditions)
         for series_name in axis_series:
             if series_name not in shared_series_names:
                 shared_series_names.append(series_name)

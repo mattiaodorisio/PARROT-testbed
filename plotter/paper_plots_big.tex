@@ -15,17 +15,17 @@
 %% OUTPUT: summary
 \begin{document}
 %% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
-%%             dataset_name=uniform_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=uniform_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
+%%             dataset_name=uniform_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=uniform_50M_uint32;workload_type=INSERT_DELETE;init_num_keys>=1048576|
-%%             dataset_name=normal_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=normal_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
+%%             dataset_name=normal_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=normal_50M_uint32;workload_type=INSERT_DELETE;init_num_keys>=1048576|
-%%             dataset_name=mix_gauss_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=mix_gauss_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
+%%             dataset_name=mix_gauss_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=mix_gauss_50M_uint32;workload_type=INSERT_DELETE;init_num_keys>=1048576|
-%%             dataset_name=exponential_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=exponential_50M_uint32;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
+%%             dataset_name=exponential_50M_uint32;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=exponential_50M_uint32;workload_type=INSERT_DELETE;init_num_keys>=1048576,
 %% index_name;
 %% PIN(index_variant:
@@ -41,6 +41,27 @@
 %% ),Time,,index_name,3,Uniform dataset|Gaussian dataset|Mixture of 2 Gaussians dataset|Exponential dataset}}
 \end{document}
 
+
+%% OUTPUT: existing
+\begin{document}
+%% {{MULTIPLOT:init_num_keys,MEDIAN(total_time),
+%%             dataset_name=uniform_50M_uint32;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=normal_50M_uint32;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=mix_gauss_50M_uint32;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
+%%             dataset_name=exponential_50M_uint32;workload_type=LOOKUP_EXISTING;init_num_keys>=32768,
+%% index_name;
+%% PIN(index_variant:
+%%             DeLI-Static=GFB\;1\;70\;BI\;12\;512,
+%%             DeLI-Dynamic=N\;1\;70\;BI\;12\;512,
+%%             DeLI-Static-Payload=GFB\;0\;70\;BI\;12\;512,
+%%             DeLI-Dynamic-Payload=N\;0\;70\;BI\;12\;512,
+%%             Static-PGM=8,
+%%             Dynamic-PGM=16,
+%%             SEA21-YFast=sl-bw9,
+%%             SEA21=hybrid-20,
+%%             SEA21-Map=hybrid-20
+%% ),Time, {dataset_display_name} dataset,index_name}}
+\end{document}
 
 
 %% OUTPUT: uniform
@@ -135,8 +156,7 @@
 %%             dataset_name=USA-road-d.USA;workload_type=LOOKUP_EXISTING;init_num_keys>=32768|
 %%             dataset_name=USA-road-d.USA;workload_type=LOOKUP_IN_DISTRIBUTION;init_num_keys>=32768|
 %%             dataset_name=USA-road-d.USA;workload_type=LOOKUP_UNIFORM;init_num_keys>=32768|
-%%             dataset_name=USA-road-d.USA;workload_type=INSERT_DELETE;init_num_keys>=1048576|
-%%             dataset_name=USA-road-d.USA;workload_type=SHIFTING;init_num_keys>=32768,
+%%             dataset_name=USA-road-d.USA;workload_type=INSERT_DELETE;init_num_keys>=1048576,
 %% index_name;
 %% PIN(index_variant:
 %%             DeLI-Static=GFB\;1\;70\;BI\;12\;512,
@@ -148,7 +168,7 @@
 %%             SEA21-YFast=sl-bw9,
 %%             SEA21=hybrid-20,
 %%             SEA21-Map=hybrid-20
-%% ),Time, {dataset_display_name} dataset,index_name,3}}
+%% ),Time, {dataset_display_name} dataset,index_name,4}}
 \end{document}
 
 %% OUTPUT: zipf
