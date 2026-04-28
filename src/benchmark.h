@@ -778,7 +778,11 @@ void run_benchmark(const bench_config& config,
       return;
     }
 
-    if (workload == Workload::INSERT_IN_DISTRIBUTION || workload == Workload::DELETE_EXISTING) {
+    // Disable some workload
+    if (workload == Workload::INSERT_IN_DISTRIBUTION || 
+        workload == Workload::DELETE_EXISTING ||
+        workload == Workload::MIXED || 
+        workload == Workload::SHIFTING) {
       return;
     }
 

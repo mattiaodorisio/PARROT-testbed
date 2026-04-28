@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import re
 import sys
 import argparse
@@ -24,16 +25,19 @@ def auto_cast(v):
 
 
 PINNED_VARIANTS = {
-    # index_name -> variant string to plot, or None for best
-    'DeLI-Static': 'GFB;0;40;BI;49;512', # wiki
-    'DeLI-Dynamic': 'N;0;70;BI;49;512',  # wiki
-    # 'DeLI-Static': 'GFB;0;30;BI;16;512', # books
-    # 'DeLI-Dynamic': 'N;2;50;BI;16;512',  # books
-    # 'DeLI-Static-Payload': 'GFB;0;70;BI;16;512',
-    # 'DeLI-Dynamic-Payload': 'N;0;70;BI;16;512',
+    'wiki': {
+        'DeLI-Static': 'GFB;0;40;BI;49;512',
+        'DeLI-Dynamic': 'N;0;70;BI;49;512',
+    },
+    'books': {
+        'DeLI-Static': 'GFB;0;30;BI;16;512',
+        'DeLI-Dynamic': 'N;2;50;BI;16;512',
+    },
 }
 
 IGNORE_LIST = ['DeLI-Static-Payload', 'DeLI-Dynamic-Payload']
+
+WORKLOADS = ['LOOKUP_UNIFORM', 'LOOKUP_IN_DISTRIBUTION']
 
 
 def parse_file(path):
@@ -44,7 +48,7 @@ def parse_file(path):
                 continue
             rec = {k: auto_cast(v) for k, v in FIELD_RE.findall(line)}
             if 'throughput' in rec and isinstance(rec['throughput'], float):
-                if rec.get('index_name') not in IGNORE_LIST:
+                if rec.get('index_name') not in IGNORE_LIST and rec.get('workload_type') in WORKLOADS:
                     records.append(rec)
     return records
 
@@ -81,18 +85,18 @@ def print_results(top3):
                 print(f"    {rank}. {var:<40}  {med:>15,.2f} ops/s")
 
 
-def make_bar_plots(top3, out_prefix, medians):
+def make_bar_plots(top3, out_prefix, medians, pinned):
     colors = cm.tab10.colors
     for wt in sorted(top3):
         indices = sorted(top3[wt])
-        def pick(idx):
-            pinned = PINNED_VARIANTS.get(idx)
-            if pinned is not None:
-                return (pinned, medians.get((wt, idx, pinned), 0.0))
+        def pick(idx, wt=wt):
+            variant = pinned.get(idx)
+            if variant is not None:
+                return (variant, medians.get((wt, idx, variant), 0.0))
             return top3[wt][idx][0]
 
         best = [(idx, pick(idx)) for idx in indices if top3[wt][idx]]
-        names = [b[0] for b in best]
+        names = [b[0].replace('DeLI', 'PARROT').replace('SEA21-YFast', 'YFastTrie') for b in best]
         throughputs = [b[1][1] for b in best]
         variant_labels = [b[1][0] for b in best]
 
@@ -112,7 +116,7 @@ def make_bar_plots(top3, out_prefix, medians):
             parts = str(label).replace(';512', '').split(';')
             label = ';'.join(parts[:-1] if len(parts) == 5 else parts)
             label = label.replace('GFB', 'GF').replace('btree_set', '').replace(';BI', '')
-            if 'RadixSpline' in name:
+            if 'RadixSpline' in name: # TODO: this are hard-coded configurations inherited form SOSD
                 label = label.replace('8', '22').replace('9', '28').replace('10', '28')
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
@@ -125,6 +129,7 @@ def make_bar_plots(top3, out_prefix, medians):
         plt.tight_layout()
         safe_wt = wt.replace('/', '_')
         out_path = f"{out_prefix}_{safe_wt}.png"
+        os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
         plt.savefig(out_path, dpi=150)
         plt.close()
         print(f"  [plot saved] {out_path}")
@@ -141,11 +146,16 @@ def main():
         print("No valid RESULT lines found.", file=sys.stderr)
         sys.exit(1)
 
+    dataset = next((d for d in PINNED_VARIANTS if d in os.path.basename(args.results_file)), None)
+    pinned = PINNED_VARIANTS.get(dataset, {})
+    if dataset:
+        print(f"Dataset detected: {dataset}")
+
     medians = compute_medians(records)
     top3 = top3_per_index(medians)
     print_results(top3)
     print()
-    make_bar_plots(top3, args.out, medians)
+    make_bar_plots(top3, args.out, medians, pinned)
 
 
 if __name__ == '__main__':

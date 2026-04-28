@@ -7,7 +7,7 @@
 
 #include "../indices/benchmark_alex.h"
 #include "../indices/benchmark_lipp.h"
-#include "../indices/benchmark_deli.h"
+#include "../indices/benchmark_parrot.h"
 #include "../indices/benchmark_pgm_static.h"
 #include "../indices/benchmark_pgm_dynamic.h"
 #include "../indices/benchmark_rs.h"

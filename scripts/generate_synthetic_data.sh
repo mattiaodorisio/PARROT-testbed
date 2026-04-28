@@ -24,7 +24,6 @@ echo "Plotting CDFs..."
 for f in \
     data/normal_50M_uint32      data/normal_50M_uint64      \
     data/exponential_50M_uint32 data/exponential_50M_uint64 \
-    data/lognormal_50M_uint32   data/lognormal_50M_uint64   \
     data/mix_gauss_50M_uint32   data/mix_gauss_50M_uint64   \
     data/zipf_50M_uint32        data/zipf_50M_uint64        \
     data/uniform_50M_uint32     data/uniform_50M_uint64     \

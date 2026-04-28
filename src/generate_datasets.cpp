@@ -420,7 +420,6 @@ void generate_all_synthetic(const std::string& data_dir, UniqueMode unique_mode,
 
     run("normal",      generate_normal_distr<T>(SIZE, unique_mode));
     run("exponential", generate_exponential_distr<T>(SIZE, unique_mode));
-    run("lognormal",   generate_lognormal_distr<T>(SIZE, unique_mode));
     run("mix_gauss",   generate_mix_of_gauss_distr<T>(SIZE, unique_mode));
     run("zipf",        generate_zipf_distr<T>(SIZE));
     run("uniform",     generate_uniform_distr<T>(SIZE, unique_mode));
