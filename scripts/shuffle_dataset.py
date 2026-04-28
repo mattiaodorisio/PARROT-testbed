@@ -40,6 +40,10 @@ def shuffle_dataset(infile: str, outfile: str) -> None:
     # Decrement max values (for compatibility with some indices that use max value as a sentinel)
     max_val = np.iinfo(np.dtype(dtype)).max
     data[data == max_val] = max_val - 1
+    
+    # Quantile filtering for FB dataset (removing huge values at the end)
+    if "fb" in infile:
+        data = data[data < np.quantile(data, 0.99999)]
 
     data = np.unique(data)
     rng = np.random.default_rng(42)

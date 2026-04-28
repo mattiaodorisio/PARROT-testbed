@@ -133,7 +133,7 @@ std::vector<T> generate_uniform_distr(size_t size, UniqueMode unique_mode) {
 
 template<typename T>
 std::vector<T> generate_normal_distr(size_t size, UniqueMode unique_mode) {
-    const T max_allowed = std::numeric_limits<T>::max() >> 1;
+    const T max_allowed = std::numeric_limits<T>::max() - 1;
     const double dmax = static_cast<double>(std::numeric_limits<T>::max());
     std::default_random_engine generator(1);
     std::normal_distribution<double> distribution(dmax / 2, dmax / 4);
@@ -177,7 +177,7 @@ std::vector<T> generate_normal_distr(size_t size, UniqueMode unique_mode) {
 
 template<typename T>
 std::vector<T> generate_lognormal_distr(size_t size, UniqueMode unique_mode) {
-    const T max_allowed = std::numeric_limits<T>::max() >> 1;
+    const T max_allowed = std::numeric_limits<T>::max() - 1;
     const double dmax = static_cast<double>(std::numeric_limits<T>::max());
     std::default_random_engine generator(2);
     std::lognormal_distribution<double> distribution(0, 0.5);
@@ -222,7 +222,7 @@ std::vector<T> generate_lognormal_distr(size_t size, UniqueMode unique_mode) {
 
 template<typename T>
 std::vector<T> generate_exponential_distr(size_t size, UniqueMode unique_mode) {
-    const T max_allowed = std::numeric_limits<T>::max() >> 1;
+    const T max_allowed = std::numeric_limits<T>::max() - 1;
     const double dmax = static_cast<double>(std::numeric_limits<T>::max());
     std::default_random_engine generator(3);
     std::exponential_distribution<double> distribution(2);
@@ -266,7 +266,7 @@ std::vector<T> generate_exponential_distr(size_t size, UniqueMode unique_mode) {
 
 template<typename T>
 std::vector<T> generate_chisquared_distr(size_t size, UniqueMode unique_mode) {
-    const T max_allowed = std::numeric_limits<T>::max() >> 1;
+    const T max_allowed = std::numeric_limits<T>::max() - 1;
     const double dmax = static_cast<double>(std::numeric_limits<T>::max());
     std::default_random_engine generator(4);
     std::chi_squared_distribution<double> distribution(1);
@@ -311,8 +311,8 @@ std::vector<T> generate_chisquared_distr(size_t size, UniqueMode unique_mode) {
 
 template<typename T>
 std::vector<T> generate_mix_of_gauss_distr(size_t size, UniqueMode unique_mode) {
-    const double dmax       = static_cast<double>(std::numeric_limits<T>::max() >> 1);
-    const T      max_allowed = static_cast<T>(dmax);
+    const double dmax        = static_cast<double>(std::numeric_limits<T>::max() - 1);
+    const T      max_allowed = std::numeric_limits<T>::max() - 1;
     std::default_random_engine generator(5);
 
     // Two narrow, well-separated Gaussians:
@@ -429,6 +429,7 @@ void generate_all_synthetic(const std::string& data_dir, UniqueMode unique_mode,
     run("mix_gauss",   generate_mix_of_gauss_distr<T>(SIZE, unique_mode));
     run("zipf",        generate_zipf_distr<T>(SIZE));
     run("uniform",     generate_uniform_distr<T>(SIZE, unique_mode));
+    run("chisquared",  generate_chisquared_distr<T>(SIZE, unique_mode));
 }
 
 int main(int argc, char* argv[]) {

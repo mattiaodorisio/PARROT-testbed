@@ -26,7 +26,8 @@ for f in \
     data/exponential_uint32 \
     data/mix_gauss_uint32   \
     data/zipf_uint32        \
-    data/uniform_uint32
+    data/uniform_uint32     \
+    data/chisquared_uint32
 do
     if [ -f "$f" ]; then
         python3 plotter/plot_cdf.py "$f"

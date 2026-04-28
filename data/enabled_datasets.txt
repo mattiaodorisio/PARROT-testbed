@@ -6,6 +6,7 @@ uniform_uint32
 normal_uint32
 exponential_uint32
 mix_gauss_uint32
+chisquared_uint32
 zipf_uint32
 
 # Real world unit64

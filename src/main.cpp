@@ -14,6 +14,7 @@
 #include "../indices/benchmark_tlx.h"
 #include "../indices/benchmark_sea21.h"
 #include "../indices/benchmark_rmi.h"
+#define ENABLE_SWIX
 #ifdef ENABLE_SWIX
 #include "../indices/benchmark_swix.h"
 #endif

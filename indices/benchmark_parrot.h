@@ -13,14 +13,15 @@ namespace deli_testbed {
 
 /// Per-dataset high_bits for 64-bit keys.
 inline unsigned int get_high_bits_64(const std::string& data_filename) {
-  if (data_filename.find("books") != std::string::npos) return 16;
-  if (data_filename.find("exponential") != std::string::npos) return 17;
-  if (data_filename.find("fb") != std::string::npos) return 29;
-  if (data_filename.find("mix") != std::string::npos) return 17;
-  if (data_filename.find("normal") != std::string::npos) return 17;
+  if (data_filename.find("exponential") != std::string::npos) return 16;
+  if (data_filename.find("mix") != std::string::npos) return 16;
+  if (data_filename.find("normal") != std::string::npos) return 16;
   if (data_filename.find("osm") != std::string::npos) return 16;
   if (data_filename.find("uniform") != std::string::npos) return 16;
+  if (data_filename.find("chisquared") != std::string::npos) return 16;
   if (data_filename.find("USA-road-d.USA.co.txt") != std::string::npos) return 54;
+  if (data_filename.find("books") != std::string::npos) return 16;
+  if (data_filename.find("fb") != std::string::npos) return 29;
   if (data_filename.find("wiki") != std::string::npos) return 49;
   if (data_filename.find("zipf") != std::string::npos) return 16;
   return 16;
@@ -202,11 +203,11 @@ void benchmark_deli_dynamic(const bench_config& config,
 
       static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
       constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
-                                 std::integer_sequence<unsigned int, 12>,
-                                 std::integer_sequence<unsigned int, 16, 17, 29, 49, 54>>{};
+                                 std::integer_sequence<unsigned int, 9, 10, 11, 12, 13, 14>,
+                                 std::integer_sequence<unsigned int, 16, 29, 49, 54>>{};
 
-      constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70>{};
-      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1>{};
+      constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70, 80>{};
+      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2, 4>{};
       constexpr auto rht_opts = std::integer_sequence<int, 0>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
       constexpr auto top_opts = std::integer_sequence<int, 1>{};
 
@@ -270,10 +271,10 @@ void benchmark_deli_dynamic(const bench_config& config,
     if (config.pareto) {
       static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
       constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
-                                 std::integer_sequence<unsigned int, 12>,
-                                 std::integer_sequence<unsigned int, 16, 17, 29, 49, 54>>{};
-      constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70>{};
-      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1>{};
+                                 std::integer_sequence<unsigned int, 9, 10, 11, 12, 13, 14>,
+                                 std::integer_sequence<unsigned int, 16, 29, 49, 54>>{};
+      constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70, 80>{};
+      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2, 4>{};
       constexpr auto rht_opts = std::integer_sequence<int, 0>{};
       constexpr auto top_opts = std::integer_sequence<int, 1>{};
 
@@ -357,11 +358,11 @@ void benchmark_deli_static(const bench_config& config,
 
       static_assert(sizeof(KeyType) * CHAR_BIT == 32 || sizeof(KeyType) * CHAR_BIT == 64, "Unsupported key size");
       constexpr auto high_bits = std::conditional_t<sizeof(KeyType) * CHAR_BIT == 32,
-                                 std::integer_sequence<unsigned int, 12>,
-                                 std::integer_sequence<unsigned int, 16, 17, 29, 49, 54>>{};
+                                 std::integer_sequence<unsigned int, 9, 10, 11, 12, 13, 14>,
+                                 std::integer_sequence<unsigned int, 16, 29, 49, 54>>{};
 
-      constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70>{};
-      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1>{};
+      constexpr auto load_balance = std::integer_sequence<size_t, 30, 40, 50, 60, 70, 80>{};
+      constexpr auto rht_simd_unrolled = std::integer_sequence<size_t, 0, 1, 2, 4>{};
       constexpr auto rht_opts = std::integer_sequence<int, 4>{}; // Rht Optimization 2, 3, 4 unsupported with dynamic
       constexpr auto top_opts = std::integer_sequence<int, 1>{};
 
@@ -424,14 +425,14 @@ void benchmark_deli_static_ps(const bench_config& config,
                                std::vector<std::pair<KeyType, PayloadType>>& key_pairs_ps,
                                const std::vector<std::pair<KeyType, PayloadType>>&/* shifting unused */) {
 
-//   benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 32>(config, key_pairs_ps);
-// #ifndef FAST_COMPILE
-//   if (config.pareto) {
-//     benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 16>(config, key_pairs_ps);
-//     benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 64>(config, key_pairs_ps);
-//     benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 128>(config, key_pairs_ps);
-//   }
-// #endif
+  benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 32>(config, key_pairs_ps);
+#ifndef FAST_COMPILE
+  if (config.pareto) {
+    benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 16>(config, key_pairs_ps);
+    benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 64>(config, key_pairs_ps);
+    benchmark_deli_static<true, KeyType, PayloadType, SearchMode::PREDECESSOR_SEARCH, 128>(config, key_pairs_ps);
+  }
+#endif
 }
 
 }  // namespace deli_testbed
