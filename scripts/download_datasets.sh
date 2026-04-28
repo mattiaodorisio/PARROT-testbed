@@ -98,8 +98,6 @@ function shuffle_datasets() {
    for f in \
       wiki_ts_200M_uint64 \
       books_800M_uint64   \
-      osm_cellids_800M_uint64 \
-      fb_200M_uint64
    do
       python3 ../scripts/shuffle_dataset.py "$f" "shuffled_${f}"
    done

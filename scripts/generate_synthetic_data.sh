@@ -22,11 +22,11 @@ trap 'echo "Error while plotting the distributions, but the datasets have been g
 set -e
 echo "Plotting CDFs..."
 for f in \
-    data/normal_50M_uint32      \
-    data/exponential_50M_uint32 \
-    data/mix_gauss_50M_uint32   \
-    data/zipf_50M_uint32        \
-    data/uniform_50M_uint32     \
+    data/normal_uint32      \
+    data/exponential_uint32 \
+    data/mix_gauss_uint32   \
+    data/zipf_uint32        \
+    data/uniform_uint32
 do
     if [ -f "$f" ]; then
         python3 plotter/plot_cdf.py "$f"

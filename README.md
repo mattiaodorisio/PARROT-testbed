@@ -8,7 +8,7 @@ This repository contains the experimental evaluation code for the PARtitioned RO
 Clone the repo and its dependencies
 ```bash
 git clone https://github.com/mattiaodorisio/PARROT-testbed.git
-git submodule update --init
+git submodule update --init --recursive
 mkdir build
 ```
 
