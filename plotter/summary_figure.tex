@@ -7,18 +7,18 @@
 \usepackage{float}
 \usepackage{xcolor}
 
-%% IMPORT-DATA uniform_50M_uint32 test/benchmark_uniform_50M_uint32_20260421_180037.txt
-%% IMPORT-DATA normal_50M_uint32 test/benchmark_normal_50M_uint32_20260422_022612.txt
-%% IMPORT-DATA mix_gauss_50M_uint32 test/benchmark_mix_gauss_50M_uint32_20260422_105612.txt
-%% IMPORT-DATA exponential_50M_uint32 test/benchmark_exponential_50M_uint32_20260422_065752.txt
+%% IMPORT-DATA uniform_uint32 test/benchmark_uniform_uint32_20260421_180037.txt
+%% IMPORT-DATA normal_uint32 test/benchmark_normal_uint32_20260422_022612.txt
+%% IMPORT-DATA mix_gauss_uint32 test/benchmark_mix_gauss_uint32_20260422_105612.txt
+%% IMPORT-DATA exponential_uint32 test/benchmark_exponential_uint32_20260422_065752.txt
 
-%% SQL CREATE VIEW uniform_50M_uint32_filtered AS SELECT * FROM uniform_50M_uint32 WHERE (index_name = 'DeLI-Static' AND index_variant = 'GFB;1;70;BI;12;512') OR (index_name = 'DeLI-Dynamic' AND index_variant = 'N;1;70;BI;12;512') OR (index_name = 'DeLI-Static-Payload' AND index_variant = 'GFB;0;70;BI;12;512') OR (index_name = 'DeLI-Dynamic-Payload' AND index_variant = 'N;0;70;BI;12;512') OR (index_name = 'Static-PGM' AND index_variant = '8') OR (index_name = 'ALEX' AND index_variant = 'none') OR (index_name = 'Dynamic-PGM' AND index_variant = '16') OR (index_name = 'SEA21-YFast' AND index_variant = 'sl-bw9') OR (index_name = 'SEA21' AND index_variant = 'hybrid-20') OR (index_name = 'SEA21-Map' AND index_variant = 'hybrid-20') OR index_name NOT IN ('DeLI-Static', 'DeLI-Dynamic', 'DeLI-Static-Payload', 'DeLI-Dynamic-Payload', 'Static-PGM', 'Dynamic-PGM', 'SEA21-YFast', 'SEA21', 'SEA21-Map', 'ALEX')
+%% SQL CREATE VIEW uniform_uint32_filtered AS SELECT * FROM uniform_uint32 WHERE (index_name = 'DeLI-Static' AND index_variant = 'GFB;1;70;BI;12;512') OR (index_name = 'DeLI-Dynamic' AND index_variant = 'N;1;70;BI;12;512') OR (index_name = 'DeLI-Static-Payload' AND index_variant = 'GFB;0;70;BI;12;512') OR (index_name = 'DeLI-Dynamic-Payload' AND index_variant = 'N;0;70;BI;12;512') OR (index_name = 'Static-PGM' AND index_variant = '8') OR (index_name = 'ALEX' AND index_variant = 'none') OR (index_name = 'Dynamic-PGM' AND index_variant = '16') OR (index_name = 'SEA21-YFast' AND index_variant = 'sl-bw9') OR (index_name = 'SEA21' AND index_variant = 'hybrid-20') OR (index_name = 'SEA21-Map' AND index_variant = 'hybrid-20') OR index_name NOT IN ('DeLI-Static', 'DeLI-Dynamic', 'DeLI-Static-Payload', 'DeLI-Dynamic-Payload', 'Static-PGM', 'Dynamic-PGM', 'SEA21-YFast', 'SEA21', 'SEA21-Map', 'ALEX')
 
-%% SQL CREATE VIEW normal_50M_uint32_filtered AS SELECT * FROM normal_50M_uint32 WHERE (index_name = 'DeLI-Static' AND index_variant = 'GFB;1;70;BI;12;512') OR (index_name = 'DeLI-Dynamic' AND index_variant = 'N;1;70;BI;12;512') OR (index_name = 'DeLI-Static-Payload' AND index_variant = 'GFB;0;70;BI;12;512') OR (index_name = 'DeLI-Dynamic-Payload' AND index_variant = 'N;0;70;BI;12;512') OR (index_name = 'Static-PGM' AND index_variant = '8') OR (index_name = 'ALEX' AND index_variant = 'none') OR (index_name = 'Dynamic-PGM' AND index_variant = '16') OR (index_name = 'SEA21-YFast' AND index_variant = 'sl-bw9') OR (index_name = 'SEA21' AND index_variant = 'hybrid-20') OR (index_name = 'SEA21-Map' AND index_variant = 'hybrid-20') OR index_name NOT IN ('DeLI-Static', 'DeLI-Dynamic', 'DeLI-Static-Payload', 'DeLI-Dynamic-Payload', 'Static-PGM', 'Dynamic-PGM', 'SEA21-YFast', 'SEA21', 'SEA21-Map', 'ALEX')
+%% SQL CREATE VIEW normal_uint32_filtered AS SELECT * FROM normal_uint32 WHERE (index_name = 'DeLI-Static' AND index_variant = 'GFB;1;70;BI;12;512') OR (index_name = 'DeLI-Dynamic' AND index_variant = 'N;1;70;BI;12;512') OR (index_name = 'DeLI-Static-Payload' AND index_variant = 'GFB;0;70;BI;12;512') OR (index_name = 'DeLI-Dynamic-Payload' AND index_variant = 'N;0;70;BI;12;512') OR (index_name = 'Static-PGM' AND index_variant = '8') OR (index_name = 'ALEX' AND index_variant = 'none') OR (index_name = 'Dynamic-PGM' AND index_variant = '16') OR (index_name = 'SEA21-YFast' AND index_variant = 'sl-bw9') OR (index_name = 'SEA21' AND index_variant = 'hybrid-20') OR (index_name = 'SEA21-Map' AND index_variant = 'hybrid-20') OR index_name NOT IN ('DeLI-Static', 'DeLI-Dynamic', 'DeLI-Static-Payload', 'DeLI-Dynamic-Payload', 'Static-PGM', 'Dynamic-PGM', 'SEA21-YFast', 'SEA21', 'SEA21-Map', 'ALEX')
 
-%% SQL CREATE VIEW mix_gauss_50M_uint32_filtered AS SELECT * FROM mix_gauss_50M_uint32 WHERE (index_name = 'DeLI-Static' AND index_variant = 'GFB;1;70;BI;12;512') OR (index_name = 'DeLI-Dynamic' AND index_variant = 'N;1;70;BI;12;512') OR (index_name = 'DeLI-Static-Payload' AND index_variant = 'GFB;0;70;BI;12;512') OR (index_name = 'DeLI-Dynamic-Payload' AND index_variant = 'N;0;70;BI;12;512') OR (index_name = 'Static-PGM' AND index_variant = '8') OR (index_name = 'ALEX' AND index_variant = 'none') OR (index_name = 'Dynamic-PGM' AND index_variant = '16') OR (index_name = 'SEA21-YFast' AND index_variant = 'sl-bw9') OR (index_name = 'SEA21' AND index_variant = 'hybrid-20') OR (index_name = 'SEA21-Map' AND index_variant = 'hybrid-20') OR index_name NOT IN ('DeLI-Static', 'DeLI-Dynamic', 'DeLI-Static-Payload', 'DeLI-Dynamic-Payload', 'Static-PGM', 'Dynamic-PGM', 'SEA21-YFast', 'SEA21', 'SEA21-Map', 'ALEX')
+%% SQL CREATE VIEW mix_gauss_uint32_filtered AS SELECT * FROM mix_gauss_uint32 WHERE (index_name = 'DeLI-Static' AND index_variant = 'GFB;1;70;BI;12;512') OR (index_name = 'DeLI-Dynamic' AND index_variant = 'N;1;70;BI;12;512') OR (index_name = 'DeLI-Static-Payload' AND index_variant = 'GFB;0;70;BI;12;512') OR (index_name = 'DeLI-Dynamic-Payload' AND index_variant = 'N;0;70;BI;12;512') OR (index_name = 'Static-PGM' AND index_variant = '8') OR (index_name = 'ALEX' AND index_variant = 'none') OR (index_name = 'Dynamic-PGM' AND index_variant = '16') OR (index_name = 'SEA21-YFast' AND index_variant = 'sl-bw9') OR (index_name = 'SEA21' AND index_variant = 'hybrid-20') OR (index_name = 'SEA21-Map' AND index_variant = 'hybrid-20') OR index_name NOT IN ('DeLI-Static', 'DeLI-Dynamic', 'DeLI-Static-Payload', 'DeLI-Dynamic-Payload', 'Static-PGM', 'Dynamic-PGM', 'SEA21-YFast', 'SEA21', 'SEA21-Map', 'ALEX')
 
-%% SQL CREATE VIEW exponential_50M_uint32_filtered AS SELECT * FROM exponential_50M_uint32 WHERE (index_name = 'DeLI-Static' AND index_variant = 'GFB;1;70;BI;12;512') OR (index_name = 'DeLI-Dynamic' AND index_variant = 'N;1;70;BI;12;512') OR (index_name = 'DeLI-Static-Payload' AND index_variant = 'GFB;0;70;BI;12;512') OR (index_name = 'DeLI-Dynamic-Payload' AND index_variant = 'N;0;70;BI;12;512') OR (index_name = 'Static-PGM' AND index_variant = '8') OR (index_name = 'ALEX' AND index_variant = 'none') OR (index_name = 'Dynamic-PGM' AND index_variant = '16') OR (index_name = 'SEA21-YFast' AND index_variant = 'sl-bw9') OR (index_name = 'SEA21' AND index_variant = 'hybrid-20') OR (index_name = 'SEA21-Map' AND index_variant = 'hybrid-20') OR index_name NOT IN ('DeLI-Static', 'DeLI-Dynamic', 'DeLI-Static-Payload', 'DeLI-Dynamic-Payload', 'Static-PGM', 'Dynamic-PGM', 'SEA21-YFast', 'SEA21', 'SEA21-Map', 'ALEX')
+%% SQL CREATE VIEW exponential_uint32_filtered AS SELECT * FROM exponential_uint32 WHERE (index_name = 'DeLI-Static' AND index_variant = 'GFB;1;70;BI;12;512') OR (index_name = 'DeLI-Dynamic' AND index_variant = 'N;1;70;BI;12;512') OR (index_name = 'DeLI-Static-Payload' AND index_variant = 'GFB;0;70;BI;12;512') OR (index_name = 'DeLI-Dynamic-Payload' AND index_variant = 'N;0;70;BI;12;512') OR (index_name = 'Static-PGM' AND index_variant = '8') OR (index_name = 'ALEX' AND index_variant = 'none') OR (index_name = 'Dynamic-PGM' AND index_variant = '16') OR (index_name = 'SEA21-YFast' AND index_variant = 'sl-bw9') OR (index_name = 'SEA21' AND index_variant = 'hybrid-20') OR (index_name = 'SEA21-Map' AND index_variant = 'hybrid-20') OR index_name NOT IN ('DeLI-Static', 'DeLI-Dynamic', 'DeLI-Static-Payload', 'DeLI-Dynamic-Payload', 'Static-PGM', 'Dynamic-PGM', 'SEA21-YFast', 'SEA21', 'SEA21-Map', 'ALEX')
 
 \begin{document}
 
@@ -66,7 +66,7 @@
     line width=0.5pt,
 ]
 
-%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM uniform_50M_uint32_filtered WHERE workload_type = 'LOOKUP_UNIFORM' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
+%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM uniform_uint32_filtered WHERE workload_type = 'LOOKUP_UNIFORM' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
 
 \end{axis}
 \end{tikzpicture}
@@ -97,7 +97,7 @@
     line width=0.5pt,
 ]
 
-%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM uniform_50M_uint32_filtered WHERE workload_type = 'LOOKUP_IN_DISTRIBUTION' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
+%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM uniform_uint32_filtered WHERE workload_type = 'LOOKUP_IN_DISTRIBUTION' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
 
 \end{axis}
 \end{tikzpicture}
@@ -127,7 +127,7 @@
     line width=0.5pt,
 ]
 
-%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) / CAST(init_num_keys AS REAL) AS y, index_name AS color, index_variant AS marker FROM uniform_50M_uint32_filtered WHERE workload_type = 'INSERT_DELETE' AND CAST(init_num_keys AS INTEGER) >= 1048576 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
+%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) / CAST(init_num_keys AS REAL) AS y, index_name AS color, index_variant AS marker FROM uniform_uint32_filtered WHERE workload_type = 'INSERT_DELETE' AND CAST(init_num_keys AS INTEGER) >= 1048576 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
 
 \end{axis}
 \end{tikzpicture}
@@ -162,7 +162,7 @@
     line width=0.5pt,
 ]
 
-%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM normal_50M_uint32_filtered WHERE workload_type = 'LOOKUP_UNIFORM' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
+%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM normal_uint32_filtered WHERE workload_type = 'LOOKUP_UNIFORM' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
 
 \end{axis}
 \end{tikzpicture}
@@ -193,7 +193,7 @@
     line width=0.5pt,
 ]
 
-%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM normal_50M_uint32_filtered WHERE workload_type = 'LOOKUP_IN_DISTRIBUTION' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
+%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM normal_uint32_filtered WHERE workload_type = 'LOOKUP_IN_DISTRIBUTION' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
 
 \end{axis}
 \end{tikzpicture}
@@ -223,7 +223,7 @@
     line width=0.5pt,
 ]
 
-%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) / CAST(init_num_keys AS REAL) AS y, index_name AS color, index_variant AS marker FROM normal_50M_uint32_filtered WHERE workload_type = 'INSERT_DELETE' AND CAST(init_num_keys AS INTEGER) >= 1048576 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
+%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) / CAST(init_num_keys AS REAL) AS y, index_name AS color, index_variant AS marker FROM normal_uint32_filtered WHERE workload_type = 'INSERT_DELETE' AND CAST(init_num_keys AS INTEGER) >= 1048576 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
 
 \end{axis}
 \end{tikzpicture}
@@ -258,7 +258,7 @@
     line width=0.5pt,
 ]
 
-%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM mix_gauss_50M_uint32_filtered WHERE workload_type = 'LOOKUP_UNIFORM' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
+%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM mix_gauss_uint32_filtered WHERE workload_type = 'LOOKUP_UNIFORM' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
 
 \end{axis}
 \end{tikzpicture}
@@ -289,7 +289,7 @@
     line width=0.5pt,
 ]
 
-%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM mix_gauss_50M_uint32_filtered WHERE workload_type = 'LOOKUP_IN_DISTRIBUTION' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
+%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM mix_gauss_uint32_filtered WHERE workload_type = 'LOOKUP_IN_DISTRIBUTION' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
 
 \end{axis}
 \end{tikzpicture}
@@ -319,7 +319,7 @@
     line width=0.5pt,
 ]
 
-%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) / CAST(init_num_keys AS REAL) AS y, index_name AS color, index_variant AS marker FROM mix_gauss_50M_uint32_filtered WHERE workload_type = 'INSERT_DELETE' AND CAST(init_num_keys AS INTEGER) >= 1048576 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
+%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) / CAST(init_num_keys AS REAL) AS y, index_name AS color, index_variant AS marker FROM mix_gauss_uint32_filtered WHERE workload_type = 'INSERT_DELETE' AND CAST(init_num_keys AS INTEGER) >= 1048576 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
 
 \end{axis}
 \end{tikzpicture}
@@ -354,7 +354,7 @@
     line width=0.5pt,
 ]
 
-%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM exponential_50M_uint32_filtered WHERE workload_type = 'LOOKUP_UNIFORM' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
+%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM exponential_uint32_filtered WHERE workload_type = 'LOOKUP_UNIFORM' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
 
 \end{axis}
 \end{tikzpicture}
@@ -385,7 +385,7 @@
     line width=0.5pt,
 ]
 
-%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM exponential_50M_uint32_filtered WHERE workload_type = 'LOOKUP_IN_DISTRIBUTION' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
+%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) AS y, index_name AS color, index_variant AS marker FROM exponential_uint32_filtered WHERE workload_type = 'LOOKUP_IN_DISTRIBUTION' AND CAST(init_num_keys AS INTEGER) >= 32768 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
 
 \end{axis}
 \end{tikzpicture}
@@ -415,7 +415,7 @@
     line width=0.5pt,
 ]
 
-%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) / CAST(init_num_keys AS REAL) AS y, index_name AS color, index_variant AS marker FROM exponential_50M_uint32_filtered WHERE workload_type = 'INSERT_DELETE' AND CAST(init_num_keys AS INTEGER) >= 1048576 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
+%% MULTIPLOT SELECT CAST(init_num_keys AS INTEGER) AS x, MEDIAN(CAST(total_time AS REAL)) / CAST(init_num_keys AS REAL) AS y, index_name AS color, index_variant AS marker FROM exponential_uint32_filtered WHERE workload_type = 'INSERT_DELETE' AND CAST(init_num_keys AS INTEGER) >= 1048576 GROUP BY init_num_keys, index_name, index_variant ORDER BY CAST(init_num_keys AS INTEGER)
 
 \end{axis}
 \end{tikzpicture}

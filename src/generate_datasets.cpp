@@ -412,9 +412,15 @@ void generate_all_synthetic(const std::string& data_dir, UniqueMode unique_mode,
     };
 
     auto run = [&](const std::string& name, std::vector<T> data) {
-        std::string path = data_dir + "/" + name + "_50M_" + suffix;
+        std::string path = data_dir + "/" + name + suffix;
+        // Ensure no value is UINT32_MAX or UINT64_MAX to avoid issues for libraries that use it as sentinel.
+        for (auto& val : data) {
+            if (val == std::numeric_limits<T>::max()) {
+                val = std::numeric_limits<T>::max() - 1;
+            }
+        }
         write_file(path, data);
-        std::cout << name << "_50M_" << suffix << std::endl;
+        std::cout << name << suffix << std::endl;
         if (print_stats_flag) print_stats(data);
     };
 
@@ -443,18 +449,6 @@ int main(int argc, char* argv[]) {
 
     generate_all_synthetic<uint32_t>(data_dir, unique_mode, print_stats_flag);
     // generate_all_synthetic<uint64_t>(data_dir, unique_mode, print_stats_flag);
-
-    std::vector<uint32_t> data = read_bin32_file(data_dir + "/books_200M_uint32");
-    // REWRITING THE FILE ON DISK TO REPLACE UINT32_MAX with UINT32_MAX - 1 for safety for some libs
-    for (size_t i = data.size() - 1; i >= 0; --i) {
-        if (data[i] == UINT32_MAX)
-            data[i] = UINT32_MAX - 1;
-        else
-            break;
-    }
-    write_bin32_file(data_dir + "/books_200M_uint32", data);
-    std::cout << "books_200M_uint32" << std::endl;
-    if (print_stats_flag) print_stats(data);
 
     return 0;
 }

@@ -37,6 +37,10 @@ def shuffle_dataset(infile: str, outfile: str) -> None:
             f.read(int(size) * np.dtype(dtype).itemsize), dtype=dtype
         ).copy()
 
+    # Decrement max values (for compatibility with some indices that use max value as a sentinel)
+    max_val = np.iinfo(np.dtype(dtype)).max
+    data[data == max_val] = max_val - 1
+
     data = np.unique(data)
     rng = np.random.default_rng(42)
     rng.shuffle(data)

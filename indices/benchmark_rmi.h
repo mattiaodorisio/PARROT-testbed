@@ -207,65 +207,41 @@ void benchmark_rmi(
   }
 #endif
 
-#ifdef DELI_HAVE_RMI_uniform_50M_uint32
-  if (dataset == "uniform_50M_uint32" && key_values.size() == 50'000'000) {
-    DELI_RMI_DISPATCH(uniform_50M_uint32, KeyType, PayloadType,
+#ifdef DELI_HAVE_RMI_uniform_uint32
+  if (dataset == "uniform_uint32" && key_values.size() == 50'000'000) {
+    DELI_RMI_DISPATCH(uniform_uint32, KeyType, PayloadType,
                       config, key_values, shifting_key_values);
     return;
   }
 #endif
 
-#ifdef DELI_HAVE_RMI_normal_50M_uint32
-  if (dataset == "normal_50M_uint32" && key_values.size() == 50'000'000) {
-    DELI_RMI_DISPATCH(normal_50M_uint32, KeyType, PayloadType,
+#ifdef DELI_HAVE_RMI_normal_uint32
+  if (dataset == "normal_uint32" && key_values.size() == 50'000'000) {
+    DELI_RMI_DISPATCH(normal_uint32, KeyType, PayloadType,
                       config, key_values, shifting_key_values);
     return;
   }
 #endif
 
-#ifdef DELI_HAVE_RMI_lognormal_50M_uint32
-  if (dataset == "lognormal_50M_uint32" && key_values.size() == 50'000'000) {
-    DELI_RMI_DISPATCH(lognormal_50M_uint32, KeyType, PayloadType,
+#ifdef DELI_HAVE_RMI_mix_gauss_uint32
+  if (dataset == "mix_gauss_uint32" && key_values.size() == 50'000'000) {
+    DELI_RMI_DISPATCH(mix_gauss_uint32, KeyType, PayloadType,
                       config, key_values, shifting_key_values);
     return;
   }
 #endif
 
-#ifdef DELI_HAVE_RMI_mix_gauss_50M_uint32
-  if (dataset == "mix_gauss_50M_uint32" && key_values.size() == 50'000'000) {
-    DELI_RMI_DISPATCH(mix_gauss_50M_uint32, KeyType, PayloadType,
+#ifdef DELI_HAVE_RMI_exponential_uint32
+  if (dataset == "exponential_uint32" && key_values.size() == 50'000'000) {
+    DELI_RMI_DISPATCH(exponential_uint32, KeyType, PayloadType,
                       config, key_values, shifting_key_values);
     return;
   }
 #endif
 
-#ifdef DELI_HAVE_RMI_exponential_50M_uint32
-  if (dataset == "exponential_50M_uint32" && key_values.size() == 50'000'000) {
-    DELI_RMI_DISPATCH(exponential_50M_uint32, KeyType, PayloadType,
-                      config, key_values, shifting_key_values);
-    return;
-  }
-#endif
-
-#ifdef DELI_HAVE_RMI_zipf_50M_uint32
-  if (dataset == "zipf_50M_uint32" && key_values.size() == 50'000'000) {
-    DELI_RMI_DISPATCH(zipf_50M_uint32, KeyType, PayloadType,
-                      config, key_values, shifting_key_values);
-    return;
-  }
-#endif
-
-#ifdef DELI_HAVE_RMI_friendster_50M_uint32
-  if (dataset == "friendster_50M_uint32" && key_values.size() == 50'000'000) {
-    DELI_RMI_DISPATCH(friendster_50M_uint32, KeyType, PayloadType,
-                      config, key_values, shifting_key_values);
-    return;
-  }
-#endif
-
-#ifdef DELI_HAVE_RMI_companynet_uint32
-  if (dataset == "companynet_uint32") {
-    DELI_RMI_DISPATCH(companynet_uint32, KeyType, PayloadType,
+#ifdef DELI_HAVE_RMI_zipf_uint32
+  if (dataset == "zipf_uint32" && key_values.size() == 50'000'000) {
+    DELI_RMI_DISPATCH(zipf_uint32, KeyType, PayloadType,
                       config, key_values, shifting_key_values);
     return;
   }
