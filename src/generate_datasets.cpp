@@ -412,7 +412,7 @@ void generate_all_synthetic(const std::string& data_dir, UniqueMode unique_mode,
     };
 
     auto run = [&](const std::string& name, std::vector<T> data) {
-        std::string path = data_dir + "/" + name + suffix;
+        std::string path = data_dir + "/" + name + "_" + suffix;
         // Ensure no value is UINT32_MAX or UINT64_MAX to avoid issues for libraries that use it as sentinel.
         for (auto& val : data) {
             if (val == std::numeric_limits<T>::max()) {
@@ -420,7 +420,7 @@ void generate_all_synthetic(const std::string& data_dir, UniqueMode unique_mode,
             }
         }
         write_file(path, data);
-        std::cout << name << suffix << std::endl;
+        std::cout << name << "_" << suffix << std::endl;
         if (print_stats_flag) print_stats(data);
     };
 
