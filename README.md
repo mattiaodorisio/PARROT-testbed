@@ -1,32 +1,34 @@
-# PARROR Testbed
+# PARROT Testbed
 
-This repo contains the code for the experimental evaluation for the PARtitioned RObin hood Table.
+This repository contains the experimental evaluation code for the PARtitioned RObin hood Table (PARROT).
 
 ## Reproducibility
 
-Genereate the synthetic datasets and/or download the SOSD datasets.
+**1. Generate datasets.**
+Generate the synthetic datasets and/or download the SOSD datasets:
 
 ```bash
 ./script/generate_synthetic_data.sh
 ./script/download_datasets.sh
 ```
 
-Run the experiments.
+**2. Run experiments.**
 
 ```bash
 ./script/run_benchmarks.sh
 ```
 
-This runs a subset of the many configurations of the indexes. To run them all, comment the FAST_COMPILE macro on ```src/utills.h``` (this causes much slower compilation due to the many combinations of template parameters to be compiled).
+This compiles and runs a subset of index configurations. To include all configurations, comment out the `FAST_COMPILE` macro in `src/utills.h` (note: this significantly increases compilation time due to the large number of template instantiations).
 
-Generate the plots.
+**3. Generate plots.**
 
 ```bash
 cd plotter
 make
 ```
 
-The generated plots are in ```plotter/build```
+The generated plots are placed in `plotter/build`.
 
+---
 
-TODOs: we are expanding the experimental evaluation.
+> **Note:** The experimental evaluation is currently being extended.
