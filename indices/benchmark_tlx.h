@@ -43,6 +43,12 @@ class BenchmarkTLX {
       index.erase(key);
     }
 
+    // TLX btree is designed with ~256-byte nodes; use node count as approximation.
+    size_t size_in_bytes() const {
+      const auto& stats = index.get_stats();
+      return (stats.leaves + stats.inner_nodes) * 256;
+    }
+
     static std::string name() {
       return "TLX";
     }

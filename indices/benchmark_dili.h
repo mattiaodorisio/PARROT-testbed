@@ -43,6 +43,10 @@ class BenchmarkDILI {
       index.erase(static_cast<long>(key));
     }
 
+    size_t size_in_bytes() const {
+      return index.total_size();
+    }
+
     static std::string name()    { return "DILI"; }
     static std::string variant() { return "none"; }
 

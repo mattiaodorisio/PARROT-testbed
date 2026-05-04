@@ -43,6 +43,10 @@ class BenchmarkRS : public PredecessorSearchBase<KEY_TYPE> {
       throw std::runtime_error("Erase not supported on RadixSpline index");
     }
 
+    size_t size_in_bytes() const {
+      return rs_.GetSize() + this->ps_size_bytes();
+    }
+
     static std::string name() {
       return "RadixSpline";
     }

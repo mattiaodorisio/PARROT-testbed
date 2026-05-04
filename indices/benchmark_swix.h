@@ -76,6 +76,10 @@ class BenchmarkSWIX : public EmptyBase
         // No-op: SWIX uses implicit timestamp-based expiry.
     }
 
+    size_t size_in_bytes() const {
+        return index_ ? index_->get_total_size_in_bytes() : 0;
+    }
+
     static std::string name() { return "SWIX"; }
     static std::string variant() { return "none"; }
 

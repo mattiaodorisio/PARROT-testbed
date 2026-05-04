@@ -101,6 +101,9 @@ class BenchmarkRMI : public PredecessorSearchBase<KEY_TYPE> {
   // already guards dispatch behind #ifdef DELI_HAVE_RMI_<dataset>.
   bool applicable(const std::string&) { return true; }
 
+  // RMI uses bare function pointers for lookup; no object to query for size.
+  size_t size_in_bytes() const { return 0; }
+
  private:
   bool loaded_;
 };

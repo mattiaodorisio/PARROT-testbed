@@ -40,6 +40,10 @@ class BenchmarkStaticPGM : public PredecessorSearchBase<KEY_TYPE> {
       throw std::runtime_error("Erase not supported on static PGM index");
     }
 
+    size_t size_in_bytes() const {
+      return index.size_in_bytes() + this->ps_size_bytes();
+    }
+
     static std::string name() {
       return "Static-PGM";
     }

@@ -81,6 +81,13 @@ class BenchmarkDynamicPGM
       index.erase(key);
     }
 
+    size_t size_in_bytes() const {
+      size_t sz = index.size_in_bytes();
+      if constexpr (mode == SearchMode::PREDECESSOR_SEARCH)
+        sz += this->ps_size_bytes();
+      return sz;
+    }
+
     static std::string name() { return "Dynamic-PGM"; }
 
     static std::string variant() {

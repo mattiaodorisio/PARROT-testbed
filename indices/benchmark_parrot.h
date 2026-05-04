@@ -124,6 +124,13 @@ class BenchmarkDeLI
       throw std::logic_error("Erase not supported for static DeLI");
     }
 
+    size_t size_in_bytes() const {
+      size_t sz = index.size_in_bytes();
+      if constexpr (mode == SearchMode::PREDECESSOR_SEARCH)
+        sz += this->ps_size_bytes();
+      return sz;
+    }
+
     static std::string name() {
       if constexpr (mode == SearchMode::PREDECESSOR_SEARCH) {
         return "DeLI-Static-PS";

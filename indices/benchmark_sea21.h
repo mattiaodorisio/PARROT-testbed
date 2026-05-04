@@ -56,6 +56,9 @@ class BenchmarkSEA21 {
     index_.remove(static_cast<uint64_t>(key));
   }
 
+  // tdc dynamic structures expose no size_in_bytes API; not implemented.
+  size_t size_in_bytes() const { return 0; }
+
   static std::string name()    { return NAME; }
   static std::string variant() { return VARIANT; }
 

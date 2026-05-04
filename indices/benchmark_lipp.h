@@ -34,6 +34,9 @@ class BenchmarkLIPP {
       throw std::runtime_error("Erase not supported on LIPP index");
     }
 
+    // LIPP exposes no size_in_bytes API; not implemented.
+    size_t size_in_bytes() const { return 0; }
+
     static std::string name() {
       return "LIPP";
     }

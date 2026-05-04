@@ -50,6 +50,10 @@ protected:
       sorted_keys_.push_back(it->first);
   }
 
+  size_t ps_size_bytes() const {
+    return sorted_keys_.size() * sizeof(KeyType);
+  }
+
   /// Return the smallest key in sorted_keys_[lo, hi) that is >= query,
   /// or KeyType{} if no such key exists.
   KeyType find_successor_in_range(KeyType query, size_t lo, size_t hi) const {
@@ -114,8 +118,9 @@ class Benchmark {
                    size_t convergence_samples,
                    double convergence_mean_throughput,
                    double convergence_rse,
-                   bool adaptive_stop_triggered) {
-    
+                   bool adaptive_stop_triggered,
+                   size_t size_bytes = 0) {
+
     bool error = (batch_time == std::numeric_limits<uint64_t>::max());
     double batch_overall_throughput = (batch_time > 0) ? (batch_operations / batch_time * 1e9) : 0.0;
 
@@ -132,7 +137,8 @@ class Benchmark {
             << "conv_samples=" << convergence_samples << " "
             << std::fixed << std::setprecision(2) << "conv_mean_throughput=" << (convergence_samples > 0 ? std::to_string(convergence_mean_throughput) : "na") << " "
             << std::fixed << std::setprecision(6) << "conv_rse=" << (std::isfinite(convergence_rse) ? std::to_string(convergence_rse) : "na") << " "
-            << "adaptive_stop=" << (adaptive_stop_triggered ? "1" : "0")
+            << "adaptive_stop=" << (adaptive_stop_triggered ? "1" : "0") << " "
+            << "size_bytes=" << size_bytes
             << std::endl;
   }
 
@@ -186,6 +192,10 @@ class Benchmark {
 
   size_t current_num_keys_() const {
     return key_values_.size();
+  }
+
+  size_t get_insert_delete_size_bytes() const {
+    return insert_delete_size_bytes_;
   }
 
   private:
@@ -727,6 +737,14 @@ private:
     // key_values_ holds the original file-order pairs set by run_benchmark before the batch loop.
     const size_t n = key_values_.size();
 
+    auto record_size = [&]() {
+      if constexpr (requires(Index& i) { { i.size_in_bytes() } -> std::convertible_to<size_t>; }) {
+        insert_delete_size_bytes_ = index.size_in_bytes();
+      } else {
+        insert_delete_size_bytes_ = 0;
+      }
+    };
+
     if (config.clear_cache) {
       individual_ns_sum_ = 0;
       for (size_t i = 0; i < n; ++i) {
@@ -736,6 +754,7 @@ private:
           index.insert(key_values_[i].first, key_values_[i].second);
         });
       }
+      record_size();
       for (size_t i = 0; i < n; ++i) {
         for (uint64_t& v : memory_) random_sum_ += v;
         _mm_mfence();
@@ -745,12 +764,16 @@ private:
       }
       return individual_ns_sum_;
     } else {
-      return utils::timing([&] {
+      uint64_t insert_time = utils::timing([&] {
         for (size_t i = 0; i < n; ++i)
           index.insert(key_values_[i].first, key_values_[i].second);
+      });
+      record_size();
+      uint64_t delete_time = utils::timing([&] {
         for (size_t i = 0; i < n; ++i)
           index.erase(key_values_[i].first);
       });
+      return insert_time + delete_time;
     }
   }
 
@@ -760,6 +783,7 @@ private:
   uint64_t individual_ns_sum_ = 0;
   std::vector<uint64_t> memory_;  // Some memory used to flush the cache
   size_t shifting_insert_cursor_ = 0; // Shifting window state
+  size_t insert_delete_size_bytes_ = 0; // Size recorded after all inserts in INSERT_DELETE workload
 };
 
 
@@ -920,9 +944,11 @@ void run_benchmark(const bench_config& config,
         }
 
         // Use the benchmark's print method for consistent formatting
+        const size_t size_bytes = (workload == INSERT_DELETE) ? benchmark.get_insert_delete_size_bytes() : 0;
         benchmark.PrintResult(IndexWrapper::name(), IndexWrapper::variant(), workload_name(workload), measured_batch_no, key_values.size(),
                               batch_ops, batch_time, config.out_file,
-                              measured_throughputs.size(), running_mean, running_rse, adaptive_stop_triggered);
+                              measured_throughputs.size(), running_mean, running_rse, adaptive_stop_triggered,
+                              size_bytes);
 
         // Adaptive stop based on relative standard error (RSE) of throughput.
         if (adaptive_stop_triggered) {

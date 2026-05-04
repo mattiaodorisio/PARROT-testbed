@@ -84,6 +84,13 @@ class BenchmarkALEX
       index.erase(key);
     }
 
+    size_t size_in_bytes() const {
+      size_t sz = static_cast<size_t>(index.model_size() + index.data_size());
+      if constexpr (mode == SearchMode::PREDECESSOR_SEARCH)
+        sz += this->ps_size_bytes();
+      return sz;
+    }
+
     static std::string name() { return "ALEX"; }
 
     static std::string variant() {
