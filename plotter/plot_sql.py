@@ -177,6 +177,50 @@ def escape_latex(s: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Multiline directive joining
+# ---------------------------------------------------------------------------
+
+def join_directive_continuations(template: str) -> str:
+    """
+    Join multi-line %% directives into single lines before any other parsing.
+
+    Rules:
+    - A %% line whose content ends with \\ continues onto the next line.
+    - Continuation lines must start with %%; their %% prefix is stripped and
+      their content is appended with a single space.
+    - The first non-%% line terminates an in-progress continuation.
+    - Two consecutive %% lines where the first has no trailing \\ are two
+      separate directives (no joining occurs).
+    """
+    result = []
+    lines = template.splitlines(keepends=True)
+    i = 0
+    while i < len(lines):
+        raw = lines[i]
+        stripped = raw.strip()
+        if stripped.startswith('%%'):
+            content = re.sub(r'^%%\s?', '', stripped)
+            if content.rstrip().endswith('\\'):
+                accumulated = content.rstrip()[:-1].rstrip()
+                i += 1
+                while i < len(lines):
+                    nxt = lines[i].strip()
+                    if nxt.startswith('%%'):
+                        accumulated += ' ' + re.sub(r'^%%\s?', '', nxt)
+                        i += 1
+                    else:
+                        break
+                result.append('%% ' + accumulated + '\n')
+            else:
+                result.append(raw)
+                i += 1
+        else:
+            result.append(raw)
+            i += 1
+    return ''.join(result)
+
+
+# ---------------------------------------------------------------------------
 # Directive regexes
 # ---------------------------------------------------------------------------
 
@@ -301,7 +345,7 @@ def generate_addplots(
 
         out_lines.append(f'% Series: {color_val}')
         out_lines.append(
-            f'\\addplot[color={color}, mark={marker}, mark size=1.1pt] coordinates {{'
+            f'\\addplot[color={color}, mark={marker}] coordinates {{'
         )
         for row in group_sorted:
             x_val = row[x_i]
@@ -317,6 +361,7 @@ def generate_addplots(
                 x_fmt, y_fmt = str(x_val), str(y_val)
             out_lines.append(f'    ({x_fmt}, {y_fmt})')
         out_lines.append('};')
+        out_lines.append(f'\\addlegendentry{{{escape_latex(color_val)}}}')
         out_lines.append('')
 
     return '\n'.join(out_lines), series_names, all_y
@@ -533,7 +578,7 @@ def main() -> None:
     conn.create_aggregate('MEDIAN', 1, _MedianAgg)
 
     template_path = Path(args.template_file)
-    template = template_path.read_text()
+    template = join_directive_continuations(template_path.read_text())
     template_dir = str(template_path.parent)
 
     # Load primary data file if given
