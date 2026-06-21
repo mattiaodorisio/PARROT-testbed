@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-#include "DeLI/include/DeLI/deli.h"
+#include "DeLI/include/PARROT/parrot.h"
 #include "unordered_dense/include/ankerl/unordered_dense.h"
 #include "../src/benchmark.h"
 #include "../src/utils.h"
@@ -30,10 +30,10 @@ inline unsigned int get_high_bits_64(const std::string& data_filename) {
 template <bool has_payload,
           typename KEY_TYPE, typename PAYLOAD_TYPE,
           bool dynamic,
-          DeLI::RhtOptimization rht_opt,
+          PARROT::RhtOptimization rht_opt,
           size_t rht_simd_unrolled,
           size_t rht_max_load_perc,
-          DeLI::TopLevelOptimization opt,
+          PARROT::TopLevelOptimization opt,
           unsigned int high_bits,
           SearchMode mode = SearchMode::KEY_VALUE,
           size_t sampling = 16>
@@ -54,8 +54,8 @@ class BenchmarkDeLI
                                                size_t, PayloadType>;
 
     static constexpr SearchSemantics search_semantics = SearchSemantics::SUCCESSOR;
-    using index_t_payload = DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, KeyType, high_bits, InternalPayload, sizeof(KeyType) * CHAR_BIT, ankerl::unordered_dense::map>;
-    using index_t_no_payload = DeLI::DeLI<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, KeyType, high_bits, DeLI::NoPayload, sizeof(KeyType) * CHAR_BIT, ankerl::unordered_dense::map>;
+    using index_t_payload = PARROT::PARROT<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, KeyType, high_bits, InternalPayload, sizeof(KeyType) * CHAR_BIT, ankerl::unordered_dense::map>;
+    using index_t_no_payload = PARROT::PARROT<dynamic, rht_opt, rht_simd_unrolled, rht_max_load_perc, opt, KeyType, high_bits, PARROT::NoPayload, sizeof(KeyType) * CHAR_BIT, ankerl::unordered_dense::map>;
     using index_t = std::conditional_t<(has_payload || mode == SearchMode::PREDECESSOR_SEARCH), index_t_payload, index_t_no_payload>;
 
     BenchmarkDeLI() {}
@@ -143,15 +143,15 @@ class BenchmarkDeLI
 
     static std::string variant() {
       constexpr std::string_view rht_opt_str =
-          rht_opt == DeLI::RhtOptimization::none ? "N" :
-          rht_opt == DeLI::RhtOptimization::slot_index ? "SI" :
-          rht_opt == DeLI::RhtOptimization::gap_fill_predecessor ? "GFP" :
-          rht_opt == DeLI::RhtOptimization::gap_fill_successor ? "GFS" :
-          rht_opt == DeLI::RhtOptimization::gap_fill_both ? "GFB" : "unknown";
+          rht_opt == PARROT::RhtOptimization::none ? "N" :
+          rht_opt == PARROT::RhtOptimization::slot_index ? "SI" :
+          rht_opt == PARROT::RhtOptimization::gap_fill_predecessor ? "GFP" :
+          rht_opt == PARROT::RhtOptimization::gap_fill_successor ? "GFS" :
+          rht_opt == PARROT::RhtOptimization::gap_fill_both ? "GFB" : "unknown";
       constexpr std::string_view opt_str =
-          opt == DeLI::TopLevelOptimization::none ? "N" :
-          //opt == DeLI::TopLevelOptimization::precompute ? "P" :
-          opt == DeLI::TopLevelOptimization::bucket_index ? "BI" : "unknown";
+          opt == PARROT::TopLevelOptimization::none ? "N" :
+          //opt == PARROT::TopLevelOptimization::precompute ? "P" :
+          opt == PARROT::TopLevelOptimization::bucket_index ? "BI" : "unknown";
 
       std::stringstream ss;
       ss << rht_opt_str << ";"
@@ -190,7 +190,7 @@ void benchmark_deli_dynamic(const bench_config& config,
   for (const auto& wl : supported_workloads) {
 #ifdef FAST_COMPILE
     if constexpr (sizeof(KeyType) * CHAR_BIT == 32)
-      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, 12>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, PARROT::RhtOptimization::none, 2, 70, PARROT::TopLevelOptimization::none, 12>>(config, key_values, wl, shifting_insert_key_values);
 #endif
 
     // Define high_bits
@@ -199,7 +199,7 @@ void benchmark_deli_dynamic(const bench_config& config,
 
     // if (config.pareto) {
     //   auto run_pareto = []<unsigned int... bits>(std::integer_sequence<unsigned int, bits...>, const bench_config& cfg, const std::vector<std::pair<KeyType, PayloadType>>& kv, Workload workload) {
-    //     (deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, bits>>(cfg, kv, workload), ...);
+    //     (deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, PARROT::RhtOptimization::none, 2, 80, PARROT::TopLevelOptimization::none, bits>>(cfg, kv, workload), ...);
     //   };
     //   run_pareto(high_bits, config, key_values, wl);
     // }
@@ -240,13 +240,13 @@ void benchmark_deli_dynamic(const bench_config& config,
               auto run_for_rht = [&]<int R>() {
                 auto run_for_top = [&]<int T>() {
                   // Convert int values to enum types at compile time
-                  constexpr DeLI::RhtOptimization rht_opt = static_cast<DeLI::RhtOptimization>(R);
-                  constexpr DeLI::TopLevelOptimization top_opt = static_cast<DeLI::TopLevelOptimization>(T);
+                  constexpr PARROT::RhtOptimization rht_opt = static_cast<PARROT::RhtOptimization>(R);
+                  constexpr PARROT::TopLevelOptimization top_opt = static_cast<PARROT::TopLevelOptimization>(T);
 
                   // Check constraint: slot_index optimization cannot be used with SIMD (S > 0)
-                  if constexpr ((rht_opt != DeLI::RhtOptimization::slot_index || S == 0) &&
+                  if constexpr ((rht_opt != PARROT::RhtOptimization::slot_index || S == 0) &&
                   // Check constraint: high_bits > 24 requires bucket_index top-level optimization
-                                (B <= 24 || top_opt == DeLI::TopLevelOptimization::bucket_index)) {
+                                (B <= 24 || top_opt == PARROT::TopLevelOptimization::bucket_index)) {
                     deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, rht_opt, S, L, top_opt, B>>(cfg, kv, workload, shifting_kv);
                   }
 
@@ -268,7 +268,7 @@ void benchmark_deli_dynamic(const bench_config& config,
   if (!insert_delete_key_values.empty()) {
 #ifdef FAST_COMPILE
     if constexpr (sizeof(KeyType) * CHAR_BIT == 32)
-      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, 12>>(config, insert_delete_key_values, INSERT_DELETE);
+      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, PARROT::RhtOptimization::none, 2, 70, PARROT::TopLevelOptimization::none, 12>>(config, insert_delete_key_values, INSERT_DELETE);
 #endif
 #ifndef FAST_COMPILE
     if (config.pareto) {
@@ -298,10 +298,10 @@ void benchmark_deli_dynamic(const bench_config& config,
             auto run_for_simd = [&]<size_t S>() {
               auto run_for_rht = [&]<int R>() {
                 auto run_for_top = [&]<int T>() {
-                  constexpr DeLI::RhtOptimization rht_opt = static_cast<DeLI::RhtOptimization>(R);
-                  constexpr DeLI::TopLevelOptimization top_opt = static_cast<DeLI::TopLevelOptimization>(T);
-                  if constexpr ((rht_opt != DeLI::RhtOptimization::slot_index || S == 0) &&
-                                (B <= 24 || top_opt == DeLI::TopLevelOptimization::bucket_index)) {
+                  constexpr PARROT::RhtOptimization rht_opt = static_cast<PARROT::RhtOptimization>(R);
+                  constexpr PARROT::TopLevelOptimization top_opt = static_cast<PARROT::TopLevelOptimization>(T);
+                  if constexpr ((rht_opt != PARROT::RhtOptimization::slot_index || S == 0) &&
+                                (B <= 24 || top_opt == PARROT::TopLevelOptimization::bucket_index)) {
                     deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, true, rht_opt, S, L, top_opt, B>>(cfg, kv, INSERT_DELETE);
                   }
                 };
@@ -338,7 +338,7 @@ void benchmark_deli_static(const bench_config& config,
 
 #ifdef FAST_COMPILE
     if constexpr (sizeof(KeyType) * CHAR_BIT == 32)
-      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 70, DeLI::TopLevelOptimization::none, 12, mode, sampling>>(config, key_values, wl, shifting_insert_key_values);
+      deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, PARROT::RhtOptimization::none, 2, 70, PARROT::TopLevelOptimization::none, 12, mode, sampling>>(config, key_values, wl, shifting_insert_key_values);
 #endif
 
     // Define high_bits
@@ -347,7 +347,7 @@ void benchmark_deli_static(const bench_config& config,
 
     // if (config.pareto) {
     //   auto run_pareto = []<unsigned int... bits>(std::integer_sequence<unsigned int, bits...>, const bench_config& cfg, const std::vector<std::pair<KeyType, PayloadType>>& kv, Workload workload) {
-    //     (deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, DeLI::RhtOptimization::none, 2, 80, DeLI::TopLevelOptimization::none, bits>>(cfg, kv, workload), ...);
+    //     (deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, PARROT::RhtOptimization::none, 2, 80, PARROT::TopLevelOptimization::none, bits>>(cfg, kv, workload), ...);
     //   };
     //   run_pareto(high_bits, config, key_values, wl);
     // }
@@ -388,13 +388,13 @@ void benchmark_deli_static(const bench_config& config,
               auto run_for_rht = [&]<int R>() {
                 auto run_for_top = [&]<int T>() {
                   // Convert int values to enum types at compile time
-                  constexpr DeLI::RhtOptimization rht_opt = static_cast<DeLI::RhtOptimization>(R);
-                  constexpr DeLI::TopLevelOptimization top_opt = static_cast<DeLI::TopLevelOptimization>(T);
+                  constexpr PARROT::RhtOptimization rht_opt = static_cast<PARROT::RhtOptimization>(R);
+                  constexpr PARROT::TopLevelOptimization top_opt = static_cast<PARROT::TopLevelOptimization>(T);
 
                   // Check constraint: slot_index optimization cannot be used with SIMD (S > 0)
-                  if constexpr ((rht_opt != DeLI::RhtOptimization::slot_index || S == 0) &&
+                  if constexpr ((rht_opt != PARROT::RhtOptimization::slot_index || S == 0) &&
                   // Check constraint: high_bits > 24 requires bucket_index top-level optimization
-                                (B <= 24 || top_opt == DeLI::TopLevelOptimization::bucket_index)) {
+                                (B <= 24 || top_opt == PARROT::TopLevelOptimization::bucket_index)) {
                     deli_testbed::run_benchmark<BenchmarkDeLI<has_payload, KeyType, PayloadType, false, rht_opt, S, L, top_opt, B, mode, sampling>>(cfg, kv, workload, shifting_kv);
                   }
 
