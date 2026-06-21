@@ -303,6 +303,7 @@ def run_sql_directives(conn: sqlite3.Connection, template: str) -> None:
 def generate_addplots(
     rows: List[sqlite3.Row],
     col_names: List[str],
+    include_legend_entries: bool = True,
 ) -> Tuple[str, List[str], List[float]]:
     """
     Group query rows by color, emit \\addplot blocks.
@@ -361,7 +362,8 @@ def generate_addplots(
                 x_fmt, y_fmt = str(x_val), str(y_val)
             out_lines.append(f'    ({x_fmt}, {y_fmt})')
         out_lines.append('};')
-        out_lines.append(f'\\addlegendentry{{{escape_latex(color_val)}}}')
+        if include_legend_entries:
+            out_lines.append(f'\\addlegendentry{{{escape_latex(color_val)}}}')
         out_lines.append('')
 
     return '\n'.join(out_lines), series_names, all_y
@@ -382,6 +384,96 @@ def generate_shared_legend(series_names: List[str], max_entries: int = 30) -> st
     if len(series_names) > max_entries:
         lines.append(f'% ({len(series_names) - max_entries} additional entries omitted)')
     return '\n'.join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Color consistency validation
+# ---------------------------------------------------------------------------
+
+def validate_color_consistency(
+    conn: sqlite3.Connection,
+    template: str,
+    shared_series: List[str],
+) -> bool:
+    """
+    Verify that series names, colors, and legend entries are coherent across all
+    MULTIPLOT queries and the SHARED_LEGEND.
+
+    Checks performed:
+      1. Every series returned by any MULTIPLOT query has a legend entry.
+      2. Every legend entry has data in at least one query (warning only).
+      3. The color assigned to each name is identical in every query where it
+         appears — guaranteed by the global dict, but verified explicitly.
+
+    Prints diagnostics to stderr. Returns True if no errors were found.
+    """
+    legend_set = set(shared_series)
+
+    # Collect per-query {name: color} dicts, preserving query identity for diagnostics.
+    query_records: List[Tuple[str, Dict[str, str]]] = []  # (sql_snippet, {name: color})
+    for line in template.splitlines():
+        m = _MULTIPLOT_RE.match(line.strip())
+        if not m:
+            continue
+        sql = m.group(1).strip()
+        series_in_query: Dict[str, str] = {}
+        try:
+            cur = conn.execute(sql)
+            col_names = [d[0].lower() for d in cur.description]
+            if 'color' in col_names:
+                color_idx = col_names.index('color')
+                for row in cur.fetchall():
+                    val = row[color_idx]
+                    if val is not None:
+                        name = str(val)
+                        series_in_query[name] = get_series_color(name)
+        except Exception as e:
+            print(f"Validation warning: could not run query '{sql[:60]}…': {e}", file=sys.stderr)
+        query_records.append((sql[:60], series_in_query))
+
+    # Build union and check cross-query color coherence (check 3).
+    plotted_all: Dict[str, str] = {}  # name → color, union across all queries
+    ok = True
+    for _, qs in query_records:
+        for name, color in qs.items():
+            if name in plotted_all:
+                if plotted_all[name] != color:
+                    print(
+                        f"Consistency ERROR: '{name}' gets different colors across queries "
+                        f"('{plotted_all[name]}' vs '{color}') — this should never happen",
+                        file=sys.stderr,
+                    )
+                    ok = False
+            else:
+                plotted_all[name] = color
+
+    # Check 1: series in data but missing from legend.
+    missing_from_legend = set(plotted_all) - legend_set
+    if missing_from_legend:
+        for name in sorted(missing_from_legend):
+            print(
+                f"Consistency ERROR: series '{name}' is plotted but has no legend entry",
+                file=sys.stderr,
+            )
+        ok = False
+
+    # Check 2: legend entries with no data (warning only — may be intentional).
+    orphaned = legend_set - set(plotted_all)
+    if orphaned:
+        for name in sorted(orphaned):
+            print(
+                f"Consistency WARNING: legend entry '{name}' has no plot data in any subfigure",
+                file=sys.stderr,
+            )
+
+    if ok:
+        print(
+            f"Consistency check passed: {len(legend_set)} series, "
+            f"colors coherent across all {len(query_records)} subfigures.",
+            file=sys.stderr,
+        )
+
+    return ok
 
 
 # ---------------------------------------------------------------------------
@@ -432,7 +524,10 @@ def process_axis_buffer(
                     file=sys.stderr,
                 )
             else:
-                addplot_latex, axis_series, y_values = generate_addplots(rows, col_names)
+                addplot_latex, axis_series, y_values = generate_addplots(
+                    rows, col_names,
+                    include_legend_entries=(shared_series is None),
+                )
                 if has_robust and y_values:
                     robust_ymax = compute_robust_ymax(y_values)
                 if shared_series is not None:
@@ -605,6 +700,9 @@ def main() -> None:
         )
 
     result = process_template(conn, template, shared_series)
+
+    if shared_series is not None:
+        validate_color_consistency(conn, template, shared_series)
 
     if args.output == '-':
         sys.stdout.write(result)

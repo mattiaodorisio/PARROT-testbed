@@ -58,6 +58,10 @@ void benchmark_lipp(const bench_config& config,
                     std::vector<std::pair<KeyType, PayloadType>>& key_values,
                     const std::vector<std::pair<KeyType, PayloadType>>& shifting_insert_key_values) {
 
+  // Skip slow larger datasets
+  if ( key_values.size() > (1 << 28) )
+      return;
+  
   // Check if there are duplicates
   for (size_t i = 1; i < key_values.size(); ++i) {
     if (key_values[i].first == key_values[i - 1].first) {

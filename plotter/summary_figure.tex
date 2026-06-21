@@ -7,10 +7,10 @@
 \usepackage{float}
 \usepackage{xcolor}
 
-%% IMPORT-DATA uniform_uint32 test/benchmark_uniform_uint32_20260421_180037.txt
-%% IMPORT-DATA normal_uint32 test/benchmark_normal_uint32_20260422_022612.txt
-%% IMPORT-DATA mix_gauss_uint32 test/benchmark_mix_gauss_uint32_20260422_105612.txt
-%% IMPORT-DATA exponential_uint32 test/benchmark_exponential_uint32_20260422_065752.txt
+%% IMPORT-DATA uniform_uint32 ../results_after_submission_big/benchmark_uniform_uint32_20260602_081805.txt
+%% IMPORT-DATA normal_uint32 ../results_after_submission_big/benchmark_normal_uint32_20260603_060756.txt
+%% IMPORT-DATA mix_gauss_uint32 ../results_after_submission_big/benchmark_mix_gauss_uint32_20260605_142855.txt
+%% IMPORT-DATA exponential_uint32 ../results_after_submission_big/benchmark_exponential_uint32_20260604_043211.txt
 
 %% SQL CREATE VIEW uniform_uint32_filtered AS SELECT * FROM uniform_uint32 WHERE (index_name = 'DeLI-Static' AND index_variant = 'GFB;1;70;BI;12;512') OR (index_name = 'DeLI-Dynamic' AND index_variant = 'N;1;70;BI;12;512') OR (index_name = 'DeLI-Static-Payload' AND index_variant = 'GFB;0;70;BI;12;512') OR (index_name = 'DeLI-Dynamic-Payload' AND index_variant = 'N;0;70;BI;12;512') OR (index_name = 'Static-PGM' AND index_variant = '8') OR (index_name = 'ALEX' AND index_variant = 'none') OR (index_name = 'Dynamic-PGM' AND index_variant = '16') OR (index_name = 'SEA21-YFast' AND index_variant = 'sl-bw9') OR (index_name = 'SEA21' AND index_variant = 'hybrid-20') OR (index_name = 'SEA21-Map' AND index_variant = 'hybrid-20') OR index_name NOT IN ('DeLI-Static', 'DeLI-Dynamic', 'DeLI-Static-Payload', 'DeLI-Dynamic-Payload', 'Static-PGM', 'Dynamic-PGM', 'SEA21-YFast', 'SEA21', 'SEA21-Map', 'ALEX')
 
@@ -428,11 +428,13 @@
 % legend columns = min(3, number_of_series)  (capped at 30 entries total)
 % Each series needs one \addlegendimage + \addlegendentry pair.
 % -----------------------------------------------------------------------
-\vspace{0.3em}
-\begin{center}
+% Store legend entries in a zero-size axis, then render externally
 \begin{tikzpicture}
 \begin{axis}[
     hide axis,
+    scale only axis,
+    width=0.1pt,
+    height=0.1pt,
     xmin=0, xmax=1,
     ymin=0, ymax=1,
     legend columns=5,
@@ -442,7 +444,11 @@
 %% SHARED_LEGEND
 
 \end{axis}
-\end{tikzpicture}
+\end{tikzpicture}%
+\vspace{-\baselineskip}
+\vspace{10pt}
+\begin{center}
+\pgfplotslegendfromname{sharedlegend}
 \end{center}
 
 \label{fig:summary}

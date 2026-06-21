@@ -84,7 +84,6 @@ void benchmark_pgm_static(const bench_config& config,
     deli_testbed::run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType, 128>>(config, key_values, wl, shifting_insert_key_values);
     deli_testbed::run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType, 256>>(config, key_values, wl, shifting_insert_key_values);
     deli_testbed::run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType, 512>>(config, key_values, wl, shifting_insert_key_values);
-    deli_testbed::run_benchmark<BenchmarkStaticPGM<KeyType, PayloadType, 1024>>(config, key_values, wl, shifting_insert_key_values);
   }
 #endif // FAST_COMPILE
   }

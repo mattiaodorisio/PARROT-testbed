@@ -132,7 +132,6 @@ void benchmark_pgm_dynamic(const bench_config& config,
       deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 128>>(config, key_values, wl, shifting_insert_key_values);
       deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 256>>(config, key_values, wl, shifting_insert_key_values);
       deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 512>>(config, key_values, wl, shifting_insert_key_values);
-      deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 1024>>(config, key_values, wl, shifting_insert_key_values);
     }
 #endif // FAST_COMPILE
   }
@@ -153,7 +152,6 @@ void benchmark_pgm_dynamic(const bench_config& config,
         deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 128>>(config, insert_delete_key_values, INSERT_DELETE);
         deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 256>>(config, insert_delete_key_values, INSERT_DELETE);
         deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 512>>(config, insert_delete_key_values, INSERT_DELETE);
-        deli_testbed::run_benchmark<BenchmarkDynamicPGM<KeyType, PayloadType, 1024>>(config, insert_delete_key_values, INSERT_DELETE);
       }
 #endif
     }
@@ -166,6 +164,11 @@ template <typename KeyType, typename PayloadType>
 void benchmark_pgm_dynamic_ps(const bench_config& config,
                                std::vector<std::pair<KeyType, PayloadType>>& key_pairs_ps,
                                const std::vector<std::pair<KeyType, PayloadType>>& /* shifting unused */) {
+
+  // This is consistently slower
+  return;
+
+#if false
   constexpr KeyType sentinel = std::numeric_limits<KeyType>::has_infinity
       ? std::numeric_limits<KeyType>::infinity()
       : std::numeric_limits<KeyType>::max();
@@ -180,6 +183,7 @@ void benchmark_pgm_dynamic_ps(const bench_config& config,
         BenchmarkDynamicPGM<KeyType, PayloadType, 16, SearchMode::PREDECESSOR_SEARCH, 16>>(
         config, key_pairs_ps, wl, {});
   }
+#endif // false
 }
 
 }  // namespace deli_testbed

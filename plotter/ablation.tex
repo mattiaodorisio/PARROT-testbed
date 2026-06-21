@@ -48,12 +48,13 @@
 
 
 
-%% IMPORT-DATA chisquared_data ../results_after_submission/benchmark_chisquared_uint32_20260429_212453.txt
-%% IMPORT-DATA exponential_data ../results_after_submission/benchmark_exponential_uint32_20260429_073944.txt
-%% IMPORT-DATA mix_gauss_data ../results_after_submission/benchmark_mix_gauss_uint32_20260429_140412.txt
-%% IMPORT-DATA normal_data ../results_after_submission/benchmark_normal_uint32_20260429_011557.txt
-%% IMPORT-DATA uniform_data ../results_after_submission/benchmark_uniform_uint32_20260428_185517.txt
-%% IMPORT-DATA zipf_data ../results_after_submission/benchmark_zipf_uint32_20260430_035554.txt
+%% IMPORT-DATA chisquared_data ../results_after_submission_v1/benchmark_chisquared_uint32_20260531_144712.txt
+%% IMPORT-DATA exponential_data ../results_after_submission_v1/benchmark_exponential_uint32_20260531_015521.txt
+%% IMPORT-DATA mix_gauss_data ../results_after_submission_v1/benchmark_mix_gauss_uint32_20260531_073327.txt
+%% IMPORT-DATA normal_data ../results_after_submission_v1/benchmark_normal_uint32_20260530_204127.txt
+%% IMPORT-DATA uniform_data ../results_after_submission_v1/benchmark_uniform_uint32_20260528_095901.txt
+%% IMPORT-DATA zipf_data ../results_after_submission_v1/benchmark_zipf_uint32_20260531_195859.txt
+
 
 % Merge everything in a single table, keeping the dataset name as a column:
 %% SQL ALTER TABLE chisquared_data ADD COLUMN dataset_name TEXT DEFAULT 'chisquared';
@@ -70,7 +71,7 @@
 
 %% SQL CREATE TABLE stats AS SELECT * FROM chisquared_data UNION ALL SELECT * FROM exponential_data UNION ALL SELECT * FROM mix_gauss_data UNION ALL SELECT * FROM normal_data UNION ALL SELECT * FROM uniform_data UNION ALL SELECT * FROM zipf_data;
 
-%% SQL DELETE FROM stats WHERE index_name NOT LIKE '%DeLI%' OR workload_type == 'INSERT_DELETE';
+%% SQL DELETE FROM stats WHERE index_name NOT LIKE '%DeLI%';
 
 %% SQL ALTER TABLE stats DROP COLUMN batch_no;
 
@@ -122,6 +123,13 @@
 
 %% SQL ALTER TABLE stats DROP COLUMN index_variant;
 
+% Filter out small initial key sizes
+%% SQL DELETE FROM stats WHERE init_num_keys < 16048576;
+
+%% SQL CREATE TABLE insert_delete_stats AS SELECT * FROM stats WHERE workload_type == 'INSERT_DELETE';
+
+%% SQL DELETE FROM stats WHERE workload_type == 'INSERT_DELETE';
+
 
 \section{DeLI Static Performance}\label{sec:deliconfig}
 
@@ -170,7 +178,7 @@
     %%       NTILE(500) OVER (PARTITION BY RHTOptimization ORDER BY total_time) AS bucket,
     %%       RHTOptimization
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Static'
+    %%     WHERE index_name = 'DeLI-Static'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -219,7 +227,7 @@
     %%       NTILE(500) OVER (PARTITION BY SIMDLanes ORDER BY total_time) AS bucket,
     %%       SIMDLanes
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Static'
+    %%     WHERE index_name = 'DeLI-Static'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -268,7 +276,7 @@
     %%       NTILE(500) OVER (PARTITION BY RHTLoad ORDER BY total_time) AS bucket,
     %%       RHTLoad
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Static'
+    %%     WHERE index_name = 'DeLI-Static'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -317,7 +325,7 @@
     %%       NTILE(500) OVER (PARTITION BY Highbits ORDER BY total_time) AS bucket,
     %%       Highbits
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Static'
+    %%     WHERE index_name = 'DeLI-Static'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -379,7 +387,7 @@
     %%       NTILE(500) OVER (PARTITION BY RHTOptimization ORDER BY total_time) AS bucket,
     %%       RHTOptimization
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Dynamic'
+    %%     WHERE index_name = 'DeLI-Dynamic'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -428,7 +436,7 @@
     %%       NTILE(500) OVER (PARTITION BY SIMDLanes ORDER BY total_time) AS bucket,
     %%       SIMDLanes
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Dynamic'
+    %%     WHERE index_name = 'DeLI-Dynamic'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -477,7 +485,7 @@
     %%       NTILE(500) OVER (PARTITION BY RHTLoad ORDER BY total_time) AS bucket,
     %%       RHTLoad
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Dynamic'
+    %%     WHERE index_name = 'DeLI-Dynamic'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -526,7 +534,214 @@
     %%       NTILE(500) OVER (PARTITION BY Highbits ORDER BY total_time) AS bucket,
     %%       Highbits
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Dynamic'
+    %%     WHERE index_name = 'DeLI-Dynamic'
+    %%   )
+    %% )
+    %% WHERE row_in_bucket = 1
+    %% ORDER BY Highbits, x
+  \end{axis}
+\end{tikzpicture}
+\end{subfigure}
+\newline
+
+\caption{Performance plots for DeLI-Dynamic index on all workloads and distributions (init key size $2^{i}, i \in [20 , 25]$).}
+\end{figure}
+
+\section{DeLI Dynamic Insert-Delete}\label{sec:deliconfig}
+
+\subsection{Performance plot (all workloads and distributions)}
+
+\begin{figure}[H]
+\small
+\centering
+
+\begin{subfigure}{0.4\textwidth}
+\centering
+\begin{tikzpicture}
+  \begin{axis}[
+    my colors,
+    title={RHTOptimization},
+    xlabel={Time (s)},
+    ylabel={Fraction of instances},
+    xmode=log,
+    log basis x={2},
+    ymin=0.1,
+    ymax=0.9,
+    width=0.85\linewidth,
+    height=4.6cm,
+    grid=major,
+    legend style={
+        at={(1.02,0.5)},
+        anchor=west,
+        font=\small,
+    },
+    mark=*,
+    mark size=0pt,
+    line width=0.5pt
+    ]
+    %% MULTIPLOT \
+    %% SELECT x, y, RHTOptimization as color FROM (
+    %%   SELECT
+    %%     total_time AS x,
+    %%     (rn) * 1.0 / total_count AS y,
+    %%     RHTOptimization,
+    %%     ROW_NUMBER() OVER (PARTITION BY RHTOptimization, bucket ORDER BY total_time) as row_in_bucket
+    %%   FROM (
+    %%     SELECT
+    %%       total_time,
+    %%       RANK() OVER (PARTITION BY RHTOptimization ORDER BY total_time) as rn,
+    %%       COUNT(*) OVER (PARTITION BY RHTOptimization) as total_count,
+    %%       NTILE(500) OVER (PARTITION BY RHTOptimization ORDER BY total_time) AS bucket,
+    %%       RHTOptimization
+    %%     FROM insert_delete_stats
+    %%     WHERE index_name = 'DeLI-Dynamic'
+    %%   )
+    %% )
+    %% WHERE row_in_bucket = 1
+    %% ORDER BY RHTOptimization, x
+  \end{axis}
+\end{tikzpicture}
+\end{subfigure}
+\newline
+
+\begin{subfigure}{0.4\textwidth}
+\centering
+\begin{tikzpicture}
+  \begin{axis}[
+    my colors,
+    title={SIMDLanes},
+    xlabel={Time (s)},
+    ylabel={Fraction of instances},
+    xmode=log,
+    log basis x={2},
+    ymin=0.1,
+    ymax=0.9,
+    width=0.85\linewidth,
+    height=4.6cm,
+    grid=major,
+    legend style={
+        at={(1.02,0.5)},
+        anchor=west,
+        font=\small,
+    },
+    mark=*,
+    mark size=0pt,
+    line width=0.5pt
+    ]
+    %% MULTIPLOT \
+    %% SELECT x, y, SIMDLanes as color FROM (
+    %%   SELECT
+    %%     total_time AS x,
+    %%     (rn) * 1.0 / total_count AS y,
+    %%     SIMDLanes,
+    %%     ROW_NUMBER() OVER (PARTITION BY SIMDLanes, bucket ORDER BY total_time) as row_in_bucket
+    %%   FROM (
+    %%     SELECT
+    %%       total_time,
+    %%       RANK() OVER (PARTITION BY SIMDLanes ORDER BY total_time) as rn,
+    %%       COUNT(*) OVER (PARTITION BY SIMDLanes) as total_count,
+    %%       NTILE(500) OVER (PARTITION BY SIMDLanes ORDER BY total_time) AS bucket,
+    %%       SIMDLanes
+    %%     FROM insert_delete_stats
+    %%     WHERE index_name = 'DeLI-Dynamic'
+    %%   )
+    %% )
+    %% WHERE row_in_bucket = 1
+    %% ORDER BY SIMDLanes, x
+  \end{axis}
+\end{tikzpicture}
+\end{subfigure}
+\newline
+
+\begin{subfigure}{0.4\textwidth}
+\centering
+\begin{tikzpicture}
+  \begin{axis}[
+    my colors,
+    title={RHTLoad},
+    xlabel={Time (s)},
+    ylabel={Fraction of instances},
+    xmode=log,
+    log basis x={2},
+    ymin=0.1,
+    ymax=0.9,
+    width=0.85\linewidth,
+    height=4.6cm,
+    grid=major,
+    legend style={
+        at={(1.02,0.5)},
+        anchor=west,
+        font=\small,
+    },
+    mark=*,
+    mark size=0pt,
+    line width=0.5pt
+    ]
+    %% MULTIPLOT \
+    %% SELECT x, y, RHTLoad as color FROM (
+    %%   SELECT
+    %%     total_time AS x,
+    %%     (rn) * 1.0 / total_count AS y,
+    %%     RHTLoad,
+    %%     ROW_NUMBER() OVER (PARTITION BY RHTLoad, bucket ORDER BY total_time) as row_in_bucket
+    %%   FROM (
+    %%     SELECT
+    %%       total_time,
+    %%       RANK() OVER (PARTITION BY RHTLoad ORDER BY total_time) as rn,
+    %%       COUNT(*) OVER (PARTITION BY RHTLoad) as total_count,
+    %%       NTILE(500) OVER (PARTITION BY RHTLoad ORDER BY total_time) AS bucket,
+    %%       RHTLoad
+    %%     FROM insert_delete_stats
+    %%     WHERE index_name = 'DeLI-Dynamic'
+    %%   )
+    %% )
+    %% WHERE row_in_bucket = 1
+    %% ORDER BY RHTLoad, x
+  \end{axis}
+\end{tikzpicture}
+\end{subfigure}
+\newline
+
+\begin{subfigure}{0.4\textwidth}
+\centering
+\begin{tikzpicture}
+  \begin{axis}[
+    my colors,
+    title={Highbits},
+    xlabel={Time (s)},
+    ylabel={Fraction of instances},
+    xmode=log,
+    log basis x={2},
+    ymin=0.1,
+    ymax=0.9,
+    width=0.85\linewidth,
+    height=4.6cm,
+    grid=major,
+    legend style={
+        at={(1.02,0.5)},
+        anchor=west,
+        font=\small,
+    },
+    mark=*,
+    mark size=0pt,
+    line width=0.5pt
+    ]
+    %% MULTIPLOT \
+    %% SELECT x, y, Highbits as color FROM (
+    %%   SELECT
+    %%     total_time AS x,
+    %%     (rn) * 1.0 / total_count AS y,
+    %%     Highbits,
+    %%     ROW_NUMBER() OVER (PARTITION BY Highbits, bucket ORDER BY total_time) as row_in_bucket
+    %%   FROM (
+    %%     SELECT
+    %%       total_time,
+    %%       RANK() OVER (PARTITION BY Highbits ORDER BY total_time) as rn,
+    %%       COUNT(*) OVER (PARTITION BY Highbits) as total_count,
+    %%       NTILE(500) OVER (PARTITION BY Highbits ORDER BY total_time) AS bucket,
+    %%       Highbits
+    %%     FROM insert_delete_stats
+    %%     WHERE index_name = 'DeLI-Dynamic'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -582,7 +797,7 @@
     %%       NTILE(500) OVER (PARTITION BY RHTOptimization ORDER BY total_time) AS bucket,
     %%       RHTOptimization
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Static-Payload'
+    %%     WHERE index_name = 'DeLI-Static-Payload'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -626,7 +841,7 @@
     %%       NTILE(500) OVER (PARTITION BY SIMDLanes ORDER BY total_time) AS bucket,
     %%       SIMDLanes
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Static-Payload'
+    %%     WHERE index_name = 'DeLI-Static-Payload'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -670,7 +885,7 @@
     %%       NTILE(500) OVER (PARTITION BY RHTLoad ORDER BY total_time) AS bucket,
     %%       RHTLoad
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Static-Payload'
+    %%     WHERE index_name = 'DeLI-Static-Payload'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -714,7 +929,7 @@
     %%       NTILE(500) OVER (PARTITION BY Highbits ORDER BY total_time) AS bucket,
     %%       Highbits
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Static-Payload'
+    %%     WHERE index_name = 'DeLI-Static-Payload'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -771,7 +986,7 @@
     %%       NTILE(500) OVER (PARTITION BY RHTOptimization ORDER BY total_time) AS bucket,
     %%       RHTOptimization
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Dynamic-Payload'
+    %%     WHERE index_name = 'DeLI-Dynamic-Payload'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -815,7 +1030,7 @@
     %%       NTILE(500) OVER (PARTITION BY SIMDLanes ORDER BY total_time) AS bucket,
     %%       SIMDLanes
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Dynamic-Payload'
+    %%     WHERE index_name = 'DeLI-Dynamic-Payload'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -859,7 +1074,7 @@
     %%       NTILE(500) OVER (PARTITION BY RHTLoad ORDER BY total_time) AS bucket,
     %%       RHTLoad
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Dynamic-Payload'
+    %%     WHERE index_name = 'DeLI-Dynamic-Payload'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -903,7 +1118,7 @@
     %%       NTILE(500) OVER (PARTITION BY Highbits ORDER BY total_time) AS bucket,
     %%       Highbits
     %%     FROM stats
-    %%     WHERE init_num_keys >= 1048576 AND index_name = 'DeLI-Dynamic-Payload'
+    %%     WHERE index_name = 'DeLI-Dynamic-Payload'
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
@@ -952,7 +1167,6 @@
     %%       NTILE(1000) OVER (PARTITION BY index_name ORDER BY total_time) AS bucket,
     %%       index_name
     %%     FROM stats_best
-    %%     WHERE init_num_keys >= 1048576
     %%   )
     %% )
     %% WHERE row_in_bucket = 1
