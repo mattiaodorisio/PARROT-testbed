@@ -7,10 +7,10 @@
 \usepackage{float}
 \usepackage{xcolor}
 
-%% IMPORT-DATA uniform_uint32 ../results_big/benchmark_uniform_uint32_20260421_180037.txt
-%% IMPORT-DATA normal_uint32 ../results_big/benchmark_normal_uint32_20260422_022612.txt
-%% IMPORT-DATA mix_gauss_uint32 ../results_big/benchmark_mix_gauss_uint32_20260422_105612.txt
-%% IMPORT-DATA exponential_uint32 ../results_big/benchmark_exponential_uint32_20260422_065752.txt
+%% IMPORT-DATA uniform_uint32 ../results_after_submission_big/benchmark_uniform_uint32_20260602_081805.txt
+%% IMPORT-DATA normal_uint32 ../results_after_submission_big/benchmark_normal_uint32_20260603_060756.txt
+%% IMPORT-DATA mix_gauss_uint32 ../results_after_submission_big/benchmark_mix_gauss_uint32_20260605_142855.txt
+%% IMPORT-DATA exponential_uint32 ../results_after_submission_big/benchmark_exponential_uint32_20260604_043211.txt
 
 %% SQL CREATE VIEW uniform_uint32_filtered AS SELECT * FROM uniform_uint32 WHERE (index_name = 'DeLI-Static' AND index_variant = 'GFB;1;70;BI;12;512') OR (index_name = 'DeLI-Dynamic' AND index_variant = 'N;1;70;BI;12;512') OR (index_name = 'DeLI-Static-Payload' AND index_variant = 'GFB;0;70;BI;12;512') OR (index_name = 'DeLI-Dynamic-Payload' AND index_variant = 'N;0;70;BI;12;512') OR (index_name = 'Static-PGM' AND index_variant = '8') OR (index_name = 'ALEX' AND index_variant = 'none') OR (index_name = 'Dynamic-PGM' AND index_variant = '16') OR (index_name = 'SEA21-YFast' AND index_variant = 'sl-bw9') OR (index_name = 'SEA21' AND index_variant = 'hybrid-20') OR (index_name = 'SEA21-Map' AND index_variant = 'hybrid-20') OR index_name NOT IN ('DeLI-Static', 'DeLI-Dynamic', 'DeLI-Static-Payload', 'DeLI-Dynamic-Payload', 'Static-PGM', 'Dynamic-PGM', 'SEA21-YFast', 'SEA21', 'SEA21-Map', 'ALEX')
 
@@ -20,6 +20,10 @@
 
 %% SQL CREATE VIEW exponential_uint32_filtered AS SELECT * FROM exponential_uint32 WHERE (index_name = 'DeLI-Static' AND index_variant = 'GFB;1;70;BI;12;512') OR (index_name = 'DeLI-Dynamic' AND index_variant = 'N;1;70;BI;12;512') OR (index_name = 'DeLI-Static-Payload' AND index_variant = 'GFB;0;70;BI;12;512') OR (index_name = 'DeLI-Dynamic-Payload' AND index_variant = 'N;0;70;BI;12;512') OR (index_name = 'Static-PGM' AND index_variant = '8') OR (index_name = 'ALEX' AND index_variant = 'none') OR (index_name = 'Dynamic-PGM' AND index_variant = '16') OR (index_name = 'SEA21-YFast' AND index_variant = 'sl-bw9') OR (index_name = 'SEA21' AND index_variant = 'hybrid-20') OR (index_name = 'SEA21-Map' AND index_variant = 'hybrid-20') OR index_name NOT IN ('DeLI-Static', 'DeLI-Dynamic', 'DeLI-Static-Payload', 'DeLI-Dynamic-Payload', 'Static-PGM', 'Dynamic-PGM', 'SEA21-YFast', 'SEA21', 'SEA21-Map', 'ALEX')
 
+%% REPLACE DeLI = PARROT
+%% REPLACE SEA21-YFast = YFast-Trie
+%% REPLACE SEA21 = DFH
+
 \begin{document}
 
 
@@ -27,7 +31,7 @@
 \centering
 
 % Subfigure 1 of 4 — leftmost: keeps ylabel, has column title
-\begin{subfigure}{0.313\textwidth}
+\begin{subfigure}{0.235\textwidth}
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -40,8 +44,7 @@
     log basis x={2},
     %% ROBUST_Y_MAX
     ymax={10},
-    width=\linewidth,
-    height=0.8\linewidth,
+    width=1.2\linewidth,
     grid=major,
     mark=*,
     mark size=0.7pt,
@@ -53,13 +56,13 @@
 \end{axis}
 \end{tikzpicture}
 \captionsetup{justification=centering}
-\caption{Uniform distribution}
+\caption{Uniform}
 \end{subfigure}
 %
 \hspace{0.02\textwidth}% extra gap after leftmost to compensate for ylabel width
 %
 % Subfigure 2 of 4
-\begin{subfigure}{0.313\textwidth}
+\begin{subfigure}{0.235\textwidth}
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -71,8 +74,7 @@
     log basis x={2},
     %% ROBUST_Y_MAX
     ymax={10},
-    width=\linewidth,
-    height=0.80\linewidth,
+    width=1.2\linewidth,
     grid=major,
     mark=*,
     mark size=0.7pt,
@@ -84,11 +86,11 @@
 \end{axis}
 \end{tikzpicture}
 \captionsetup{justification=centering}
-\caption{Normal distribution}
-\end{subfigure}
-
+\caption{Normal}
+\end{subfigure}%
+%
 % Subfigure 3 of 4
-\begin{subfigure}{0.313\textwidth}
+\begin{subfigure}{0.235\textwidth}
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -100,8 +102,7 @@
     log basis x={2},
     %% ROBUST_Y_MAX
     ymax={10},
-    width=\linewidth,
-    height=0.80\linewidth,
+    width=1.2\linewidth,
     grid=major,
     mark=*,
     mark size=0.7pt,
@@ -113,11 +114,11 @@
 \end{axis}
 \end{tikzpicture}
 \captionsetup{justification=centering}
-\caption{Lookup in-dist.}
+\caption{Mix-Gaussian}
 \end{subfigure}
 %
 % Subfigure 4 of 4 — rightmost
-\begin{subfigure}{0.313\textwidth}
+\begin{subfigure}{0.235\textwidth}
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -129,8 +130,7 @@
     log basis x={2},
     %% ROBUST_Y_MAX
     ymax={10},
-    width=\linewidth,
-    height=0.80\linewidth,
+    width=1.2\linewidth,
     grid=major,
     mark=*,
     mark size=0.7pt,
@@ -142,7 +142,7 @@
 \end{axis}
 \end{tikzpicture}
 \captionsetup{justification=centering}
-\caption{Exponential distribution}
+\caption{Exponential}
 \end{subfigure}
 
 % -----------------------------------------------------------------------
@@ -150,14 +150,16 @@
 % legend columns = min(3, number_of_series)  (capped at 30 entries total)
 % Each series needs one \addlegendimage + \addlegendentry pair.
 % -----------------------------------------------------------------------
-\vspace{0.3em}
-\begin{center}
+% Store legend entries in a zero-size axis, then render externally
 \begin{tikzpicture}
 \begin{axis}[
     hide axis,
+    scale only axis,
+    width=0.1pt,
+    height=0.1pt,
     xmin=0, xmax=1,
     ymin=0, ymax=1,
-    legend columns=5,
+    legend columns=3,
     legend style={draw=none, font=\scriptsize},
 ]
 
@@ -165,6 +167,9 @@
 
 \end{axis}
 \end{tikzpicture}
+\vspace{-\baselineskip}
+\vspace{10pt}
+\begin{center}
 \end{center}
 
 \label{fig:summary}

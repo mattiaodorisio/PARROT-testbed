@@ -53,6 +53,7 @@ _series_color: Dict[str, str] = {}
 _series_marker: Dict[str, str] = {}
 _color_idx: int = 0
 _marker_idx: int = 0
+_label_replacements: Dict[str, str] = {}
 
 
 def reset_color_mapping() -> None:
@@ -176,6 +177,32 @@ def escape_latex(s: str) -> str:
     return ''.join(replacements.get(c, c) for c in str(s))
 
 
+def label_for_display(s: str) -> str:
+    """Apply _label_replacements to a legend label.
+
+    If any substitution fires the result is used verbatim — the caller owns the
+    LaTeX validity of replacement values.  If nothing matches, escape_latex is
+    applied so plain identifiers stay safe.
+    """
+    result = s
+    changed = False
+    for old, new in _label_replacements.items():
+        if old in result:
+            result = result.replace(old, new)
+            changed = True
+    return result if changed else escape_latex(s)
+
+
+def collect_replacements(template: str) -> Dict[str, str]:
+    """Return an ordered dict of all %% REPLACE old=new directives in the template."""
+    result: Dict[str, str] = {}
+    for line in template.splitlines():
+        m = _REPLACE_RE.match(line.strip())
+        if m:
+            result[m.group(1).strip()] = m.group(2)
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Multiline directive joining
 # ---------------------------------------------------------------------------
@@ -229,6 +256,7 @@ _SQL_RE          = re.compile(r'^%%\s+SQL\s+(.+)$',          re.IGNORECASE)
 _IMPORT_DATA_RE  = re.compile(r'^%%\s+IMPORT-DATA\s+(\S+)\s+(.+)$',  re.IGNORECASE)
 _ROBUST_RE       = re.compile(r'^%%\s+ROBUST_Y_MAX\s*$',      re.IGNORECASE)
 _SHARED_RE       = re.compile(r'^%%\s+SHARED_LEGEND\s*$',     re.IGNORECASE)
+_REPLACE_RE      = re.compile(r'^%%\s+REPLACE\s+(.+?)=(.*)',  re.IGNORECASE)
 _YMAX_LINE_RE    = re.compile(r'^(\s*)ymax=\{[^}]*\}(,?)\s*$')
 _YMAX_CMT_RE     = re.compile(r'^\s*%\s*ymax\s*=')
 
@@ -363,7 +391,7 @@ def generate_addplots(
             out_lines.append(f'    ({x_fmt}, {y_fmt})')
         out_lines.append('};')
         if include_legend_entries:
-            out_lines.append(f'\\addlegendentry{{{escape_latex(color_val)}}}')
+            out_lines.append(f'\\addlegendentry{{{label_for_display(color_val)}}}')
         out_lines.append('')
 
     return '\n'.join(out_lines), series_names, all_y
@@ -380,7 +408,7 @@ def generate_shared_legend(series_names: List[str], max_entries: int = 30) -> st
         color  = get_series_color(name)
         marker = get_series_marker(name)
         lines.append(f'\\addlegendimage{{color={color}, mark={marker}, mark size=1.1pt}}')
-        lines.append(f'\\addlegendentry{{{escape_latex(name)}}}')
+        lines.append(f'\\addlegendentry{{{label_for_display(name)}}}')
     if len(series_names) > max_entries:
         lines.append(f'% ({len(series_names) - max_entries} additional entries omitted)')
     return '\n'.join(lines)
@@ -566,8 +594,8 @@ def process_axis_buffer(
                     out.append(f'{indent}restrict y to domain=0:{robust_ymax * 10:.6g},')
                 continue
 
-        # Drop %% SQL / %% IMPORT-DATA lines (already executed in pre-pass)
-        if _SQL_RE.match(stripped) or _IMPORT_DATA_RE.match(stripped):
+        # Drop %% SQL / %% IMPORT-DATA / %% REPLACE lines (already consumed in pre-pass)
+        if _SQL_RE.match(stripped) or _IMPORT_DATA_RE.match(stripped) or _REPLACE_RE.match(stripped):
             continue
 
         # Replace %% MULTIPLOT line with \addplot blocks
@@ -610,7 +638,7 @@ def process_template(
         if axis_depth == 0 and enters == 0:
             # Outside any axis — pass through, but drop directive lines
             s = stripped_line.strip()
-            if not _SQL_RE.match(s) and not _IMPORT_DATA_RE.match(s):
+            if not _SQL_RE.match(s) and not _IMPORT_DATA_RE.match(s) and not _REPLACE_RE.match(s):
                 out.append(line)
             continue
 
@@ -667,6 +695,10 @@ def main() -> None:
                         help='Output .tex file path (default: stdout)')
     parser.add_argument('--table', default='result',
                         help='SQLite table name for primary data_file (default: result)')
+    parser.add_argument(
+        '--replace', nargs=2, metavar=('FROM', 'TO'), action='append',
+        help='Replace FROM with TO in all plotted labels (repeatable; overrides %% REPLACE)',
+    )
     args = parser.parse_args()
 
     conn = sqlite3.connect(':memory:')
@@ -675,6 +707,14 @@ def main() -> None:
     template_path = Path(args.template_file)
     template = join_directive_continuations(template_path.read_text())
     template_dir = str(template_path.parent)
+
+    # Collect %% REPLACE directives, then apply any CLI --replace overrides
+    replacements = collect_replacements(template)
+    for from_str, to_str in (args.replace or []):
+        replacements[from_str] = to_str
+    _label_replacements.update(replacements)
+    if replacements:
+        print(f"Label replacements: {replacements}", file=sys.stderr)
 
     # Load primary data file if given
     if args.data_file:

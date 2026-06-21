@@ -20,6 +20,10 @@
 
 %% SQL CREATE VIEW exponential_uint32_filtered AS SELECT * FROM exponential_uint32 WHERE (index_name = 'DeLI-Static' AND index_variant = 'GFB;1;70;BI;12;512') OR (index_name = 'DeLI-Dynamic' AND index_variant = 'N;1;70;BI;12;512') OR (index_name = 'DeLI-Static-Payload' AND index_variant = 'GFB;0;70;BI;12;512') OR (index_name = 'DeLI-Dynamic-Payload' AND index_variant = 'N;0;70;BI;12;512') OR (index_name = 'Static-PGM' AND index_variant = '8') OR (index_name = 'ALEX' AND index_variant = 'none') OR (index_name = 'Dynamic-PGM' AND index_variant = '16') OR (index_name = 'SEA21-YFast' AND index_variant = 'sl-bw9') OR (index_name = 'SEA21' AND index_variant = 'hybrid-20') OR (index_name = 'SEA21-Map' AND index_variant = 'hybrid-20') OR index_name NOT IN ('DeLI-Static', 'DeLI-Dynamic', 'DeLI-Static-Payload', 'DeLI-Dynamic-Payload', 'Static-PGM', 'Dynamic-PGM', 'SEA21-YFast', 'SEA21', 'SEA21-Map', 'ALEX')
 
+%% REPLACE DeLI = PARROT
+%% REPLACE SEA21-YFast = YFast-Trie
+%% REPLACE SEA21 = DFH
+
 \begin{document}
 
 % -----------------------------------------------------------------------
@@ -437,7 +441,7 @@
     height=0.1pt,
     xmin=0, xmax=1,
     ymin=0, ymax=1,
-    legend columns=5,
+    legend columns=3,
     legend style={draw=none, font=\scriptsize},
 ]
 
@@ -448,7 +452,6 @@
 \vspace{-\baselineskip}
 \vspace{10pt}
 \begin{center}
-\pgfplotslegendfromname{sharedlegend}
 \end{center}
 
 \label{fig:summary}
