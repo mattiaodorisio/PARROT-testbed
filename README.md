@@ -16,14 +16,14 @@ mkdir build
 Generate the synthetic datasets and/or download the SOSD datasets:
 
 ```bash
-./script/generate_synthetic_data.sh
-./script/download_datasets.sh
+./scripts/generate_synthetic_data.sh
+./scripts/download_datasets.sh
 ```
 
 **3. Run experiments.**
 
 ```bash
-./script/run_benchmarks.sh
+./scripts/run_benchmarks.sh
 ```
 
 This compiles and runs a subset of index configurations. To include all configurations, comment out the `FAST_COMPILE` macro in `src/utills.h` (note: this significantly increases compilation time due to the large number of template instantiations).
